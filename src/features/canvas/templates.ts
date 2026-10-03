@@ -19,6 +19,16 @@ function section(name: string, x: number, y: number, w: number, h: number): TLSh
   return { id: createShapeId(), type: "frame", x, y, props: { name, w, h } };
 }
 
+function caption(text: string, x: number, y: number): TLShapePartial {
+  return {
+    id: createShapeId(),
+    type: "text",
+    x,
+    y,
+    props: { richText: toRichText(text), size: "s", font: "sans", color: "grey", autoSize: true },
+  } as TLShapePartial;
+}
+
 function note(text: string, x: number, y: number, color = "yellow"): TLShapePartial {
   return {
     id: createShapeId(),
@@ -51,14 +61,15 @@ function buildTemplate(id: BoardTemplateId): TLShapePartial[] {
     case "storyboard": {
       const frameW = 400;
       const frameH = 225;
+      const rowStride = frameH + 110;
       return [
         heading("Storyboard", 0, -90),
         ...Array.from({ length: 6 }, (_, i) => {
           const x = (i % 3) * (frameW + GAP);
-          const y = Math.floor(i / 3) * (frameH + 130);
+          const y = Math.floor(i / 3) * rowStride;
           return [
             section(`Shot ${i + 1}`, x, y, frameW, frameH),
-            note("Action, dialogue, sound", x, y + frameH + 16, "light-blue"),
+            caption("Action · dialogue · sound", x, y + frameH + 14),
           ];
         }).flat(),
       ];

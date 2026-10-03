@@ -35,16 +35,24 @@ function NewProjectForm({ onCancel }: { onCancel: () => void }) {
 export function NewProjectButton({
   variant = "primary",
   label = "New Project",
+  compact = false,
 }: {
   variant?: "primary" | "secondary";
   label?: string;
+  /** Icon-only on small screens. */
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant={variant} onClick={() => setOpen(true)}>
+      <Button
+        variant={variant}
+        onClick={() => setOpen(true)}
+        aria-label={label}
+        className={compact ? "max-sm:w-9 max-sm:px-0" : undefined}
+      >
         <Plus size={16} strokeWidth={2.25} aria-hidden="true" />
-        {label}
+        <span className={compact ? "max-sm:sr-only" : undefined}>{label}</span>
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title="New project">
         <NewProjectForm onCancel={() => setOpen(false)} />

@@ -23,6 +23,6 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     // Failure is normal (many sites block previews); the client falls back to a plain card.
     if (!(error instanceof UnfurlError)) logError("unfurl", error, { target });
-    return NextResponse.json({ error: "Preview unavailable" }, { status: 422 });
+    return new NextResponse(null, { status: 204 });
   }
 }

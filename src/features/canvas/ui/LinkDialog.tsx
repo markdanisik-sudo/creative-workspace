@@ -29,7 +29,7 @@ export function LinkDialog({ open, onClose }: { open: boolean; onClose: () => vo
       title="Add a link"
       description="Tip: you can also paste a link anywhere on the board."
     >
-      <form onSubmit={submit} className="flex flex-col gap-5">
+      <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
         <TextField
           label="Link"
           name="url"

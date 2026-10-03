@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Atelier
 
-## Getting Started
+A calm, visual workspace for creative work: moodboards, treatments, shot lists and references on an infinite canvas.
 
-First, run the development server:
+> "Atelier" is a working name, set once in `src/lib/config.ts`.
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind CSS 4 · Supabase (Auth, Postgres with RLS, Storage) · tldraw 5
+
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) explains the architecture, the canvas library choice, the data model and the known risks.
+
+## Getting started
+
+Requirements: Node 20.9+ and Docker (for the local Supabase stack).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install                 # also copies canvas fonts/icons into public/tldraw
+npx supabase start          # local Postgres, Auth and Storage; applies migrations
+cp .env.example .env.local  # fill in the URL and publishable key printed above
+npm run dev                 # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sign up with any email: the local stack does not require email confirmation.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Using a hosted Supabase project
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a project, then run `npx supabase link` and `npx supabase db push` to apply `supabase/migrations`.
+2. Put the project URL and publishable (anon) key in `.env.local`.
+3. Under Auth → URL configuration, add `https://<your-domain>/auth/callback`.
+4. Set `NEXT_PUBLIC_SITE_URL` to your domain so confirmation emails link back correctly.
 
-## Learn More
+### Production checklist
 
-To learn more about Next.js, take a look at the following resources:
+- **tldraw license**: production domains need `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` ([pricing](https://tldraw.dev/pricing)). Without it, the canvas does not load in production. Localhost works without a key.
+- Enable email confirmation and set up SMTP in Supabase Auth.
+- Rate-limit `/api/unfurl` at the edge if the app is public.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command                      | What it does                                                                                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`                | Development server                                                                                                                                      |
+| `npm run build` / `start`    | Production build and server                                                                                                                             |
+| `npm run lint` / `typecheck` | ESLint and TypeScript                                                                                                                                   |
+| `npm test`                   | Unit tests (Vitest)                                                                                                                                     |
+| `npm run test:db`            | RLS and storage integration tests against the local stack (needs `SUPABASE_TEST_PUBLISHABLE_KEY` and `SUPABASE_TEST_SECRET_KEY` from `supabase status`) |
+| `npm run db:reset`           | Recreate the local database from migrations                                                                                                             |
+| `npm run db:types`           | Regenerate `src/lib/supabase/database.types.ts`                                                                                                         |
 
-## Deploy on Vercel
+## Project layout
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+supabase/migrations     schema, RLS and storage policies
+src/app                 routes: auth, dashboard, project, board, API
+src/components/ui       design-system primitives
+src/features/auth       sign in/up/out and profile
+src/features/projects   dashboard data and project UI
+src/features/boards     board templates and actions
+src/features/canvas     canvas host, shapes, persistence, assets, canvas UI
+src/lib                 Supabase clients, link unfurling, formatting, errors
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Keyboard shortcuts
+
+Press <kbd>?</kbd> on a board to see them all. Highlights: <kbd>⌘Z</kbd> / <kbd>⇧⌘Z</kbd> undo and redo, <kbd>⌘D</kbd> duplicate, <kbd>⌫</kbd> delete (undoable), <kbd>⌘A</kbd> select all, hold <kbd>Space</kbd> and drag to pan, <kbd>Esc</kbd> to deselect, and <kbd>⌘K</kbd> to search from the dashboard.

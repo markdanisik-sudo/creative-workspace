@@ -114,7 +114,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
 
   return (
     <div className="min-h-dvh">
-      <AppHeader viewer={viewer} actions={<NewProjectButton />} />
+      <AppHeader viewer={viewer} actions={<NewProjectButton compact />} />
       <main className="mx-auto max-w-[1280px] px-4 pt-10 pb-24 sm:px-8">
         <h1 className="mb-10 text-headline font-semibold">
           {query ? `Results for “${query}”` : "Projects"}

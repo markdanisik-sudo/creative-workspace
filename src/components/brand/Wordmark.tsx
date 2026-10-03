@@ -20,7 +20,9 @@ export function Wordmark({ href = "/projects", className }: { href?: string; cla
       aria-label={`${APP_NAME} home`}
     >
       <LogoMark />
-      <span className="text-callout font-semibold tracking-[-0.01em]">{APP_NAME}</span>
+      <span className="text-callout font-semibold tracking-[-0.01em] max-sm:sr-only">
+        {APP_NAME}
+      </span>
     </Link>
   );
 }

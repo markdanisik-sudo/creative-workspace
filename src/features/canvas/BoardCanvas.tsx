@@ -24,7 +24,7 @@ import { friendlyErrors, logError } from "@/lib/errors";
 import { MAX_UPLOAD_BYTES } from "./assets/files";
 import { createSupabaseAssetStore } from "./assets/supabase-asset-store";
 import { assetUtils, BOARD_PAGE_ID, bindingUtils, shapeUtils } from "./config";
-import { registerExternalContentHandlers } from "./external-content";
+import { useExternalContent } from "./external-content";
 import { BoardSaver, type SaveStatus } from "./persistence/BoardSaver";
 import { createSupabaseBackend, loadBoardRecords } from "./persistence/supabase-backend";
 import { applyTemplate } from "./templates";
@@ -81,6 +81,20 @@ type LoadState =
   | { status: "error" }
   | { status: "ready"; store: TLStore; template: string | null };
 
+const PREFERENCES_KEY = "atelier:canvas-preferences";
+
+/** First-run defaults; afterwards the viewer's own choices are kept. */
+function applyDefaultPreferences(editor: Editor) {
+  try {
+    if (window.localStorage.getItem(PREFERENCES_KEY)) return;
+    editor.user.updateUserPreferences({ isSnapMode: true });
+    window.localStorage.setItem(PREFERENCES_KEY, "1");
+  } catch {
+    // Storage unavailable: defaults simply apply each session.
+    editor.user.updateUserPreferences({ isSnapMode: true });
+  }
+}
+
 function isTypingTarget(target: EventTarget | null) {
   return (
     target instanceof HTMLElement &&
@@ -93,6 +107,7 @@ function CanvasUi({
   ...props
 }: Omit<BoardCanvasProps, "userId"> & { saveStatus: SaveStatus }) {
   const editor = useEditor();
+  useExternalContent();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const showShortcuts = useCallback(() => setShortcutsOpen(true), []);
 
@@ -171,9 +186,9 @@ export function BoardCanvas({
       if (state.status !== "ready") return;
 
       editor.user.updateUserPreferences({ colorScheme: "system" });
+      applyDefaultPreferences(editor);
       editor.setStyleForNextShapes(DefaultFontStyle, "sans", { history: "ignore" });
       editor.setStyleForNextShapes(DefaultSizeStyle, "m", { history: "ignore" });
-      registerExternalContentHandlers(editor);
       const stopMediaPlacement = registerMediaPlacement(editor);
 
       // Start saving first so starter content from a template is persisted too.
