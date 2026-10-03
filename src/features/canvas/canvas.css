@@ -1,0 +1,35 @@
+/* Aligns tldraw's remaining chrome (context menu, toasts, dialogs, rich-text
+ * toolbar) with the app's design tokens. */
+
+.atelier-canvas .tl-container {
+  --tl-font-family: var(--font-sans);
+  --tl-color-panel: var(--surface);
+  --tl-color-panel-contrast: var(--surface);
+  --tl-color-low: var(--surface-muted);
+  --tl-color-divider: var(--border);
+  --tl-color-text-0: var(--text);
+  --tl-color-text-1: var(--text);
+  --tl-color-text-3: var(--text-secondary);
+  --tl-color-focus: var(--focus);
+  --tl-color-selected: var(--focus);
+  --tl-radius-2: 8px;
+  --tl-radius-3: 12px;
+  --tl-radius-4: 14px;
+  --tl-shadow-2: var(--shadow-md);
+  --tl-shadow-3: var(--shadow-lg);
+  font-family: var(--font-sans);
+}
+
+.atelier-canvas .tlui-menu,
+.atelier-canvas .tlui-popover__content,
+.atelier-canvas .tlui-toast__container,
+.atelier-canvas .tlui-dialog__content {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Our own chrome sits in the same stacking context as tldraw's UI layer. */
+.atelier-canvas .tl-container > nav,
+.atelier-canvas .tl-container > header {
+  font-family: var(--font-sans);
+}

@@ -70,6 +70,7 @@ export type Database = {
       };
       boards: {
         Row: {
+          canvas_schema: Json | null;
           created_at: string;
           id: string;
           name: string;
@@ -79,6 +80,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          canvas_schema?: Json | null;
           created_at?: string;
           id?: string;
           name: string;
@@ -88,6 +90,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          canvas_schema?: Json | null;
           created_at?: string;
           id?: string;
           name?: string;

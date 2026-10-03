@@ -47,7 +47,8 @@ export function Menu({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const focusFirstOnOpen = useRef(false);
+  // Keyboard-opened menus focus their first item; pointer-opened ones focus the list.
+  const [focusFirstOnOpen, setFocusFirstOnOpen] = useState(false);
   const id = useId();
 
   const items = () =>
@@ -62,7 +63,7 @@ export function Menu({
 
   useEffect(() => {
     if (!open) return;
-    if (focusFirstOnOpen.current) items()[0]?.focus();
+    if (focusFirstOnOpen) items()[0]?.focus();
     else listRef.current?.focus();
 
     const onPointerDown = (event: PointerEvent) => {
@@ -70,18 +71,22 @@ export function Menu({
     };
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
+  }, [open, focusFirstOnOpen]);
 
   const onListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // While open, the menu owns the keyboard: nothing leaks to canvas shortcuts.
+    event.stopPropagation();
     const list = items();
     const index = list.indexOf(document.activeElement as HTMLElement);
     const focusAt = (next: number) => list[(next + list.length) % list.length]?.focus();
     switch (event.key) {
       case "ArrowDown":
+      case "ArrowRight":
         event.preventDefault();
         focusAt(index + 1);
         break;
       case "ArrowUp":
+      case "ArrowLeft":
         event.preventDefault();
         focusAt(index <= 0 ? list.length - 1 : index - 1);
         break;
@@ -95,7 +100,6 @@ export function Menu({
         break;
       case "Escape":
         event.preventDefault();
-        event.stopPropagation();
         close();
         break;
       case "Tab":
@@ -112,13 +116,13 @@ export function Menu({
           "aria-expanded": open,
           "aria-controls": id,
           onClick: () => {
-            focusFirstOnOpen.current = false;
+            setFocusFirstOnOpen(false);
             setOpen((value) => !value);
           },
           onKeyDown: (event) => {
             if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              focusFirstOnOpen.current = true;
+              setFocusFirstOnOpen(true);
               setOpen(true);
             }
           },
@@ -151,6 +155,11 @@ export function Menu({
       </div>
     </MenuContext.Provider>
   );
+}
+
+/** Closes the enclosing menu; for custom menu content such as swatches. */
+export function useMenuClose(): () => void {
+  return useContext(MenuContext)?.close ?? (() => {});
 }
 
 interface MenuItemProps {

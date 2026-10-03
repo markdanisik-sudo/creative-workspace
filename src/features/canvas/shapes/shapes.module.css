@@ -1,0 +1,192 @@
+/* Shared look for our HTML-rendered canvas objects. */
+
+.card {
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 0 0 0.5px var(--border-strong);
+  color: var(--text);
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+/* Checklist */
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.checklistTitle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 0;
+  margin-bottom: 2px;
+}
+
+.checklistItems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.checklistRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border-strong);
+  background: transparent;
+  pointer-events: all;
+  transition:
+    background-color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+}
+
+.checkbox:active {
+  transform: scale(0.88);
+}
+
+.checkbox svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: var(--text-inverse);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out);
+}
+
+.checkbox[data-checked="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.checkbox[data-checked="true"] svg {
+  opacity: 1;
+}
+
+.checklistText,
+.checklistInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 150ms var(--ease-out);
+}
+
+.checklistInput {
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 0;
+}
+
+.checklistText[data-checked="true"],
+.checklistInput[data-checked="true"] {
+  color: var(--text-tertiary);
+}
+
+.placeholder,
+.checklistInput::placeholder {
+  color: var(--text-tertiary);
+}
+
+.checklistFooter {
+  display: flex;
+  align-items: flex-end;
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.addItem {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--text-secondary);
+  pointer-events: all;
+}
+
+.addItem:hover {
+  color: var(--text);
+}
+
+/* File card */
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 100%;
+  padding: 0 16px;
+}
+
+.fileBadge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 52px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.fileText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fileName {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 18px;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.fileMeta {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
