@@ -12,16 +12,16 @@ Next.js 16 (App Router) · React 19 · TypeScript (strict) · Tailwind CSS 4 · 
 
 ## Getting started
 
-Requirements: Node 20.9+ and Docker (for the local Supabase stack).
+Requirements: Node.js 20.9+ and Docker Desktop (running).
 
 ```bash
-npm install                 # also copies canvas fonts/icons into public/tldraw
-npx supabase start          # local Postgres, Auth and Storage; applies migrations
-cp .env.example .env.local  # fill in the URL and publishable key printed above
-npm run dev                 # http://localhost:3000
+npm install       # once, and after pulling changes
+npm run local     # starts the local database, writes .env.local, runs the app
 ```
 
-Sign up with any email: the local stack does not require email confirmation.
+Open http://localhost:3000 and create an account (any email; the local stack does not send confirmation emails). Stop the app with Ctrl+C and the database with `npm run local:stop`.
+
+Prefer to do it by hand? `npx supabase start`, copy the URL and publishable key it prints into `.env.local` (see `.env.example`), then `npm run dev`.
 
 ### Using a hosted Supabase project
 

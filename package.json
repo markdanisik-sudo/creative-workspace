@@ -14,7 +14,9 @@
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > src/lib/supabase/database.types.ts && prettier --write src/lib/supabase/database.types.ts",
     "format": "prettier --write .",
-    "postinstall": "node scripts/copy-tldraw-assets.mjs"
+    "postinstall": "node scripts/copy-tldraw-assets.mjs",
+    "local": "node scripts/local.mjs",
+    "local:stop": "supabase stop"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.3.0",
