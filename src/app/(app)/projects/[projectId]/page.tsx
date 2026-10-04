@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/app/AppHeader";
+import { SectionLabel } from "@/components/ui/SectionLabel";
 import { requireViewer } from "@/features/auth/session";
 import { BoardGrid } from "@/features/boards/BoardGrid";
 import { getProject, listBoards } from "@/features/projects/queries";
@@ -30,22 +31,28 @@ export default async function ProjectPage({ params }: PageProps<"/projects/[proj
   return (
     <div className="min-h-dvh">
       <AppHeader viewer={viewer} />
-      <main className="mx-auto max-w-[1280px] px-4 pt-6 pb-24 sm:px-8">
+      <main className="mx-auto max-w-[1280px] px-4 pt-8 pb-32 sm:px-8">
         <Link
           href="/projects"
-          className="-ml-1.5 inline-flex items-center gap-0.5 rounded-sm py-1 pr-2 text-body text-text-secondary hover:text-text"
+          className="-ml-1 inline-flex items-center gap-0.5 rounded-sm py-1 pr-2 text-caption text-text-secondary hover:text-text"
         >
-          <ChevronLeft size={16} aria-hidden="true" />
-          Projects
+          <ChevronLeft size={14} aria-hidden="true" />
+          All projects
         </Link>
-        <div className="mt-4 mb-10 flex flex-col gap-1">
-          <h1 className="text-display font-semibold">{project.name}</h1>
-          <p className="text-callout text-text-secondary">
-            {pluralize(project.boardCount, "board")} · {pluralize(project.itemCount, "item")} ·{" "}
-            {formatEdited(project.updatedAt)}
+        <header className="flex flex-col justify-between gap-6 pt-10 pb-16 sm:pt-16 sm:pb-24 lg:flex-row lg:items-end">
+          <h1 className="max-w-4xl text-display font-medium text-balance sm:text-hero">
+            {project.name}
+          </h1>
+          <p className="shrink-0 text-body text-text-secondary lg:pb-2 lg:text-right">
+            {pluralize(project.boardCount, "board")} · {pluralize(project.itemCount, "item")}
+            <br />
+            Last edit · {formatEdited(project.updatedAt)}
           </p>
-        </div>
-        <BoardGrid projectId={project.id} boards={boards} />
+        </header>
+        <section className="flex flex-col gap-6" aria-label="Boards">
+          <SectionLabel label="Boards" index={1} />
+          <BoardGrid projectId={project.id} boards={boards} />
+        </section>
       </main>
     </div>
   );

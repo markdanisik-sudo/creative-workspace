@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { STORAGE_BUCKET } from "@/lib/supabase/env";
 import { friendlyErrors, logError, type ActionResult } from "@/lib/errors";
-import { DEFAULT_FIRST_BOARD_NAME } from "@/features/boards/templates";
+import {
+  DEFAULT_FIRST_BOARD_NAME,
+  isBoardTemplateId,
+  templateBoardName,
+} from "@/features/boards/templates";
 
 const MAX_NAME_LENGTH = 120;
 const STORAGE_PAGE_SIZE = 1000;
@@ -22,7 +26,10 @@ export interface CreateProjectState {
   error?: string;
 }
 
-/** Creates a project with a first board and opens that board straight away. */
+/**
+ * Creates a project with a first board and opens that board straight away.
+ * An optional `template` field seeds that board with starter content.
+ */
 export async function createProject(
   _prev: CreateProjectState,
   formData: FormData,
@@ -36,9 +43,15 @@ export async function createProject(
     return { error: friendlyErrors.generic };
   }
 
+  const template = formData.get("template");
+  const useTemplate = isBoardTemplateId(template) && template !== "blank";
   const board = await supabase
     .from("boards")
-    .insert({ project_id: project.data.id, name: DEFAULT_FIRST_BOARD_NAME })
+    .insert({
+      project_id: project.data.id,
+      name: useTemplate ? templateBoardName(template) : DEFAULT_FIRST_BOARD_NAME,
+      template: useTemplate ? template : null,
+    })
     .select("id")
     .single();
   if (board.error) {

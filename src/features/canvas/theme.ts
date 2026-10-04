@@ -35,7 +35,7 @@ export const canvasThemes: Partial<TLThemes> = {
     colors: {
       light: {
         ...lightColors,
-        background: "#f7f7f5",
+        background: "#ffffff",
         selectionStroke: "#0a84ff",
         brushStroke: "rgba(10, 132, 255, 0.5)",
         brushFill: "rgba(10, 132, 255, 0.06)",
@@ -43,7 +43,7 @@ export const canvasThemes: Partial<TLThemes> = {
       },
       dark: {
         ...dark,
-        background: "#141415",
+        background: "#0b0b0b",
         selectionStroke: "#409cff",
         snap: "#ff375f",
       },

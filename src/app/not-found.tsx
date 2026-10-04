@@ -3,7 +3,7 @@ import Link from "next/link";
 export default function NotFound() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-      <h1 className="text-headline font-semibold">We couldn&apos;t find that.</h1>
+      <h1 className="text-headline font-medium">We couldn&apos;t find that.</h1>
       <p className="max-w-sm text-callout text-text-secondary">
         It may have been moved or deleted, or you may not have access.
       </p>

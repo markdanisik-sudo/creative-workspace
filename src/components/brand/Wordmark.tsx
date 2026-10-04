@@ -1,28 +1,38 @@
 import Link from "next/link";
-import { APP_NAME } from "@/lib/config";
+import { APP_NAME, BRAND_INITIAL, BRAND_WORD } from "@/lib/config";
 import { cn } from "@/lib/cn";
 
-/** Logo mark: two offset rounded tiles, like cards on a table. */
-export function LogoMark({ size = 20, className }: { size?: number; className?: string }) {
+/** The logo's mark alone: the slab initial and its dot. */
+export function LogoMark({ className }: { className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" aria-hidden="true" className={className}>
-      <rect x="2" y="5" width="10" height="13" rx="2.5" fill="currentColor" opacity="0.35" />
-      <rect x="8" y="2" width="10" height="13" rx="2.5" fill="currentColor" />
-    </svg>
+    <span aria-hidden="true" className={cn("font-slab font-black tracking-[-0.06em]", className)}>
+      {BRAND_INITIAL}.
+    </span>
   );
 }
 
-export function Wordmark({ href = "/projects", className }: { href?: string; className?: string }) {
+/** "a.ATELIER": a heavy slab initial followed by the name in tight capitals. */
+export function Wordmark({
+  href = "/projects",
+  size = "sm",
+  className,
+}: {
+  href?: string;
+  size?: "sm" | "lg";
+  className?: string;
+}) {
   return (
     <Link
       href={href}
-      className={cn("inline-flex items-center gap-2 rounded-sm text-text", className)}
       aria-label={`${APP_NAME} home`}
+      className={cn(
+        "inline-flex items-baseline rounded-sm leading-none text-text",
+        size === "sm" ? "text-[17px]" : "text-[clamp(56px,11vw,148px)]",
+        className,
+      )}
     >
       <LogoMark />
-      <span className="text-callout font-semibold tracking-[-0.01em] max-sm:sr-only">
-        {APP_NAME}
-      </span>
+      <span className="font-sans font-bold tracking-[-0.04em]">{BRAND_WORD}</span>
     </Link>
   );
 }

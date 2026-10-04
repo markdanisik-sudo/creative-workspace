@@ -1,90 +1,41 @@
 import Link from "next/link";
-import { cn } from "@/lib/cn";
 import { formatEdited, pluralize } from "@/lib/format";
 import { ProjectActions } from "./ProjectActions";
-import { ProjectCover } from "./ProjectCover";
 import type { ProjectSummary } from "./types";
 
-const COLUMNS =
-  "grid-cols-[2.5rem_minmax(0,1fr)_2rem] sm:grid-cols-[3rem_minmax(0,1fr)_5.5rem_2rem] lg:grid-cols-[3.5rem_minmax(0,1fr)_7rem_7rem_9rem_5.5rem_2rem]";
-
-/** A numbered, editorial index of projects separated by hairlines. */
+/** Every project as a large, numbered line, like a site menu. */
 export function ProjectIndex({ projects }: { projects: ProjectSummary[] }) {
   return (
-    <div role="table" aria-label="Projects" className="flex flex-col">
-      <div
-        role="row"
-        className={cn(
-          "hidden items-end gap-4 pb-3 text-caption text-text-tertiary lg:grid",
-          COLUMNS,
-        )}
-      >
-        <span role="columnheader">No.</span>
-        <span role="columnheader">Project</span>
-        <span role="columnheader">Boards</span>
-        <span role="columnheader">Items</span>
-        <span role="columnheader">Edited</span>
-        <span role="columnheader" className="sr-only">
-          Cover
-        </span>
-        <span role="columnheader" className="sr-only">
-          Actions
-        </span>
-      </div>
-
+    <ul className="flex flex-col border-t border-border-strong">
       {projects.map((project, index) => (
-        <div
+        <li
           key={project.id}
-          role="row"
-          className={cn(
-            "group relative grid items-center gap-4 border-t border-border py-5 last:border-b",
-            "transition-colors duration-150 hover:bg-surface-hover/50",
-            COLUMNS,
-          )}
+          className="group relative grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 border-b border-border-strong py-5 sm:gap-6"
         >
-          <span role="cell" className="text-body text-text-tertiary tabular-nums">
-            {String(index + 1).padStart(2, "0")}
-          </span>
-
-          <div role="cell" className="flex min-w-0 flex-col gap-1">
-            {/* The whole row is the link target via the stretched pseudo-element. */}
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-5">
             <Link
               href={`/projects/${project.id}`}
-              className="block rounded-sm text-title font-semibold after:absolute after:inset-0"
+              className="block min-w-0 text-headline font-medium after:absolute after:inset-0 sm:text-display"
             >
-              <span className="block truncate transition-transform duration-200 ease-out group-hover:translate-x-1">
+              <span className="block truncate transition-[transform,color] duration-300 ease-out group-hover:translate-x-2">
                 {project.name}
               </span>
             </Link>
-            <span className="truncate text-caption text-text-secondary lg:hidden">
-              {formatEdited(project.updatedAt)} · {pluralize(project.boardCount, "board")} ·{" "}
-              {pluralize(project.itemCount, "item")}
+            <span className="shrink-0 text-caption text-text-secondary">
+              {pluralize(project.boardCount, "board")} · {pluralize(project.itemCount, "item")} ·{" "}
+              {formatEdited(project.updatedAt)}
             </span>
           </div>
-
-          <span role="cell" className="hidden text-body text-text-secondary tabular-nums lg:block">
-            {project.boardCount}
+          <ProjectActions
+            projectId={project.id}
+            projectName={project.name}
+            className="relative z-10"
+          />
+          <span aria-hidden="true" className="text-callout text-text-secondary tabular-nums">
+            ({String(index + 1).padStart(2, "0")})
           </span>
-          <span role="cell" className="hidden text-body text-text-secondary tabular-nums lg:block">
-            {project.itemCount}
-          </span>
-          <span role="cell" className="hidden text-body text-text-secondary lg:block">
-            {formatEdited(project.updatedAt)}
-          </span>
-
-          <div role="cell" className="hidden sm:block">
-            <ProjectCover
-              project={project}
-              placeholder="none"
-              className="aspect-[4/3] w-[5.5rem] rounded-sm"
-            />
-          </div>
-
-          <div role="cell" className="relative z-10">
-            <ProjectActions projectId={project.id} projectName={project.name} />
-          </div>
-        </div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

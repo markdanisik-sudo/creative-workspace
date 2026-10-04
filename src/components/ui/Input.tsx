@@ -7,10 +7,10 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
       <input
         ref={ref}
         className={cn(
-          "h-10 w-full rounded-md bg-surface px-3 text-callout text-text shadow-sm outline-none",
+          "h-11 w-full rounded-lg bg-surface-muted px-4 text-callout text-text outline-none",
           "placeholder:text-text-tertiary",
           "transition-shadow duration-150 ease-out",
-          "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--focus-ring),var(--shadow-sm)]",
+          "focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_var(--text)]",
           "aria-[invalid=true]:shadow-[0_0_0_1px_var(--danger)]",
           className,
         )}

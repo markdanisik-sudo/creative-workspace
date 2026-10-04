@@ -49,15 +49,15 @@ export function Dialog({
         if (event.target === event.currentTarget) onClose();
       }}
       className={cn(
-        "m-auto w-[calc(100%-32px)] max-w-[420px] rounded-xl bg-surface p-0 text-text shadow-lg",
+        "m-auto w-[calc(100%-32px)] max-w-[440px] rounded-xl bg-surface p-0 text-text shadow-lg",
         "backdrop:bg-overlay open:animate-sheet-in backdrop:animate-fade-in",
         className,
       )}
     >
       {open ? (
-        <div className="flex flex-col gap-5 p-6">
+        <div className="flex flex-col gap-6 p-7">
           <header className={cn("flex flex-col gap-1", hideTitle && "sr-only")}>
-            <h2 id="dialog-title" className="text-title font-semibold">
+            <h2 id="dialog-title" className="text-headline font-medium">
               {title}
             </h2>
             {description ? <p className="text-body text-text-secondary">{description}</p> : null}

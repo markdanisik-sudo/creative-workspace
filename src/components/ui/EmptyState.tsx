@@ -12,7 +12,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 py-24 text-center animate-rise-in">
-      <h2 className="text-display font-semibold">{title}</h2>
+      <h2 className="text-display font-medium">{title}</h2>
       <p className="max-w-sm text-callout text-text-secondary">{body}</p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>

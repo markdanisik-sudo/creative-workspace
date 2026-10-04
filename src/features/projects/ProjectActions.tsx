@@ -15,6 +15,7 @@ interface ProjectActionsProps {
   /** Hidden until the surrounding `group` is hovered (always shown on touch). */
   revealOnHover?: boolean;
   className?: string;
+  buttonClassName?: string;
 }
 
 /** The ⋯ menu for a project: rename and delete. */
@@ -23,6 +24,7 @@ export function ProjectActions({
   projectName,
   revealOnHover = true,
   className,
+  buttonClassName,
 }: ProjectActionsProps) {
   const router = useRouter();
   const toast = useToast();
@@ -42,6 +44,7 @@ export function ProjectActions({
               "transition-opacity duration-150 hover:bg-surface-hover hover:text-text",
               revealOnHover &&
                 "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100 [@media(hover:none)]:opacity-100",
+              buttonClassName,
             )}
             {...props}
           >

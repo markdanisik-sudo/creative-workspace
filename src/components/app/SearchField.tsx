@@ -77,10 +77,10 @@ export function SearchField({ className }: { className?: string }) {
           }
         }}
         className={cn(
-          "h-9 w-full rounded-md bg-surface-muted pr-14 pl-9 text-body text-text outline-none",
+          "h-9 w-full rounded-full bg-surface pr-14 pl-9 text-body text-text outline-none",
           "placeholder:text-text-tertiary [&::-webkit-search-cancel-button]:hidden",
           "transition-[background-color,box-shadow] duration-150",
-          "focus:bg-surface focus:shadow-[0_0_0_3px_var(--focus-ring),var(--shadow-sm)]",
+          "focus:shadow-[0_0_0_1.5px_var(--text)]",
         )}
       />
       {value ? (

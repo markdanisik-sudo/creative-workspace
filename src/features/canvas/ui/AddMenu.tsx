@@ -47,7 +47,7 @@ export function AddMenu() {
             aria-label="Add"
             title="Add"
             className={cn(
-              "flex size-9 items-center justify-center rounded-lg bg-ink text-text-inverse",
+              "flex size-9 items-center justify-center rounded-full bg-ink text-text-inverse",
               "transition-[transform,background-color] duration-150 ease-out hover:bg-ink-hover active:scale-95",
               "aria-expanded:rotate-45",
             )}

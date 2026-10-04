@@ -2,6 +2,7 @@
  * toolbar) with the app's design tokens. */
 
 .atelier-canvas .tl-container {
+  --tl-color-background: var(--bg);
   --tl-font-family: var(--font-sans);
   --tl-color-panel: var(--surface);
   --tl-color-panel-contrast: var(--surface);

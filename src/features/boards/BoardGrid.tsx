@@ -13,7 +13,7 @@ import type { BoardSummary } from "@/features/projects/types";
 import { deleteBoard, renameBoard } from "./actions";
 import { NewBoardDialog } from "./NewBoardDialog";
 
-function BoardCard({ board }: { board: BoardSummary }) {
+function BoardCard({ board, index }: { board: BoardSummary; index: number }) {
   const router = useRouter();
   const toast = useToast();
   const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
@@ -22,17 +22,26 @@ function BoardCard({ board }: { board: BoardSummary }) {
     <article className="group relative">
       <Link
         href={`/projects/${board.projectId}/boards/${board.id}`}
-        className={cn(
-          "flex aspect-[16/10] flex-col justify-end gap-1 rounded-lg bg-surface p-5 shadow-sm",
-          "transition-[box-shadow,transform] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md",
-        )}
+        className="flex aspect-[16/11] flex-col justify-between rounded-lg bg-surface-muted p-5 transition-colors duration-200 hover:bg-surface-pressed"
       >
-        <h3 className="truncate pr-8 text-title font-semibold">{board.name}</h3>
-        <p className="text-caption text-text-secondary">
-          {formatEdited(board.updatedAt)} · {pluralize(board.itemCount, "item")}
-        </p>
+        <span aria-hidden="true" className="text-caption text-text-secondary tabular-nums">
+          ({String(index + 1).padStart(2, "0")})
+        </span>
+        <span className="flex items-end justify-between gap-4">
+          <span className="min-w-0">
+            <h3 className="truncate text-headline font-medium transition-transform duration-300 group-hover:translate-x-1">
+              {board.name}
+            </h3>
+            <span className="text-caption text-text-secondary">
+              {pluralize(board.itemCount, "item")}
+            </span>
+          </span>
+          <span className="shrink-0 text-[11px] text-text-secondary">
+            {formatEdited(board.updatedAt)}
+          </span>
+        </span>
       </Link>
-      <div className="absolute top-3 right-3">
+      <div className="absolute top-3.5 right-3.5">
         <Menu
           label={`${board.name} options`}
           align="end"
@@ -41,7 +50,7 @@ function BoardCard({ board }: { board: BoardSummary }) {
               type="button"
               aria-label={`Options for ${board.name}`}
               className={cn(
-                "flex size-7 items-center justify-center rounded-sm text-text-secondary hover:bg-surface-hover",
+                "flex size-8 items-center justify-center rounded-full bg-surface/90 text-text-secondary hover:bg-surface",
                 "opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 aria-expanded:opacity-100",
                 "[@media(hover:none)]:opacity-100",
               )}
@@ -94,21 +103,25 @@ export function BoardGrid({ projectId, boards }: { projectId: string; boards: Bo
   const [creating, setCreating] = useState(false);
   return (
     <>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {boards.map((board) => (
-          <BoardCard key={board.id} board={board} />
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+        {boards.map((board, index) => (
+          <BoardCard key={board.id} board={board} index={index} />
         ))}
         <button
           type="button"
           onClick={() => setCreating(true)}
           className={cn(
-            "flex aspect-[16/10] flex-col items-center justify-center gap-2 rounded-lg text-text-secondary",
+            "group flex aspect-[16/11] flex-col items-start justify-end gap-2 rounded-lg p-5 text-left text-text-secondary",
             "border border-dashed border-border-strong transition-colors duration-150",
-            "hover:bg-surface-hover hover:text-text",
+            "hover:border-text hover:text-text",
           )}
         >
-          <Plus size={20} aria-hidden="true" />
-          <span className="text-body font-medium">New board</span>
+          <Plus
+            size={22}
+            aria-hidden="true"
+            className="transition-transform duration-300 group-hover:rotate-90"
+          />
+          <span className="text-headline font-medium">New board</span>
         </button>
       </div>
       <NewBoardDialog projectId={projectId} open={creating} onClose={() => setCreating(false)} />

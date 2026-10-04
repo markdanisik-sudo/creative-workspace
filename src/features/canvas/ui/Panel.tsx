@@ -10,7 +10,7 @@ export const Panel = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement>>(
     <div
       ref={ref}
       className={cn(
-        "pointer-events-auto flex items-center gap-0.5 rounded-xl bg-surface/95 p-1 shadow-md backdrop-blur-xl",
+        "pointer-events-auto flex items-center gap-0.5 rounded-full bg-surface-muted/90 p-1 backdrop-blur-xl",
         className,
       )}
       {...props}

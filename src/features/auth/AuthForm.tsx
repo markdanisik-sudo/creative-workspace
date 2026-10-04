@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/Input";
+import { SectionLabel } from "@/components/ui/SectionLabel";
 import { signIn, signUp, type AuthFormState } from "./actions";
 
 interface AuthFormProps {
@@ -22,15 +23,14 @@ export function AuthForm({ mode, next, defaultEmail, notice }: AuthFormProps) {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-headline font-semibold">
-          {isSignUp ? "Create your account" : "Welcome back"}
+      <div className="flex flex-col gap-6">
+        <SectionLabel label={isSignUp ? "Create account" : "Sign in"} index={1} />
+        <h1 className="text-headline font-medium text-balance">
+          {isSignUp ? "Create your account." : "Welcome back."}{" "}
+          <span className="text-text-secondary">
+            {isSignUp ? "Start collecting ideas in seconds." : "Your projects are waiting."}
+          </span>
         </h1>
-        <p className="text-callout text-text-secondary">
-          {isSignUp
-            ? "Start collecting ideas in seconds."
-            : "Sign in to continue to your projects."}
-        </p>
       </div>
 
       {notice ? (

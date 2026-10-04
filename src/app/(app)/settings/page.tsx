@@ -31,7 +31,7 @@ export default async function SettingsPage() {
           <ChevronLeft size={16} aria-hidden="true" />
           Projects
         </Link>
-        <h1 className="mt-4 mb-8 text-display font-semibold">Settings</h1>
+        <h1 className="mt-4 mb-8 text-display font-medium sm:text-hero">Settings</h1>
         <SettingsSection title="Profile">
           <ProfileForm displayName={viewer.displayName} email={viewer.email} />
         </SettingsSection>

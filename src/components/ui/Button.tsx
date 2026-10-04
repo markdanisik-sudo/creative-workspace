@@ -6,16 +6,16 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-ink text-text-inverse hover:bg-ink-hover shadow-sm",
-  secondary: "bg-surface text-text shadow-sm hover:bg-surface-muted",
+  primary: "bg-ink text-text-inverse hover:bg-ink-hover",
+  secondary: "bg-surface-muted text-text hover:bg-surface-pressed",
   ghost: "text-text hover:bg-surface-hover active:bg-surface-pressed",
   danger: "text-danger hover:bg-danger-surface",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-body rounded-sm gap-1.5",
-  md: "h-9 px-4 text-body rounded-md gap-2",
-  lg: "h-11 px-5 text-callout rounded-md gap-2",
+  sm: "h-8 px-3.5 text-body rounded-full gap-1.5",
+  md: "h-9 px-4 text-body rounded-full gap-2",
+  lg: "h-11 px-6 text-callout rounded-full gap-2",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -68,7 +68,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex shrink-0 select-none items-center justify-center rounded-sm text-text-secondary",
+        "inline-flex shrink-0 select-none items-center justify-center rounded-full text-text-secondary",
         "transition-[background-color,color,transform] duration-150 ease-out",
         "hover:bg-surface-hover hover:text-text active:scale-95 active:bg-surface-pressed",
         "disabled:pointer-events-none disabled:opacity-35",
