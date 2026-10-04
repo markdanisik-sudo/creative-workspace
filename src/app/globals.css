@@ -134,6 +134,9 @@
   --text-headline: 28px;
   --text-headline--line-height: 34px;
   --text-headline--letter-spacing: -0.022em;
+  --text-hero: 64px;
+  --text-hero--line-height: 64px;
+  --text-hero--letter-spacing: -0.04em;
   --text-display: 40px;
   --text-display--line-height: 46px;
   --text-display--letter-spacing: -0.028em;
