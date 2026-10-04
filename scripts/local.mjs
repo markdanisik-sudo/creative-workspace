@@ -10,6 +10,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const envPath = join(root, ".env.local");
 const PORT = process.env.PORT ?? "3000";
 const MIN_NODE_MAJOR = 20;
+const DOCKER_TIMEOUT_MS = 60_000;
 
 const say = (message) => console.log(`\n▸ ${message}`);
 const fail = (message) => {
@@ -22,6 +23,7 @@ function run(command, options = {}) {
 }
 
 // 1. Requirements
+say(`Node.js ${process.versions.node}`);
 const nodeMajor = Number(process.versions.node.split(".")[0]);
 if (nodeMajor < MIN_NODE_MAJOR) {
   fail(
@@ -29,13 +31,21 @@ if (nodeMajor < MIN_NODE_MAJOR) {
   );
 }
 
+say("Checking Docker…");
 try {
-  run("docker info");
-} catch {
+  // `docker version` is quick; `docker info` can stall while Docker Desktop wakes up.
+  run("docker version --format {{.Server.Version}}", { timeout: DOCKER_TIMEOUT_MS });
+} catch (error) {
+  if (error.code === "ETIMEDOUT" || error.signal === "SIGTERM") {
+    fail(
+      "Docker is not responding. Click the Docker Desktop window to wake it (it may be in Resource Saver mode), wait for “Engine running”, then run this again.",
+    );
+  }
   fail(
-    "Docker is not running. Open Docker Desktop, wait until it says it is running, then try again.",
+    "Docker is not running. Open Docker Desktop, wait until it says “Engine running”, then try again.",
   );
 }
+say("Docker is running.");
 
 // 2. Database
 say("Starting the local database (the first run downloads it and can take a few minutes)…");
