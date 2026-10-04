@@ -2,7 +2,7 @@
 
 A calm, visual workspace for creative work: moodboards, treatments, shot lists and references on an infinite canvas.
 
-> The name and logo parts are set once in `src/lib/config.ts`.
+> The name is set in `src/lib/config.ts`; the logo in `src/components/brand/Wordmark.tsx`.
 
 ## Stack
 

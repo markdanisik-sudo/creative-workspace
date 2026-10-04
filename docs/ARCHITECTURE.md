@@ -1,6 +1,6 @@
 # Architecture
 
-> Product name: **m.studio.lab**, defined once in `src/lib/config.ts` (`APP_NAME` and the `BRAND_*` logo parts).
+> Product name: **m.studio.lab**, defined once in `src/lib/config.ts` (`APP_NAME`); the logo lives in `src/components/brand/Wordmark.tsx`.
 
 ## 1. Starting point
 

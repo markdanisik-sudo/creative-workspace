@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { APP_NAME, APP_TAGLINE } from "@/lib/config";
 import "@fontsource-variable/inter";
-import "@fontsource-variable/fraunces";
 import "./globals.css";
 
 export const metadata: Metadata = {

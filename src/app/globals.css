@@ -49,8 +49,6 @@
   --font-sans:
     "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI",
     Arial, sans-serif;
-  /* Brand accent face, used only for the logo's initial. */
-  --font-slab: "Fraunces Variable", "Rockwell", Georgia, serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -119,7 +117,6 @@
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --font-slab: var(--font-slab);
 
   /* Type scale: size / line-height / tracking tuned for system fonts. */
   --text-caption: 12px;

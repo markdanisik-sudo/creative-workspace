@@ -1,17 +1,11 @@
 import Link from "next/link";
-import { APP_NAME, BRAND_INITIAL, BRAND_SUFFIX, BRAND_WORD } from "@/lib/config";
+import { APP_NAME } from "@/lib/config";
 import { cn } from "@/lib/cn";
 
-/** The logo's mark alone: the slab initial and its dot. */
-export function LogoMark({ className }: { className?: string }) {
-  return (
-    <span aria-hidden="true" className={cn("font-slab font-black tracking-[-0.06em]", className)}>
-      {BRAND_INITIAL}.
-    </span>
-  );
-}
-
-/** "m.STUDIO.lab": a heavy serif initial, the name in tight capitals, a grey suffix. */
+/**
+ * Temporary text wordmark until the final logo arrives; swap the contents of
+ * this component for the logo SVG and every page picks it up.
+ */
 export function Wordmark({
   href = "/projects",
   size = "sm",
@@ -26,16 +20,14 @@ export function Wordmark({
       href={href}
       aria-label={`${APP_NAME} home`}
       className={cn(
-        "inline-flex items-baseline rounded-sm leading-none text-text",
-        size === "sm" ? "text-[17px]" : "text-[clamp(56px,11vw,148px)]",
+        "inline-flex items-baseline rounded-sm leading-none font-semibold text-text",
+        size === "sm"
+          ? "text-[16px] tracking-[-0.02em]"
+          : "text-[clamp(48px,9vw,120px)] tracking-[-0.05em]",
         className,
       )}
     >
-      <LogoMark />
-      <span className="font-sans font-bold tracking-[-0.04em]">{BRAND_WORD}</span>
-      <span className="font-sans font-medium tracking-[-0.04em] text-text-secondary">
-        {BRAND_SUFFIX}
-      </span>
+      {APP_NAME}
     </Link>
   );
 }
