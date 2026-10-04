@@ -1,8 +1,8 @@
-# Atelier
+# m.studio.lab
 
 A calm, visual workspace for creative work: moodboards, treatments, shot lists and references on an infinite canvas.
 
-> "Atelier" is a working name, set once in `src/lib/config.ts`.
+> The name and logo parts are set once in `src/lib/config.ts`.
 
 ## Stack
 

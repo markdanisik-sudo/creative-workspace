@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { APP_NAME, BRAND_INITIAL, BRAND_WORD } from "@/lib/config";
+import { APP_NAME, BRAND_INITIAL, BRAND_SUFFIX, BRAND_WORD } from "@/lib/config";
 import { cn } from "@/lib/cn";
 
 /** The logo's mark alone: the slab initial and its dot. */
@@ -11,7 +11,7 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-/** "a.ATELIER": a heavy slab initial followed by the name in tight capitals. */
+/** "m.STUDIO.lab": a heavy serif initial, the name in tight capitals, a grey suffix. */
 export function Wordmark({
   href = "/projects",
   size = "sm",
@@ -33,6 +33,9 @@ export function Wordmark({
     >
       <LogoMark />
       <span className="font-sans font-bold tracking-[-0.04em]">{BRAND_WORD}</span>
+      <span className="font-sans font-medium tracking-[-0.04em] text-text-secondary">
+        {BRAND_SUFFIX}
+      </span>
     </Link>
   );
 }

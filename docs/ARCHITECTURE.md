@@ -1,6 +1,6 @@
 # Architecture
 
-> Working name: **Atelier**. It is defined once in `src/lib/config.ts` (`APP_NAME`).
+> Product name: **m.studio.lab**, defined once in `src/lib/config.ts` (`APP_NAME` and the `BRAND_*` logo parts).
 
 ## 1. Starting point
 

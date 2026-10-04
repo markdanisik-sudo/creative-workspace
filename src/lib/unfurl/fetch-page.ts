@@ -6,8 +6,7 @@ import { isPublicAddress } from "./address";
 const TIMEOUT_MS = 6000;
 const MAX_REDIRECTS = 4;
 const MAX_HTML_BYTES = 768 * 1024;
-const USER_AGENT =
-  "Mozilla/5.0 (compatible; AtelierLinkPreview/1.0; +https://atelier.app) facebookexternalhit/1.1";
+const USER_AGENT = "Mozilla/5.0 (compatible; StudioLabLinkPreview/1.0) facebookexternalhit/1.1";
 
 /**
  * Every socket this agent opens is checked against private address ranges at
