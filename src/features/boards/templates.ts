@@ -1,21 +1,30 @@
+import type { Translator } from "@/lib/i18n";
+
 /** Board starting points. Starter content is applied by the canvas on first open. */
-export const BOARD_TEMPLATES = [
-  { id: "blank", name: "Blank", description: "An empty canvas." },
-  { id: "moodboard", name: "Moodboard", description: "Sections for images, colour and type." },
-  { id: "storyboard", name: "Storyboard", description: "Six frames with notes." },
-  { id: "references", name: "References", description: "Collect links and images." },
-  { id: "shot-list", name: "Shot List", description: "A ready-made checklist." },
-  { id: "ideas", name: "Ideas", description: "Notes to get you going." },
+export const BOARD_TEMPLATE_IDS = [
+  "blank",
+  "moodboard",
+  "storyboard",
+  "references",
+  "shot-list",
+  "ideas",
 ] as const;
 
-export type BoardTemplateId = (typeof BOARD_TEMPLATES)[number]["id"];
-
-export const DEFAULT_FIRST_BOARD_NAME = "Main board";
+export type BoardTemplateId = (typeof BOARD_TEMPLATE_IDS)[number];
 
 export function isBoardTemplateId(value: unknown): value is BoardTemplateId {
-  return BOARD_TEMPLATES.some((template) => template.id === value);
+  return BOARD_TEMPLATE_IDS.some((id) => id === value);
 }
 
-export function templateBoardName(id: BoardTemplateId) {
-  return id === "blank" ? "Untitled board" : BOARD_TEMPLATES.find((t) => t.id === id)!.name;
+export function templateName(id: BoardTemplateId, t: Translator["t"]) {
+  return t(`templates.${id}.name`);
+}
+
+export function templateDescription(id: BoardTemplateId, t: Translator["t"]) {
+  return t(`templates.${id}.description`);
+}
+
+/** The name a new board gets from its template. */
+export function templateBoardName(id: BoardTemplateId, t: Translator["t"]) {
+  return id === "blank" ? t("board.untitledBoard") : templateName(id, t);
 }

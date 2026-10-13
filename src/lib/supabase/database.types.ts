@@ -795,6 +795,7 @@ export type Database = {
           status: string;
         }[];
       };
+      studio_is_set_up: { Args: Record<PropertyKey, never>; Returns: boolean };
     };
     Enums: {
       [_ in never]: never;

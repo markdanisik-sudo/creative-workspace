@@ -8,17 +8,18 @@
 :root {
   color-scheme: light;
 
-  --bg: #ffffff;
+  /* Warm paper grey page, white surfaces floating on it. */
+  --bg: #ecebe8;
   --surface: #ffffff;
-  --surface-muted: #f0f0f0;
+  --surface-muted: #f4f3f1;
   --surface-hover: rgba(0, 0, 0, 0.04);
   --surface-pressed: rgba(0, 0, 0, 0.07);
   --border: rgba(0, 0, 0, 0.1);
   --border-strong: rgba(0, 0, 0, 0.18);
 
   --text: #0b0b0b;
-  --text-secondary: #7a7a7a;
-  --text-tertiary: #a8a8a8;
+  --text-secondary: #77766f;
+  --text-tertiary: #a6a59f;
   --text-inverse: #ffffff;
 
   --ink: #0b0b0b;
@@ -31,8 +32,8 @@
 
   --overlay: rgba(20, 20, 22, 0.28);
 
-  --shadow-sm: 0 0 0 1px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
 
   --radius-sm: 8px;
@@ -50,38 +51,42 @@
     "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Segoe UI",
     Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Fine film grain over the page background, as on the studio site. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
+/* The resolved theme is set on <html data-theme> before first paint (see
+ * the theme script in the root layout), so system and manual choices share
+ * one set of dark tokens. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
 
-    --bg: #0b0b0b;
-    --surface: #161616;
-    --surface-muted: #1d1d1d;
-    --surface-hover: rgba(255, 255, 255, 0.06);
-    --surface-pressed: rgba(255, 255, 255, 0.1);
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.16);
+  --bg: #0e0e0d;
+  --surface: #1a1a19;
+  --surface-muted: #222221;
+  --surface-hover: rgba(255, 255, 255, 0.06);
+  --surface-pressed: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
 
-    --text: #f4f4f4;
-    --text-secondary: #8c8c8c;
-    --text-tertiary: #5e5e5e;
-    --text-inverse: #0b0b0b;
+  --text: #f4f4f4;
+  --text-secondary: #8c8c8c;
+  --text-tertiary: #5e5e5e;
+  --text-inverse: #0b0b0b;
 
-    --ink: #f4f4f4;
-    --ink-hover: #d6d6d6;
-    --focus: #409cff;
-    --focus-ring: rgba(64, 156, 255, 0.45);
-    --danger: #ff453a;
-    --danger-surface: rgba(255, 69, 58, 0.12);
+  --ink: #f4f4f4;
+  --ink-hover: #d6d6d6;
+  --focus: #409cff;
+  --focus-ring: rgba(64, 156, 255, 0.45);
+  --danger: #ff453a;
+  --danger-surface: rgba(255, 69, 58, 0.12);
 
-    --overlay: rgba(0, 0, 0, 0.5);
+  --overlay: rgba(0, 0, 0, 0.5);
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
-    --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
-    --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
-  }
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+  --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.1);
 }
 
 @theme inline {
@@ -181,7 +186,8 @@
   }
 
   body {
-    background: var(--bg);
+    background-color: var(--bg);
+    background-image: var(--grain);
     color: var(--text);
     font-family: var(--font-sans);
     font-feature-settings: "cv11", "ss01";

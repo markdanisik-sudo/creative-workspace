@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/client";
 
 const SEARCH_DEBOUNCE_MS = 200;
 
@@ -31,6 +32,7 @@ export function SearchField({ className }: { className?: string }) {
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const shortcutHint = useShortcutHint();
+  const { t } = useI18n();
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -66,8 +68,8 @@ export function SearchField({ className }: { className?: string }) {
       <input
         ref={inputRef}
         type="search"
-        aria-label="Search projects and boards"
-        placeholder="Search"
+        aria-label={t("nav.searchLabel")}
+        placeholder={t("nav.search")}
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
@@ -77,7 +79,7 @@ export function SearchField({ className }: { className?: string }) {
           }
         }}
         className={cn(
-          "h-9 w-full rounded-full bg-surface pr-14 pl-9 text-body text-text outline-none",
+          "h-9 w-full rounded-full bg-surface-muted pr-14 pl-9 text-body text-text outline-none",
           "placeholder:text-text-tertiary [&::-webkit-search-cancel-button]:hidden",
           "transition-[background-color,box-shadow] duration-150",
           "focus:shadow-[0_0_0_1.5px_var(--text)]",
@@ -86,7 +88,7 @@ export function SearchField({ className }: { className?: string }) {
       {value ? (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label={t("nav.clearSearch")}
           onClick={() => {
             setValue("");
             inputRef.current?.focus();

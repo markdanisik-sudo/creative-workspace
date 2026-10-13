@@ -7,6 +7,7 @@ import { Menu, MenuItem, MenuSeparator } from "@/components/ui/Menu";
 import { ConfirmDialog, RenameDialog } from "@/components/ui/PromptDialogs";
 import { useToast } from "@/components/ui/Toast";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/client";
 import { deleteProject, renameProject } from "./actions";
 
 interface ProjectActionsProps {
@@ -26,6 +27,7 @@ export function ProjectActions({
   className,
   buttonClassName,
 }: ProjectActionsProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const toast = useToast();
   const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
@@ -33,12 +35,12 @@ export function ProjectActions({
   return (
     <div className={className}>
       <Menu
-        label={`${projectName} options`}
+        label={t("common.optionsFor", { name: projectName })}
         align="end"
         trigger={(props) => (
           <button
             type="button"
-            aria-label={`Options for ${projectName}`}
+            aria-label={t("common.optionsFor", { name: projectName })}
             className={cn(
               "flex size-8 items-center justify-center rounded-sm text-text-secondary",
               "transition-opacity duration-150 hover:bg-surface-hover hover:text-text",
@@ -53,19 +55,19 @@ export function ProjectActions({
         )}
       >
         <MenuItem icon={<Pencil size={15} />} onSelect={() => setDialog("rename")}>
-          Rename
+          {t("common.rename")}
         </MenuItem>
         <MenuSeparator />
         <MenuItem icon={<Trash2 size={15} />} destructive onSelect={() => setDialog("delete")}>
-          Delete project
+          {t("project.deleteAction")}
         </MenuItem>
       </Menu>
 
       <RenameDialog
         open={dialog === "rename"}
         onClose={() => setDialog(null)}
-        title="Rename project"
-        label="Project name"
+        title={t("project.renameTitle")}
+        label={t("project.projectName")}
         initialValue={projectName}
         onSubmit={async (name) => {
           const result = await renameProject(projectId, name);
@@ -77,9 +79,9 @@ export function ProjectActions({
       <ConfirmDialog
         open={dialog === "delete"}
         onClose={() => setDialog(null)}
-        title={`Delete “${projectName}”?`}
-        description="All boards and files in this project will be permanently deleted."
-        confirmLabel="Delete"
+        title={t("project.deleteTitle", { name: projectName })}
+        description={t("project.deleteBody")}
+        confirmLabel={t("common.delete")}
         onConfirm={async () => {
           const result = await deleteProject(projectId);
           setDialog(null);

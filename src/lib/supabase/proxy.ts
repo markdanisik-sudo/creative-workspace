@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
 import { supabaseKey, supabaseUrl } from "./env";
 
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth"];
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth", "/invite"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));

@@ -4,12 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { STORAGE_BUCKET } from "@/lib/supabase/env";
-import { friendlyErrors, logError, type ActionResult } from "@/lib/errors";
-import {
-  DEFAULT_FIRST_BOARD_NAME,
-  isBoardTemplateId,
-  templateBoardName,
-} from "@/features/boards/templates";
+import { logError, type ActionResult } from "@/lib/errors";
+import { isBoardTemplateId, templateBoardName } from "@/features/boards/templates";
+import { getI18n } from "@/lib/i18n/server";
 
 const MAX_NAME_LENGTH = 120;
 const STORAGE_PAGE_SIZE = 1000;
@@ -34,13 +31,19 @@ export async function createProject(
   _prev: CreateProjectState,
   formData: FormData,
 ): Promise<CreateProjectState> {
+  const { t } = await getI18n();
   const supabase = await createSupabaseServerClient();
-  const name = cleanName(formData.get("name"), "Untitled Project");
+  const name = cleanName(formData.get("name"), t("project.untitled"));
+  const clientName = cleanName(formData.get("client"), "") || null;
 
-  const project = await supabase.from("projects").insert({ name }).select("id").single();
+  const project = await supabase
+    .from("projects")
+    .insert({ name, client_name: clientName })
+    .select("id")
+    .single();
   if (project.error) {
     logError("projects.create", project.error);
-    return { error: friendlyErrors.generic };
+    return { error: t("errors.generic") };
   }
 
   const template = formData.get("template");
@@ -49,7 +52,7 @@ export async function createProject(
     .from("boards")
     .insert({
       project_id: project.data.id,
-      name: useTemplate ? templateBoardName(template) : DEFAULT_FIRST_BOARD_NAME,
+      name: useTemplate ? templateBoardName(template, t) : t("board.firstBoardName"),
       template: useTemplate ? template : null,
     })
     .select("id")
@@ -64,14 +67,15 @@ export async function createProject(
 }
 
 export async function renameProject(projectId: string, rawName: string): Promise<ActionResult> {
+  const { t } = await getI18n();
   const name = cleanName(rawName, "");
-  if (!name) return { ok: false, error: "Give your project a name." };
+  if (!name) return { ok: false, error: t("project.nameRequired") };
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("projects").update({ name }).eq("id", projectId);
   if (error) {
     logError("projects.rename", error, { projectId });
-    return { ok: false, error: friendlyErrors.generic };
+    return { ok: false, error: t("errors.generic") };
   }
   revalidatePath("/projects", "layout");
   return { ok: true, data: null };
@@ -100,14 +104,15 @@ async function listStorageFolder(
 }
 
 export async function deleteProject(projectId: string): Promise<ActionResult> {
+  const { t } = await getI18n();
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: friendlyErrors.generic };
+  if (!user) return { ok: false, error: t("errors.generic") };
   const supabase = await createSupabaseServerClient();
 
   const { error } = await supabase.from("projects").delete().eq("id", projectId);
   if (error) {
     logError("projects.delete", error, { projectId });
-    return { ok: false, error: friendlyErrors.generic };
+    return { ok: false, error: t("errors.generic") };
   }
 
   // Best-effort storage cleanup; the rows are already gone.

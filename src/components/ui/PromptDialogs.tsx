@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useI18n } from "@/lib/i18n/client";
 import { Button } from "./Button";
 import { Dialog } from "./Dialog";
 import { TextField } from "./Input";
@@ -15,14 +16,8 @@ interface RenameDialogProps {
 }
 
 /** Single-field rename. `onSubmit` resolves to an error message, or null on success. */
-export function RenameDialog({
-  open,
-  onClose,
-  title,
-  label,
-  initialValue,
-  onSubmit,
-}: RenameDialogProps) {
+export function RenameDialog({ open, onClose, title, label, initialValue, onSubmit }: RenameDialogProps) {
+  const { t } = useI18n();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
 
@@ -51,10 +46,10 @@ export function RenameDialog({
         />
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button type="submit" variant="primary" loading={pending}>
-            Save
+            {t("common.save")}
           </Button>
         </div>
       </form>
@@ -72,20 +67,14 @@ interface ConfirmDialogProps {
 }
 
 /** Reserved for actions that cannot be undone. */
-export function ConfirmDialog({
-  open,
-  onClose,
-  title,
-  description,
-  confirmLabel,
-  onConfirm,
-}: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onClose, title, description, confirmLabel, onConfirm }: ConfirmDialogProps) {
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   return (
     <Dialog open={open} onClose={onClose} title={title} description={description}>
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose} autoFocus>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           variant="primary"

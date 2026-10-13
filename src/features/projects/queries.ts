@@ -1,8 +1,9 @@
 import "server-only";
+import { cache } from "react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signStoragePaths } from "@/lib/supabase/storage";
 import { logError } from "@/lib/errors";
-import type { BoardSummary, ProjectSummary, SearchResults } from "./types";
+import { isPhase, type BoardSummary, type ProjectSummary, type SearchResults } from "./types";
 
 const SEARCH_RESULT_LIMIT = 24;
 
@@ -19,6 +20,10 @@ type SummaryRow = {
   item_count: number | null;
   board_count: number | null;
   cover_path: string | null;
+  client_name: string | null;
+  phase: string | null;
+  next_event_at: string | null;
+  open_request_count: number | null;
 };
 
 async function toProjectSummaries(rows: SummaryRow[]): Promise<ProjectSummary[]> {
@@ -38,13 +43,18 @@ async function toProjectSummaries(rows: SummaryRow[]): Promise<ProjectSummary[]>
             itemCount: row.item_count ?? 0,
             boardCount: row.board_count ?? 0,
             coverUrl: row.cover_path ? (covers.get(row.cover_path) ?? null) : null,
+            clientName: row.client_name,
+            phase: isPhase(row.phase) ? row.phase : "brief",
+            nextEventAt: row.next_event_at,
+            openRequestCount: row.open_request_count ?? 0,
           },
         ]
       : [],
   );
 }
 
-const SUMMARY_COLUMNS = "id, name, description, updated_at, item_count, board_count, cover_path";
+const SUMMARY_COLUMNS =
+  "id, name, description, updated_at, item_count, board_count, cover_path, client_name, phase, next_event_at, open_request_count";
 
 export async function listProjects(): Promise<ProjectSummary[]> {
   const supabase = await createSupabaseServerClient();
@@ -150,3 +160,18 @@ export async function search(query: string): Promise<SearchResults> {
     ),
   };
 }
+
+/** The most recent project cover the viewer can see, signed, for the menu image. */
+export const getLatestCoverUrl = cache(async (): Promise<string | null> => {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("project_summaries")
+    .select("cover_path")
+    .not("cover_path", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data?.cover_path) return null;
+  const urls = await signStoragePaths(supabase, [data.cover_path]);
+  return urls.get(data.cover_path) ?? null;
+});

@@ -1,28 +1,51 @@
+import type { Locale } from "./i18n/config";
+
 const MINUTE = 60;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
 
-const relative = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-const absolute = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" });
-
-/** "Just now", "5 minutes ago", "Yesterday", or a date for older times. */
-export function formatEdited(iso: string, now: Date = new Date()): string {
-  const date = new Date(iso);
-  const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
-  if (seconds < MINUTE) return "Just now";
-  if (seconds < HOUR) return relative.format(-Math.floor(seconds / MINUTE), "minute");
-  if (seconds < DAY) return relative.format(-Math.floor(seconds / HOUR), "hour");
-  if (seconds < WEEK) return capitalize(relative.format(-Math.floor(seconds / DAY), "day"));
-  return absolute.format(date);
-}
-
 function capitalize(text: string) {
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  return text.charAt(0).toLocaleUpperCase() + text.slice(1);
 }
 
-export function pluralize(count: number, singular: string, plural = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : plural}`;
+/** "Now", "5 minutes ago", "Yesterday", or a date for older times. */
+export function formatEdited(iso: string, locale: Locale, now: Date = new Date()): string {
+  const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const seconds = Math.round((now.getTime() - new Date(iso).getTime()) / 1000);
+  if (seconds < MINUTE) return capitalize(relative.format(0, "second"));
+  if (seconds < HOUR) return capitalize(relative.format(-Math.floor(seconds / MINUTE), "minute"));
+  if (seconds < DAY) return capitalize(relative.format(-Math.floor(seconds / HOUR), "hour"));
+  if (seconds < WEEK) return capitalize(relative.format(-Math.floor(seconds / DAY), "day"));
+  return formatDate(iso, locale, { withYear: true });
+}
+
+/** "12 Oct" / "12. 10." style day, with the year when asked. */
+export function formatDate(
+  iso: string,
+  locale: Locale,
+  { withYear = false, withWeekday = false } = {},
+): string {
+  return new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    year: withYear ? "numeric" : undefined,
+    weekday: withWeekday ? "short" : undefined,
+  }).format(new Date(iso));
+}
+
+export function formatTime(iso: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(
+    new Date(iso),
+  );
+}
+
+export function formatMoney(amount: number, currency: string, locale: Locale): string {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
+  }).format(amount);
 }
 
 export function formatBytes(bytes: number): string {
