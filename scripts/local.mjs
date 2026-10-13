@@ -54,6 +54,12 @@ try {
 } catch {
   fail("The database could not start. Make sure Docker Desktop is running and try again.");
 }
+// An existing database keeps its data; apply any migrations pulled since the last run.
+try {
+  execSync("npx supabase migration up --local", { cwd: root, stdio: "inherit" });
+} catch {
+  fail("The database could not be updated. Run `npx supabase migration up --local` to see why.");
+}
 
 // 3. Environment
 let status;
