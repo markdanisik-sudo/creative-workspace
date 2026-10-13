@@ -2,7 +2,14 @@
 
 import { ArrowUp, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useOptimistic, useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
 import { useI18n } from "@/lib/i18n/client";
@@ -34,7 +41,9 @@ export function Discussion({
   const [thread, applyOptimistic] = useOptimistic(
     [...comments].reverse(),
     (current: Comment[], change: { add?: Comment; removeId?: string }) =>
-      change.add ? [...current, change.add] : current.filter((comment) => comment.id !== change.removeId),
+      change.add
+        ? [...current, change.add]
+        : current.filter((comment) => comment.id !== change.removeId),
   );
 
   const send = (event?: FormEvent) => {
@@ -85,13 +94,24 @@ export function Discussion({
           {thread.map((comment) => {
             const mine = comment.author.id === viewer.id;
             return (
-              <li key={comment.id} className={cn("group flex gap-3", comment.id.startsWith("tmp-") && "opacity-60")}>
-                <Avatar name={comment.author.name} size={32} className={comment.author.isStudio ? "bg-ink text-text-inverse" : ""} />
+              <li
+                key={comment.id}
+                className={cn("group flex gap-3", comment.id.startsWith("tmp-") && "opacity-60")}
+              >
+                <Avatar
+                  name={comment.author.name}
+                  size={32}
+                  className={comment.author.isStudio ? "bg-ink text-text-inverse" : ""}
+                />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="text-body font-semibold">{mine ? t("discussion.you") : comment.author.name}</span>
+                    <span className="text-body font-semibold">
+                      {mine ? t("discussion.you") : comment.author.name}
+                    </span>
                     {comment.author.isStudio ? (
-                      <span className="text-[11px] font-medium text-text-secondary">{t("discussion.studio")}</span>
+                      <span className="text-[11px] font-medium text-text-secondary">
+                        {t("discussion.studio")}
+                      </span>
                     ) : null}
                     <time dateTime={comment.createdAt} className="text-caption text-text-tertiary">
                       {formatEdited(comment.createdAt, locale)}

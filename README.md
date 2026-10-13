@@ -38,15 +38,15 @@ Prefer to do it by hand? `npx supabase start`, copy the URL and publishable key 
 
 ## Roles
 
-| | Studio | Client |
-| --- | --- | --- |
-| Projects | creates, edits and deletes all of them | sees only the projects they were invited to |
-| Boards | creates, renames and deletes them; edits the canvas | edits the canvas |
-| Phase, details, schedule | edits | reads |
-| Plan (tasks) | edits | edits |
-| Discussion | posts; deletes any message | posts; deletes their own messages |
-| Add-ons | manages the catalog in Settings; approves, declines or marks requests done | requests add-ons; withdraws their own requests while they are still waiting |
-| People | invites clients and removes them | no access |
+|                          | Studio                                                                     | Client                                                                      |
+| ------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Projects                 | creates, edits and deletes all of them                                     | sees only the projects they were invited to                                 |
+| Boards                   | creates, renames and deletes them; edits the canvas                        | edits the canvas                                                            |
+| Phase, details, schedule | edits                                                                      | reads                                                                       |
+| Plan (tasks)             | edits                                                                      | edits                                                                       |
+| Discussion               | posts; deletes any message                                                 | posts; deletes their own messages                                           |
+| Add-ons                  | manages the catalog in Settings; approves, declines or marks requests done | requests add-ons; withdraws their own requests while they are still waiting |
+| People                   | invites clients and removes them                                           | no access                                                                   |
 
 All of this is enforced by Postgres row-level security (`supabase/migrations`), not only by the UI. Invitation links are single-use, expire after 30 days and are stored only as a hash.
 

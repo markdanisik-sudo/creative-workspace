@@ -50,7 +50,8 @@ async function acceptInvite(
       return { error: t("invite.emailMismatch", { email: invite?.[0]?.email ?? "" }) };
     }
     if (error?.message.includes("invitation_expired")) return { error: t("invite.expiredTitle") };
-    if (error?.message.includes("invitation_already_used")) return { error: t("invite.acceptedTitle") };
+    if (error?.message.includes("invitation_already_used"))
+      return { error: t("invite.acceptedTitle") };
     logError("auth.acceptInvite", error);
     return { error: t("invite.notFoundTitle") };
   }

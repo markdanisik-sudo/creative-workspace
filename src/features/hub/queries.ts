@@ -18,24 +18,26 @@ import type {
   Unit,
 } from "./types";
 
-export const getProjectDetails = cache(async (projectId: string): Promise<ProjectDetails | null> => {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .select("id, name, client_name, description, phase, updated_at")
-    .eq("id", projectId)
-    .maybeSingle();
-  if (error) logError("hub.project", error, { projectId });
-  if (!data) return null;
-  return {
-    id: data.id,
-    name: data.name,
-    clientName: data.client_name,
-    description: data.description,
-    phase: isPhase(data.phase) ? data.phase : "brief",
-    updatedAt: data.updated_at,
-  };
-});
+export const getProjectDetails = cache(
+  async (projectId: string): Promise<ProjectDetails | null> => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("projects")
+      .select("id, name, client_name, description, phase, updated_at")
+      .eq("id", projectId)
+      .maybeSingle();
+    if (error) logError("hub.project", error, { projectId });
+    if (!data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      clientName: data.client_name,
+      description: data.description,
+      phase: isPhase(data.phase) ? data.phase : "brief",
+      updatedAt: data.updated_at,
+    };
+  },
+);
 
 /** Display names for a set of users, marking who belongs to the studio. */
 const getPeople = cache(async (ids: string): Promise<Map<string, Person>> => {
@@ -146,7 +148,9 @@ export async function listRequests(projectId: string): Promise<AddOnRequest[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("project_requests")
-    .select("id, title, unit, unit_price, currency, quantity, details, status, requested_by, created_at")
+    .select(
+      "id, title, unit, unit_price, currency, quantity, details, status, requested_by, created_at",
+    )
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
   if (error) logError("hub.requests", error, { projectId });
@@ -170,7 +174,11 @@ export async function listRequests(projectId: string): Promise<AddOnRequest[]> {
 export async function listMembers(projectId: string): Promise<Member[]> {
   const supabase = await createSupabaseServerClient();
   const [members, invitations] = await Promise.all([
-    supabase.from("project_members").select("user_id, created_at").eq("project_id", projectId).order("created_at"),
+    supabase
+      .from("project_members")
+      .select("user_id, created_at")
+      .eq("project_id", projectId)
+      .order("created_at"),
     supabase
       .from("project_invitations")
       .select("email, accepted_by")

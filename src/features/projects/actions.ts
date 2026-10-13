@@ -64,7 +64,11 @@ export async function createProject(
 
   revalidatePath("/projects");
   // Starting from a template opens that board; a plain new job opens its hub.
-  redirect(useTemplate ? `/projects/${project.data.id}/boards/${board.data.id}` : `/projects/${project.data.id}`);
+  redirect(
+    useTemplate
+      ? `/projects/${project.data.id}/boards/${board.data.id}`
+      : `/projects/${project.data.id}`,
+  );
 }
 
 export async function renameProject(projectId: string, rawName: string): Promise<ActionResult> {

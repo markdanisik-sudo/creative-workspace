@@ -38,7 +38,11 @@ export function ProjectIndex({
             </span>
           </div>
           {canManage ? (
-            <ProjectActions projectId={project.id} projectName={project.name} className="relative z-10" />
+            <ProjectActions
+              projectId={project.id}
+              projectName={project.name}
+              className="relative z-10"
+            />
           ) : (
             <span />
           )}

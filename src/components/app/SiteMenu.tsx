@@ -144,7 +144,10 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
             <div className="flex items-center gap-4">
               <LanguageSwitch />
               <form action={signOut}>
-                <button type="submit" className="text-body text-text-secondary transition-colors hover:text-text">
+                <button
+                  type="submit"
+                  className="text-body text-text-secondary transition-colors hover:text-text"
+                >
                   {t("nav.signOut")}
                 </button>
               </form>

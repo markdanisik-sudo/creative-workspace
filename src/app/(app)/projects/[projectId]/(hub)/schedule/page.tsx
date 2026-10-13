@@ -9,7 +9,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("hub.schedule") };
 }
 
-export default async function SchedulePage({ params }: PageProps<"/projects/[projectId]/schedule">) {
+export default async function SchedulePage({
+  params,
+}: PageProps<"/projects/[projectId]/schedule">) {
   const { projectId } = await params;
   const [viewer, events] = await Promise.all([requireViewer(), listEvents(projectId)]);
   return <ScheduleView projectId={projectId} events={events} canEdit={viewer.isStudio} />;

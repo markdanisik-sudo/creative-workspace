@@ -121,7 +121,8 @@ export const cs: Dictionary = {
     onYourBoards: "{items} na vašich boardech.",
     recentWork: "Poslední práce",
     startProject: "Nový projekt",
-    startPanelNote: "Každá šablona založí nový projekt s připraveným boardem. Přejmenovat ho můžete kdykoli.",
+    startPanelNote:
+      "Každá šablona založí nový projekt s připraveným boardem. Přejmenovat ho můžete kdykoli.",
     allProjects: "Všechny projekty",
     sortProjects: "Řazení projektů",
     sortRecent: "Nejnovější",
@@ -261,7 +262,8 @@ export const cs: Dictionary = {
   },
   requests: {
     catalogTitle: "Doplňte svůj projekt",
-    catalogBody: "Potřebujete víc? Vyžádejte si další natáčecí den, další střih nebo cokoli dalšího.",
+    catalogBody:
+      "Potřebujete víc? Vyžádejte si další natáčecí den, další střih nebo cokoli dalšího.",
     request: "Vyžádat",
     requestTitle: "Vyžádat „{name}“",
     custom: "Něco jiného",
@@ -309,7 +311,8 @@ export const cs: Dictionary = {
     studioTeam: "Studio",
     clients: "Klienti",
     inviteTitle: "Pozvat klienta",
-    inviteBody: "Získá přístup jen k tomuto projektu. Odkaz mu pošlete e-mailem, přes WhatsApp nebo jak chcete.",
+    inviteBody:
+      "Získá přístup jen k tomuto projektu. Odkaz mu pošlete e-mailem, přes WhatsApp nebo jak chcete.",
     email: "E-mail klienta",
     createLink: "Vytvořit odkaz s pozvánkou",
     linkReady: "Odkaz s pozvánkou pro {email}",
@@ -357,7 +360,8 @@ export const cs: Dictionary = {
     loadingBoard: "Načítání boardu",
     couldNotOpen: "Tento board se nepodařilo otevřít.",
     emptyTitle: "Začněte čímkoli.",
-    emptyBody: "Přetáhněte sem obrázky nebo soubory, vložte odkaz, nebo přes + přidejte text, poznámky a checklisty.",
+    emptyBody:
+      "Přetáhněte sem obrázky nebo soubory, vložte odkaz, nebo přes + přidejte text, poznámky a checklisty.",
     dropToAdd: "Pusťte pro přidání na board",
     tools: "Nástroje plátna",
     add: "Přidat",

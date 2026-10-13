@@ -15,7 +15,10 @@ export const TextArea = forwardRef<HTMLTextAreaElement, TextAreaProps>(function 
   const inputId = id ?? generatedId;
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={inputId} className={cn("text-caption font-medium text-text-secondary", hideLabel && "sr-only")}>
+      <label
+        htmlFor={inputId}
+        className={cn("text-caption font-medium text-text-secondary", hideLabel && "sr-only")}
+      >
         {label}
       </label>
       <textarea

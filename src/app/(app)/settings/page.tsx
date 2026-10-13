@@ -29,7 +29,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export default async function SettingsPage() {
-  const [viewer, { t }, theme] = await Promise.all([requireViewer(), getI18n(), getThemePreference()]);
+  const [viewer, { t }, theme] = await Promise.all([
+    requireViewer(),
+    getI18n(),
+    getThemePreference(),
+  ]);
   const services = viewer.isStudio ? await listServices({ activeOnly: false }) : [];
   let index = 0;
 
@@ -44,7 +48,9 @@ export default async function SettingsPage() {
           <ChevronLeft size={16} aria-hidden="true" />
           {t("nav.projects")}
         </Link>
-        <h1 className="mt-4 mb-12 text-display font-medium tracking-tight sm:text-hero">{t("settings.title")}</h1>
+        <h1 className="mt-4 mb-12 text-display font-medium tracking-tight sm:text-hero">
+          {t("settings.title")}
+        </h1>
 
         <section className="mb-14 flex flex-col gap-4">
           <SectionLabel label={t("settings.profile")} index={++index} />

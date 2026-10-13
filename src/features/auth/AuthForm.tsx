@@ -44,7 +44,9 @@ export function AuthForm({ mode, next, defaultEmail, notice, invite, hideSwitch 
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-6">
         <SectionLabel
-          label={invite ? t("invite.label") : isSignUp ? t("auth.signUpLabel") : t("auth.signInLabel")}
+          label={
+            invite ? t("invite.label") : isSignUp ? t("auth.signUpLabel") : t("auth.signInLabel")
+          }
           index={1}
         />
         <h1 className="text-headline font-medium text-balance">
@@ -67,7 +69,10 @@ export function AuthForm({ mode, next, defaultEmail, notice, invite, hideSwitch 
       </div>
 
       {notice ? (
-        <p role="status" className="rounded-lg bg-surface-muted px-4 py-3 text-body text-text-secondary">
+        <p
+          role="status"
+          className="rounded-lg bg-surface-muted px-4 py-3 text-body text-text-secondary"
+        >
           {notice}
         </p>
       ) : null}
@@ -114,7 +119,11 @@ export function AuthForm({ mode, next, defaultEmail, notice, invite, hideSwitch 
         ) : null}
 
         <Button type="submit" variant="primary" size="lg" loading={pending} className="mt-2 w-full">
-          {invite ? t("invite.joinButton") : isSignUp ? t("auth.signUpButton") : t("auth.signInButton")}
+          {invite
+            ? t("invite.joinButton")
+            : isSignUp
+              ? t("auth.signUpButton")
+              : t("auth.signInButton")}
         </Button>
       </form>
 
@@ -127,7 +136,10 @@ export function AuthForm({ mode, next, defaultEmail, notice, invite, hideSwitch 
             : isSignUp
               ? t("auth.haveAccount")
               : t("auth.newHere")}{" "}
-          <Link href={switchHref} className="font-medium text-text underline-offset-4 hover:underline">
+          <Link
+            href={switchHref}
+            className="font-medium text-text underline-offset-4 hover:underline"
+          >
             {invite
               ? isSignUp
                 ? t("invite.signInToJoin")

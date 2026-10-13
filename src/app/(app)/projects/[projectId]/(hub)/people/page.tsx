@@ -14,6 +14,9 @@ export default async function PeoplePage({ params }: PageProps<"/projects/[proje
   const { projectId } = await params;
   const viewer = await requireViewer();
   if (!viewer.isStudio) notFound();
-  const [members, invitations] = await Promise.all([listMembers(projectId), listPendingInvitations(projectId)]);
+  const [members, invitations] = await Promise.all([
+    listMembers(projectId),
+    listPendingInvitations(projectId),
+  ]);
   return <PeopleView projectId={projectId} members={members} invitations={invitations} />;
 }

@@ -76,10 +76,18 @@ function RequestDialog({
     >
       <form onSubmit={submit} className="flex flex-col gap-4">
         {service ? null : (
-          <TextField label={t("requests.customTitle")} name="title" required maxLength={200} autoFocus />
+          <TextField
+            label={t("requests.customTitle")}
+            name="title"
+            required
+            maxLength={200}
+            autoFocus
+          />
         )}
         <div className="flex items-center justify-between gap-4">
-          <span className="text-caption font-medium text-text-secondary">{t("requests.quantity")}</span>
+          <span className="text-caption font-medium text-text-secondary">
+            {t("requests.quantity")}
+          </span>
           <div className="flex items-center gap-1 rounded-full bg-surface-muted p-1">
             <button
               type="button"
@@ -89,7 +97,10 @@ function RequestDialog({
             >
               <Minus size={14} />
             </button>
-            <span className="w-8 text-center text-callout font-semibold tabular-nums" aria-live="polite">
+            <span
+              className="w-8 text-center text-callout font-semibold tabular-nums"
+              aria-live="polite"
+            >
               {quantity}
             </span>
             <button
@@ -102,12 +113,19 @@ function RequestDialog({
             </button>
           </div>
         </div>
-        <TextArea label={t("requests.details")} name="details" placeholder={t("requests.detailsPlaceholder")} rows={4} />
+        <TextArea
+          label={t("requests.details")}
+          name="details"
+          placeholder={t("requests.detailsPlaceholder")}
+          rows={4}
+        />
         {service ? (
           <p className="text-body text-text-secondary">
             {service.unitPrice === null
               ? price(service)
-              : t("requests.total", { price: formatMoney(service.unitPrice * quantity, service.currency, locale) })}
+              : t("requests.total", {
+                  price: formatMoney(service.unitPrice * quantity, service.currency, locale),
+                })}
           </p>
         ) : null}
         <div className="flex justify-end gap-2">
@@ -154,7 +172,9 @@ export function RequestsView({
     <div className="flex flex-col gap-16">
       <section className="flex flex-col gap-6">
         <SectionLabel label={t("requests.catalogTitle")} index={1} />
-        <p className="-mt-2 max-w-xl text-callout text-text-secondary">{t("requests.catalogBody")}</p>
+        <p className="-mt-2 max-w-xl text-callout text-text-secondary">
+          {t("requests.catalogBody")}
+        </p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((service) => (
             <button
@@ -198,20 +218,31 @@ export function RequestsView({
         ) : (
           <ul className="flex flex-col border-t border-border-strong">
             {requests.map((request) => (
-              <li key={request.id} className="flex flex-col gap-3 border-b border-border-strong py-5 sm:flex-row sm:items-start sm:justify-between">
+              <li
+                key={request.id}
+                className="flex flex-col gap-3 border-b border-border-strong py-5 sm:flex-row sm:items-start sm:justify-between"
+              >
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                     <span className="text-title font-medium">
                       {request.quantity > 1 ? `${request.quantity}× ` : ""}
                       {request.title}
                     </span>
-                    <span className={cn("rounded-full px-2.5 py-0.5 text-[11px] font-semibold", STATUS_STYLE[request.status])}>
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+                        STATUS_STYLE[request.status],
+                      )}
+                    >
                       {t(`requests.status.${request.status}`)}
                     </span>
                   </div>
                   <span className="text-caption text-text-secondary">
                     {t("requests.requestedBy", {
-                      name: request.requestedById === viewerId ? t("discussion.you") : request.requester.name,
+                      name:
+                        request.requestedById === viewerId
+                          ? t("discussion.you")
+                          : request.requester.name,
                       when: formatEdited(request.createdAt, locale),
                     })}
                     {request.unitPrice !== null
@@ -219,27 +250,51 @@ export function RequestsView({
                       : ""}
                   </span>
                   {request.details ? (
-                    <p className="max-w-2xl pt-1 text-body whitespace-pre-line text-text-secondary">{request.details}</p>
+                    <p className="max-w-2xl pt-1 text-body whitespace-pre-line text-text-secondary">
+                      {request.details}
+                    </p>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   {isStudio && request.status === "requested" ? (
                     <>
-                      <Button size="sm" variant="primary" onClick={() => act(() => setRequestStatus(projectId, request.id, "approved"))}>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() =>
+                          act(() => setRequestStatus(projectId, request.id, "approved"))
+                        }
+                      >
                         {t("requests.approve")}
                       </Button>
-                      <Button size="sm" variant="secondary" onClick={() => act(() => setRequestStatus(projectId, request.id, "declined"))}>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() =>
+                          act(() => setRequestStatus(projectId, request.id, "declined"))
+                        }
+                      >
                         {t("requests.decline")}
                       </Button>
                     </>
                   ) : null}
                   {isStudio && request.status === "approved" ? (
-                    <Button size="sm" variant="secondary" onClick={() => act(() => setRequestStatus(projectId, request.id, "done"))}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => act(() => setRequestStatus(projectId, request.id, "done"))}
+                    >
                       {t("requests.markDone")}
                     </Button>
                   ) : null}
-                  {!isStudio && request.status === "requested" && request.requestedById === viewerId ? (
-                    <Button size="sm" variant="ghost" onClick={() => act(() => withdrawRequest(projectId, request.id))}>
+                  {!isStudio &&
+                  request.status === "requested" &&
+                  request.requestedById === viewerId ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => act(() => withdrawRequest(projectId, request.id))}
+                    >
                       {t("requests.withdraw")}
                     </Button>
                   ) : null}

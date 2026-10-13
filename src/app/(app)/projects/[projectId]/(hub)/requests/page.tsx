@@ -9,7 +9,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("hub.requests") };
 }
 
-export default async function RequestsPage({ params }: PageProps<"/projects/[projectId]/requests">) {
+export default async function RequestsPage({
+  params,
+}: PageProps<"/projects/[projectId]/requests">) {
   const { projectId } = await params;
   const [viewer, services, requests] = await Promise.all([
     requireViewer(),

@@ -17,7 +17,11 @@ export function LanguageSwitch({ className }: { className?: string }) {
     <div
       role="radiogroup"
       aria-label={t("nav.language")}
-      className={cn("inline-flex rounded-full bg-surface-muted p-0.5", pending && "opacity-60", className)}
+      className={cn(
+        "inline-flex rounded-full bg-surface-muted p-0.5",
+        pending && "opacity-60",
+        className,
+      )}
     >
       {LOCALES.map((option) => (
         <button
@@ -33,7 +37,9 @@ export function LanguageSwitch({ className }: { className?: string }) {
           }}
           className={cn(
             "h-7 rounded-full px-3 text-caption font-semibold uppercase transition-colors",
-            locale === option ? "bg-surface text-text shadow-sm" : "text-text-secondary hover:text-text",
+            locale === option
+              ? "bg-surface text-text shadow-sm"
+              : "text-text-secondary hover:text-text",
           )}
         >
           {option}

@@ -249,7 +249,8 @@ export const en = {
   },
   requests: {
     catalogTitle: "Add to your project",
-    catalogBody: "Need more? Request an extra shoot day, another edit or anything else from the studio.",
+    catalogBody:
+      "Need more? Request an extra shoot day, another edit or anything else from the studio.",
     request: "Request",
     requestTitle: "Request “{name}”",
     custom: "Something else",
@@ -297,7 +298,8 @@ export const en = {
     studioTeam: "Studio",
     clients: "Clients",
     inviteTitle: "Invite a client",
-    inviteBody: "They'll get access to this project only. Send them the link — by email, WhatsApp or however you like.",
+    inviteBody:
+      "They'll get access to this project only. Send them the link — by email, WhatsApp or however you like.",
     email: "Client's email",
     createLink: "Create invitation link",
     linkReady: "Invitation link for {email}",
@@ -345,7 +347,8 @@ export const en = {
     loadingBoard: "Loading board",
     couldNotOpen: "This board couldn't be opened.",
     emptyTitle: "Start with anything.",
-    emptyBody: "Drop images or files here, paste a link, or press + to add text, notes and checklists.",
+    emptyBody:
+      "Drop images or files here, paste a link, or press + to add text, notes and checklists.",
     dropToAdd: "Drop to add to board",
     tools: "Canvas tools",
     add: "Add",

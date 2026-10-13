@@ -10,11 +10,14 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function SignInPage({ searchParams }: PageProps<"/sign-in">) {
   const { t } = await getI18n();
   const params = await searchParams;
-  const read = (key: string) => (typeof params[key] === "string" ? (params[key] as string) : undefined);
+  const read = (key: string) =>
+    typeof params[key] === "string" ? (params[key] as string) : undefined;
 
   let notice: string | undefined;
   if (read("check-email")) notice = t("auth.checkEmail");
   if (read("link-expired")) notice = t("auth.linkExpired");
 
-  return <AuthForm mode="sign-in" next={read("next")} defaultEmail={read("email")} notice={notice} />;
+  return (
+    <AuthForm mode="sign-in" next={read("next")} defaultEmail={read("email")} notice={notice} />
+  );
 }

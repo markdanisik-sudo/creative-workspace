@@ -3,8 +3,12 @@ import { localeFromAcceptLanguage, translator } from ".";
 
 describe("translator", () => {
   it("interpolates parameters", () => {
-    expect(translator("en").t("dashboard.greeting", { name: "Mark" })).toBe("Good to see you, Mark.");
-    expect(translator("cs").t("dashboard.greeting", { name: "Mark" })).toBe("Rádi vás vidíme, Mark.");
+    expect(translator("en").t("dashboard.greeting", { name: "Mark" })).toBe(
+      "Good to see you, Mark.",
+    );
+    expect(translator("cs").t("dashboard.greeting", { name: "Mark" })).toBe(
+      "Rádi vás vidíme, Mark.",
+    );
   });
 
   it("chooses Czech plural forms", () => {

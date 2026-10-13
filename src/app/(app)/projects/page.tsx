@@ -37,7 +37,10 @@ function SortSwitch({ current, t }: { current: SortOrder; t: Translator["t"] }) 
           href={value === "recent" ? "/projects" : "/projects?sort=name"}
           scroll={false}
           aria-current={current === value ? "true" : undefined}
-          className={cn("rounded-sm transition-colors", current === value ? "text-text" : "hover:text-text")}
+          className={cn(
+            "rounded-sm transition-colors",
+            current === value ? "text-text" : "hover:text-text",
+          )}
         >
           {label}
         </Link>
@@ -47,7 +50,15 @@ function SortSwitch({ current, t }: { current: SortOrder; t: Translator["t"] }) 
 }
 
 /** Two-tone statement headline, with a quiet summary on the right. */
-function Masthead({ name, projects, i18n }: { name: string; projects: ProjectSummary[]; i18n: Translator }) {
+function Masthead({
+  name,
+  projects,
+  i18n,
+}: {
+  name: string;
+  projects: ProjectSummary[];
+  i18n: Translator;
+}) {
   const { t, tp } = i18n;
   const boards = projects.reduce((sum, project) => sum + project.boardCount, 0);
   const items = projects.reduce((sum, project) => sum + project.itemCount, 0);
@@ -71,11 +82,24 @@ function Masthead({ name, projects, i18n }: { name: string; projects: ProjectSum
   );
 }
 
-async function SearchResultsView({ query, i18n, canManage }: { query: string; i18n: Translator; canManage: boolean }) {
+async function SearchResultsView({
+  query,
+  i18n,
+  canManage,
+}: {
+  query: string;
+  i18n: Translator;
+  canManage: boolean;
+}) {
   const { t, tp, locale } = i18n;
   const results = await search(query);
   if (results.projects.length === 0 && results.boards.length === 0) {
-    return <EmptyState title={t("dashboard.noResultsTitle")} body={t("dashboard.noResultsBody", { query })} />;
+    return (
+      <EmptyState
+        title={t("dashboard.noResultsTitle")}
+        body={t("dashboard.noResultsBody", { query })}
+      />
+    );
   }
   return (
     <div className="flex flex-col gap-16 pt-14">
@@ -90,7 +114,10 @@ async function SearchResultsView({ query, i18n, canManage }: { query: string; i1
       ) : null}
       {results.boards.length > 0 ? (
         <section className="flex flex-col gap-6">
-          <SectionLabel label={t("dashboard.boardsSection")} index={results.projects.length > 0 ? 2 : 1} />
+          <SectionLabel
+            label={t("dashboard.boardsSection")}
+            index={results.projects.length > 0 ? 2 : 1}
+          />
           <ul className="flex flex-col border-t border-border-strong">
             {results.boards.map((board) => (
               <li key={board.id} className="border-b border-border-strong">
@@ -102,7 +129,9 @@ async function SearchResultsView({ query, i18n, canManage }: { query: string; i1
                     <span className="truncate text-title font-medium transition-transform duration-300 group-hover:translate-x-2">
                       {board.name}
                     </span>
-                    <span className="truncate text-caption text-text-secondary">{board.projectName}</span>
+                    <span className="truncate text-caption text-text-secondary">
+                      {board.projectName}
+                    </span>
                   </span>
                   <span className="shrink-0 text-caption text-text-secondary">
                     {formatEdited(board.updatedAt, locale)} · {tp("plural.item", board.itemCount)}
@@ -146,7 +175,9 @@ async function ProjectsView({
         ) : (
           <section className="flex flex-col items-start gap-3 border-t border-border-strong pt-8">
             <h2 className="text-headline font-medium">{t("dashboard.clientEmptyTitle")}</h2>
-            <p className="max-w-md text-callout text-text-secondary">{t("dashboard.clientEmptyBody")}</p>
+            <p className="max-w-md text-callout text-text-secondary">
+              {t("dashboard.clientEmptyBody")}
+            </p>
           </section>
         )}
       </>
@@ -156,7 +187,9 @@ async function ProjectsView({
   const recent = projects.slice(0, RECENT_COUNT);
   const indexed =
     sort === "name"
-      ? [...projects].sort((a, b) => a.name.localeCompare(b.name, i18n.locale, { sensitivity: "base" }))
+      ? [...projects].sort((a, b) =>
+          a.name.localeCompare(b.name, i18n.locale, { sensitivity: "base" }),
+        )
       : projects;
 
   return (
@@ -164,7 +197,10 @@ async function ProjectsView({
       <Masthead name={viewerName} projects={projects} i18n={i18n} />
       <div className="flex flex-col gap-24 sm:gap-32">
         <section aria-label={t("dashboard.recentWork")} className="flex flex-col gap-6">
-          <SectionLabel label={isStudio ? t("dashboard.recentWork") : t("dashboard.yourProjects")} index={1} />
+          <SectionLabel
+            label={isStudio ? t("dashboard.recentWork") : t("dashboard.yourProjects")}
+            index={1}
+          />
           <div className="grid gap-2 sm:grid-cols-2">
             {recent.map((project) => (
               <WorkCard key={project.id} project={project} i18n={i18n} canManage={isStudio} />
@@ -202,7 +238,12 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
         {query ? (
           <SearchResultsView query={query} i18n={i18n} canManage={viewer.isStudio} />
         ) : (
-          <ProjectsView viewerName={viewer.displayName} sort={order} i18n={i18n} isStudio={viewer.isStudio} />
+          <ProjectsView
+            viewerName={viewer.displayName}
+            sort={order}
+            i18n={i18n}
+            isStudio={viewer.isStudio}
+          />
         )}
       </main>
     </div>

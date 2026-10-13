@@ -19,7 +19,11 @@ export function WorkCard({
   const { t, tp, locale } = i18n;
   return (
     <article className="group relative flex flex-col rounded-xl bg-surface p-1.5 shadow-sm transition-shadow duration-300 hover:shadow-md">
-      <ProjectCover project={project} placeholder="none" className="aspect-[16/11] rounded-[10px]" />
+      <ProjectCover
+        project={project}
+        placeholder="none"
+        className="aspect-[16/11] rounded-[10px]"
+      />
       <div className="flex items-start justify-between gap-4 px-2.5 pt-3 pb-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h3 className="truncate text-callout font-semibold">
@@ -34,7 +38,9 @@ export function WorkCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <PhaseBadge phase={project.phase} t={t} />
-          <span className="text-[11px] text-text-tertiary">{formatEdited(project.updatedAt, locale)}</span>
+          <span className="text-[11px] text-text-tertiary">
+            {formatEdited(project.updatedAt, locale)}
+          </span>
         </div>
       </div>
       {canManage ? (

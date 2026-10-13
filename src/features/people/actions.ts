@@ -19,7 +19,8 @@ async function siteOrigin() {
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
   const list = await headers();
   const host = list.get("x-forwarded-host") ?? list.get("host") ?? "localhost:3000";
-  const protocol = list.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const protocol =
+    list.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   return `${protocol}://${host}`;
 }
 
@@ -55,7 +56,10 @@ export async function createInvitation(
   return { ok: true, data: { link: `${await siteOrigin()}/invite/${token}` } };
 }
 
-export async function revokeInvitation(invitationId: string, projectId: string): Promise<ActionResult> {
+export async function revokeInvitation(
+  invitationId: string,
+  projectId: string,
+): Promise<ActionResult> {
   const { t } = await getI18n();
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("project_invitations").delete().eq("id", invitationId);

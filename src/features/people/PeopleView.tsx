@@ -50,7 +50,13 @@ function InviteForm({ projectId }: { projectId: string }) {
       </div>
       <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex-1">
-          <TextField label={t("people.email")} name="email" type="email" required autoComplete="off" />
+          <TextField
+            label={t("people.email")}
+            name="email"
+            type="email"
+            required
+            autoComplete="off"
+          />
         </div>
         <Button type="submit" variant="primary" loading={pending}>
           <Link2 size={16} aria-hidden="true" />
@@ -71,7 +77,11 @@ function InviteForm({ projectId }: { projectId: string }) {
               className="h-10 min-w-0 flex-1 rounded-lg bg-surface px-3 font-mono text-caption outline-none"
             />
             <Button variant="secondary" onClick={copy}>
-              {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+              {copied ? (
+                <Check size={16} aria-hidden="true" />
+              ) : (
+                <Copy size={16} aria-hidden="true" />
+              )}
               {copied ? t("people.copied") : t("people.copy")}
             </Button>
           </div>
@@ -115,7 +125,10 @@ export function PeopleView({
           ) : (
             <ul className="flex flex-col border-t border-border-strong">
               {members.map((member) => (
-                <li key={member.id} className="flex items-center gap-3 border-b border-border-strong py-4">
+                <li
+                  key={member.id}
+                  className="flex items-center gap-3 border-b border-border-strong py-4"
+                >
                   <Avatar name={member.name} size={36} />
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-callout font-medium">{member.name}</span>
@@ -137,13 +150,18 @@ export function PeopleView({
             <SectionLabel label={t("people.pending")} index={2} />
             <ul className="flex flex-col border-t border-border-strong">
               {invitations.map((invitation) => (
-                <li key={invitation.id} className="flex items-center gap-3 border-b border-border-strong py-4">
+                <li
+                  key={invitation.id}
+                  className="flex items-center gap-3 border-b border-border-strong py-4"
+                >
                   <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-callout">{invitation.email}</span>
                     <span className="text-caption text-text-secondary">
                       {invitation.expired
                         ? t("people.expired")
-                        : t("people.invitedWhen", { when: formatEdited(invitation.createdAt, locale) })}
+                        : t("people.invitedWhen", {
+                            when: formatEdited(invitation.createdAt, locale),
+                          })}
                     </span>
                   </div>
                   <Button size="sm" variant="ghost" onClick={() => revoke(invitation.id)}>

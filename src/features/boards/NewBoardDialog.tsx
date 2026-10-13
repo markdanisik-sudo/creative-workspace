@@ -7,7 +7,12 @@ import { useToast } from "@/components/ui/Toast";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 import { createBoard } from "./actions";
-import { BOARD_TEMPLATE_IDS, templateDescription, templateName, type BoardTemplateId } from "./templates";
+import {
+  BOARD_TEMPLATE_IDS,
+  templateDescription,
+  templateName,
+  type BoardTemplateId,
+} from "./templates";
 
 interface NewBoardDialogProps {
   projectId: string;

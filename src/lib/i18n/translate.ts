@@ -26,7 +26,9 @@ export type PluralKey = `plural.${Extract<keyof Dictionary["plural"], string>}`;
 export type Params = Record<string, string | number>;
 
 function lookup(dictionary: Dictionary, key: string): unknown {
-  return key.split(".").reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], dictionary);
+  return key
+    .split(".")
+    .reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], dictionary);
 }
 
 function interpolate(template: string, params?: Params): string {

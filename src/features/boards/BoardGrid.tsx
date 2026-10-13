@@ -14,7 +14,15 @@ import { formatEdited } from "@/lib/format";
 import { deleteBoard, renameBoard } from "./actions";
 import { NewBoardDialog } from "./NewBoardDialog";
 
-function BoardCard({ board, index, canManage }: { board: BoardSummary; index: number; canManage: boolean }) {
+function BoardCard({
+  board,
+  index,
+  canManage,
+}: {
+  board: BoardSummary;
+  index: number;
+  canManage: boolean;
+}) {
   const { t, tp, locale } = useI18n();
   const router = useRouter();
   const toast = useToast();
@@ -34,9 +42,13 @@ function BoardCard({ board, index, canManage }: { board: BoardSummary; index: nu
             <h3 className="truncate text-headline font-medium transition-transform duration-300 group-hover:translate-x-1">
               {board.name}
             </h3>
-            <span className="text-caption text-text-secondary">{tp("plural.item", board.itemCount)}</span>
+            <span className="text-caption text-text-secondary">
+              {tp("plural.item", board.itemCount)}
+            </span>
           </span>
-          <span className="shrink-0 text-[11px] text-text-tertiary">{formatEdited(board.updatedAt, locale)}</span>
+          <span className="shrink-0 text-[11px] text-text-tertiary">
+            {formatEdited(board.updatedAt, locale)}
+          </span>
         </span>
       </Link>
       {canManage ? (
@@ -126,7 +138,11 @@ export function BoardGrid({
               "hover:border-text hover:text-text",
             )}
           >
-            <Plus size={22} aria-hidden="true" className="transition-transform duration-300 group-hover:rotate-90" />
+            <Plus
+              size={22}
+              aria-hidden="true"
+              className="transition-transform duration-300 group-hover:rotate-90"
+            />
             <span className="text-headline font-medium">{t("board.newBoard")}</span>
           </button>
         ) : null}

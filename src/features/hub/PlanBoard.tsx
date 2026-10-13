@@ -22,7 +22,15 @@ function byPosition(a: Task, b: Task) {
 }
 
 /** Round check like Reminders; toggles without opening the card. */
-function DoneCheck({ done, label, onToggle }: { done: boolean; label: string; onToggle: () => void }) {
+function DoneCheck({
+  done,
+  label,
+  onToggle,
+}: {
+  done: boolean;
+  label: string;
+  onToggle: () => void;
+}) {
   return (
     <button
       type="button"
@@ -35,11 +43,24 @@ function DoneCheck({ done, label, onToggle }: { done: boolean; label: string; on
       }}
       className={cn(
         "mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px] transition-colors duration-150",
-        done ? "border-ink bg-ink text-text-inverse" : "border-border-strong hover:border-text-secondary",
+        done
+          ? "border-ink bg-ink text-text-inverse"
+          : "border-border-strong hover:border-text-secondary",
       )}
     >
-      <svg viewBox="0 0 12 12" className={cn("size-2.5", done ? "opacity-100" : "opacity-0")} aria-hidden="true">
-        <path d="M2.5 6.2 4.9 8.5 9.5 3.6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <svg
+        viewBox="0 0 12 12"
+        className={cn("size-2.5", done ? "opacity-100" : "opacity-0")}
+        aria-hidden="true"
+      >
+        <path
+          d="M2.5 6.2 4.9 8.5 9.5 3.6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     </button>
   );
@@ -65,9 +86,22 @@ function TaskCard({
       className="group cursor-grab rounded-[12px] bg-surface p-3 shadow-sm transition-shadow duration-200 hover:shadow-md active:cursor-grabbing"
     >
       <div className="flex items-start gap-2.5">
-        <DoneCheck done={task.done} label={task.done ? t("plan.markOpen") : t("plan.markDone")} onToggle={onToggle} />
-        <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left">
-          <span className={cn("text-body break-words", task.done && "text-text-tertiary line-through decoration-1")}>
+        <DoneCheck
+          done={task.done}
+          label={task.done ? t("plan.markOpen") : t("plan.markDone")}
+          onToggle={onToggle}
+        />
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex min-w-0 flex-1 flex-col items-start gap-1.5 text-left"
+        >
+          <span
+            className={cn(
+              "text-body break-words",
+              task.done && "text-text-tertiary line-through decoration-1",
+            )}
+          >
             {task.title}
           </span>
           {task.dueDate || task.notes ? (
@@ -143,7 +177,12 @@ function TaskDialog({
 }) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
-  if (!task) return <Dialog open={false} onClose={onClose} title="">{null}</Dialog>;
+  if (!task)
+    return (
+      <Dialog open={false} onClose={onClose} title="">
+        {null}
+      </Dialog>
+    );
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -161,10 +200,28 @@ function TaskDialog({
   return (
     <Dialog open onClose={onClose} title={t("plan.editTask")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <TextField label={t("plan.taskTitle")} name="title" defaultValue={task.title} maxLength={300} required autoFocus />
-        <TextArea label={t("plan.notes")} name="notes" defaultValue={task.notes ?? ""} rows={4} maxLength={5000} />
+        <TextField
+          label={t("plan.taskTitle")}
+          name="title"
+          defaultValue={task.title}
+          maxLength={300}
+          required
+          autoFocus
+        />
+        <TextArea
+          label={t("plan.notes")}
+          name="notes"
+          defaultValue={task.notes ?? ""}
+          rows={4}
+          maxLength={5000}
+        />
         <div className="grid grid-cols-2 gap-3">
-          <TextField label={t("plan.dueDate")} name="due" type="date" defaultValue={task.dueDate ?? ""} />
+          <TextField
+            label={t("plan.dueDate")}
+            name="due"
+            type="date"
+            defaultValue={task.dueDate ?? ""}
+          />
           <label className="flex flex-col gap-1.5">
             <span className="text-caption font-medium text-text-secondary">{t("plan.moveTo")}</span>
             <select
@@ -199,7 +256,15 @@ function TaskDialog({
 }
 
 /** The job's kanban: one column per production phase. */
-export function PlanBoard({ projectId, tasks: initial, currentPhase }: { projectId: string; tasks: Task[]; currentPhase: Phase }) {
+export function PlanBoard({
+  projectId,
+  tasks: initial,
+  currentPhase,
+}: {
+  projectId: string;
+  tasks: Task[];
+  currentPhase: Phase;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const toast = useToast();
@@ -271,12 +336,14 @@ export function PlanBoard({ projectId, tasks: initial, currentPhase }: { project
                   setDropTarget(phase);
                 }}
                 onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null);
+                  if (!event.currentTarget.contains(event.relatedTarget as Node))
+                    setDropTarget(null);
                 }}
                 onDrop={(event) => onDrop(event, phase)}
                 className={cn(
                   "flex min-h-64 flex-col gap-2 rounded-xl bg-surface-muted/70 p-2 transition-[box-shadow,background-color] duration-200",
-                  phase === currentPhase && "bg-surface-muted shadow-[inset_0_0_0_1.5px_var(--text)]",
+                  phase === currentPhase &&
+                    "bg-surface-muted shadow-[inset_0_0_0_1.5px_var(--text)]",
                   dropTarget === phase && "shadow-[inset_0_0_0_2px_var(--focus)]",
                 )}
               >

@@ -13,7 +13,10 @@ import { formatEdited } from "@/lib/format";
 import { isUuid } from "@/lib/ids";
 
 /** Shared chrome for every section of a job: title, phase track and tabs. */
-export default async function ProjectHubLayout({ children, params }: LayoutProps<"/projects/[projectId]">) {
+export default async function ProjectHubLayout({
+  children,
+  params,
+}: LayoutProps<"/projects/[projectId]">) {
   const { projectId } = await params;
   if (!isUuid(projectId)) notFound();
 
@@ -43,7 +46,9 @@ export default async function ProjectHubLayout({ children, params }: LayoutProps
             {project.clientName ? (
               <p className="text-callout text-text-secondary">{project.clientName}</p>
             ) : null}
-            <h1 className="max-w-4xl text-display font-medium text-balance sm:text-hero">{project.name}</h1>
+            <h1 className="max-w-4xl text-display font-medium text-balance sm:text-hero">
+              {project.name}
+            </h1>
           </div>
           <div className="flex shrink-0 flex-col gap-3 lg:items-end lg:pb-2">
             <p className="text-callout text-text-secondary lg:text-right">
@@ -56,7 +61,9 @@ export default async function ProjectHubLayout({ children, params }: LayoutProps
         </header>
 
         {project.description ? (
-          <p className="-mt-4 mb-10 max-w-2xl text-callout text-text-secondary">{project.description}</p>
+          <p className="-mt-4 mb-10 max-w-2xl text-callout text-text-secondary">
+            {project.description}
+          </p>
         ) : null}
 
         <div className="mb-10 rounded-xl bg-surface px-5 py-4 shadow-sm">
@@ -64,7 +71,11 @@ export default async function ProjectHubLayout({ children, params }: LayoutProps
         </div>
 
         <div className="mb-10">
-          <HubTabs projectId={project.id} isStudio={viewer.isStudio} openRequests={summary.openRequestCount} />
+          <HubTabs
+            projectId={project.id}
+            isStudio={viewer.isStudio}
+            openRequests={summary.openRequestCount}
+          />
         </div>
 
         {children}

@@ -9,7 +9,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("hub.discussion") };
 }
 
-export default async function DiscussionPage({ params }: PageProps<"/projects/[projectId]/discussion">) {
+export default async function DiscussionPage({
+  params,
+}: PageProps<"/projects/[projectId]/discussion">) {
   const { projectId } = await params;
   const [viewer, comments] = await Promise.all([requireViewer(), listComments(projectId)]);
   return (

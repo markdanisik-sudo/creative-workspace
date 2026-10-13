@@ -10,13 +10,25 @@ import { listBoards } from "@/features/projects/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { formatEdited } from "@/lib/format";
 
-export async function generateMetadata({ params }: PageProps<"/projects/[projectId]">): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PageProps<"/projects/[projectId]">): Promise<Metadata> {
   const { projectId } = await params;
   const project = await getProjectDetails(projectId);
   return { title: project?.name };
 }
 
-function SideCard({ title, href, linkLabel, children }: { title: string; href: string; linkLabel: string; children: ReactNode }) {
+function SideCard({
+  title,
+  href,
+  linkLabel,
+  children,
+}: {
+  title: string;
+  href: string;
+  linkLabel: string;
+  children: ReactNode;
+}) {
   return (
     <section className="flex flex-col gap-4 rounded-xl bg-surface p-5 shadow-sm">
       <div className="flex items-baseline justify-between gap-3">
@@ -46,7 +58,9 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
   const { t, locale } = i18n;
   const base = `/projects/${projectId}`;
   const startOfToday = new Date(new Date().toDateString()).getTime();
-  const upcoming = events.filter((event) => new Date(event.endsAt ?? event.startsAt).getTime() >= startOfToday).slice(0, 3);
+  const upcoming = events
+    .filter((event) => new Date(event.endsAt ?? event.startsAt).getTime() >= startOfToday)
+    .slice(0, 3);
   const open = requests.filter((request) => request.status === "requested").slice(0, 3);
 
   return (
@@ -78,7 +92,11 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           )}
         </SideCard>
 
-        <SideCard title={t("hub.openRequests")} href={`${base}/requests`} linkLabel={t("hub.seeAll")}>
+        <SideCard
+          title={t("hub.openRequests")}
+          href={`${base}/requests`}
+          linkLabel={t("hub.seeAll")}
+        >
           {open.length > 0 ? (
             <ul className="flex flex-col gap-2">
               {open.map((request) => (
@@ -98,7 +116,11 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
           )}
         </SideCard>
 
-        <SideCard title={t("hub.latestComments")} href={`${base}/discussion`} linkLabel={t("hub.seeAll")}>
+        <SideCard
+          title={t("hub.latestComments")}
+          href={`${base}/discussion`}
+          linkLabel={t("hub.seeAll")}
+        >
           {comments.length > 0 ? (
             <ul className="flex flex-col gap-3">
               {comments.map((comment) => (

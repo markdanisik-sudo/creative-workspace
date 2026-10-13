@@ -17,7 +17,15 @@ import { formatMoney } from "@/lib/format";
 const SELECT_CLASS =
   "h-11 rounded-lg bg-surface-muted px-3 text-callout outline-none focus-visible:shadow-[0_0_0_2px_var(--text)]";
 
-function ServiceDialog({ service, onClose, onSaved }: { service: Service | null; onClose: () => void; onSaved: () => void }) {
+function ServiceDialog({
+  service,
+  onClose,
+  onSaved,
+}: {
+  service: Service | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
   const { t } = useI18n();
   const toast = useToast();
   const [active, setActive] = useState(service?.active ?? true);
@@ -53,8 +61,21 @@ function ServiceDialog({ service, onClose, onSaved }: { service: Service | null;
   return (
     <Dialog open onClose={onClose} title={service ? t("services.edit") : t("services.add")}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <TextField label={t("services.name")} name="name" defaultValue={service?.name} required maxLength={120} autoFocus />
-        <TextArea label={t("services.description")} name="description" defaultValue={service?.description ?? ""} rows={2} maxLength={1000} />
+        <TextField
+          label={t("services.name")}
+          name="name"
+          defaultValue={service?.name}
+          required
+          maxLength={120}
+          autoFocus
+        />
+        <TextArea
+          label={t("services.description")}
+          name="description"
+          defaultValue={service?.description ?? ""}
+          rows={2}
+          maxLength={1000}
+        />
         <div className="grid grid-cols-[1fr_1fr_88px] gap-3">
           <TextField
             label={t("services.price")}
@@ -64,7 +85,9 @@ function ServiceDialog({ service, onClose, onSaved }: { service: Service | null;
             defaultValue={service?.unitPrice ?? ""}
           />
           <label className="flex flex-col gap-1.5">
-            <span className="text-caption font-medium text-text-secondary">{t("services.unit")}</span>
+            <span className="text-caption font-medium text-text-secondary">
+              {t("services.unit")}
+            </span>
             <select name="unit" defaultValue={service?.unit ?? "item"} className={SELECT_CLASS}>
               {UNITS.map((unit) => (
                 <option key={unit} value={unit}>
@@ -73,7 +96,12 @@ function ServiceDialog({ service, onClose, onSaved }: { service: Service | null;
               ))}
             </select>
           </label>
-          <TextField label={t("services.currency")} name="currency" defaultValue={service?.currency ?? "CZK"} maxLength={3} />
+          <TextField
+            label={t("services.currency")}
+            name="currency"
+            defaultValue={service?.currency ?? "CZK"}
+            maxLength={3}
+          />
         </div>
         <label className="flex items-center gap-2.5 text-body">
           <input
@@ -115,7 +143,9 @@ export function ServicesManager({ services }: { services: Service[] }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-body text-text-secondary">{t("services.body")}</p>
-      {services.length === 0 ? <p className="text-body text-text-secondary">{t("services.empty")}</p> : null}
+      {services.length === 0 ? (
+        <p className="text-body text-text-secondary">{t("services.empty")}</p>
+      ) : null}
       <ul className="flex flex-col gap-1.5">
         {services.map((service) => (
           <li key={service.id}>

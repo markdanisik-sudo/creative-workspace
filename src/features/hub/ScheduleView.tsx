@@ -85,12 +85,26 @@ function EventDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} title={event ? t("schedule.editDate") : t("schedule.addDate")} className="max-w-[520px]">
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={event ? t("schedule.editDate") : t("schedule.addDate")}
+      className="max-w-[520px]"
+    >
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid grid-cols-[1fr_auto] gap-3">
-          <TextField label={t("schedule.title")} name="title" defaultValue={event?.title} required maxLength={200} autoFocus />
+          <TextField
+            label={t("schedule.title")}
+            name="title"
+            defaultValue={event?.title}
+            required
+            maxLength={200}
+            autoFocus
+          />
           <label className="flex flex-col gap-1.5">
-            <span className="text-caption font-medium text-text-secondary">{t("schedule.kind")}</span>
+            <span className="text-caption font-medium text-text-secondary">
+              {t("schedule.kind")}
+            </span>
             <select
               name="kind"
               defaultValue={event?.kind ?? "shoot"}
@@ -145,8 +159,19 @@ function EventDialog({
           />
           {t("schedule.allDay")}
         </label>
-        <TextField label={t("schedule.location")} name="location" defaultValue={event?.location ?? ""} maxLength={300} />
-        <TextArea label={t("schedule.notes")} name="notes" defaultValue={event?.notes ?? ""} rows={3} maxLength={5000} />
+        <TextField
+          label={t("schedule.location")}
+          name="location"
+          defaultValue={event?.location ?? ""}
+          maxLength={300}
+        />
+        <TextArea
+          label={t("schedule.notes")}
+          name="notes"
+          defaultValue={event?.notes ?? ""}
+          rows={3}
+          maxLength={5000}
+        />
         <div className="flex items-center justify-between gap-2 pt-1">
           {event ? (
             <Button variant="danger" size="sm" onClick={remove} disabled={pending}>
@@ -178,7 +203,10 @@ function EventRow({ event, onOpen }: { event: ProjectEvent; onOpen?: () => void 
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <span className="text-callout font-semibold">{event.title}</span>
           <span className="inline-flex items-center gap-1.5 text-caption text-text-secondary">
-            <span className={cn("size-1.5 rounded-full", KIND_DOT[event.kind])} aria-hidden="true" />
+            <span
+              className={cn("size-1.5 rounded-full", KIND_DOT[event.kind])}
+              aria-hidden="true"
+            />
             {t(`schedule.kinds.${event.kind}`)}
           </span>
         </div>
@@ -196,7 +224,9 @@ function EventRow({ event, onOpen }: { event: ProjectEvent; onOpen?: () => void 
             {event.location}
           </span>
         ) : null}
-        {event.notes ? <p className="pt-1 text-body whitespace-pre-line text-text-secondary">{event.notes}</p> : null}
+        {event.notes ? (
+          <p className="pt-1 text-body whitespace-pre-line text-text-secondary">{event.notes}</p>
+        ) : null}
       </div>
     </>
   );
@@ -218,13 +248,22 @@ function EventRow({ event, onOpen }: { event: ProjectEvent; onOpen?: () => void 
 }
 
 /** The job's dates. The studio edits; clients read. Times show in the viewer's time zone. */
-export function ScheduleView({ projectId, events, canEdit }: { projectId: string; events: ProjectEvent[]; canEdit: boolean }) {
+export function ScheduleView({
+  projectId,
+  events,
+  canEdit,
+}: {
+  projectId: string;
+  events: ProjectEvent[];
+  canEdit: boolean;
+}) {
   const { t } = useI18n();
   const router = useRouter();
   const [editing, setEditing] = useState<ProjectEvent | "new" | null>(null);
 
   const startOfToday = new Date(new Date().toDateString()).getTime();
-  const isPast = (event: ProjectEvent) => new Date(event.endsAt ?? event.startsAt).getTime() < startOfToday;
+  const isPast = (event: ProjectEvent) =>
+    new Date(event.endsAt ?? event.startsAt).getTime() < startOfToday;
   const upcoming = events.filter((event) => !isPast(event));
   const past = events.filter(isPast).reverse();
 
@@ -240,7 +279,9 @@ export function ScheduleView({ projectId, events, canEdit }: { projectId: string
       ) : null}
 
       {events.length === 0 ? (
-        <p className="text-callout text-text-secondary">{canEdit ? t("schedule.empty") : t("schedule.emptyClient")}</p>
+        <p className="text-callout text-text-secondary">
+          {canEdit ? t("schedule.empty") : t("schedule.emptyClient")}
+        </p>
       ) : null}
 
       {upcoming.length > 0 ? (
@@ -248,7 +289,11 @@ export function ScheduleView({ projectId, events, canEdit }: { projectId: string
           <SectionLabel label={t("schedule.upcoming")} index={1} />
           <ul className="flex flex-col gap-2">
             {upcoming.map((event) => (
-              <EventRow key={event.id} event={event} onOpen={canEdit ? () => setEditing(event) : undefined} />
+              <EventRow
+                key={event.id}
+                event={event}
+                onOpen={canEdit ? () => setEditing(event) : undefined}
+              />
             ))}
           </ul>
         </section>
@@ -259,7 +304,11 @@ export function ScheduleView({ projectId, events, canEdit }: { projectId: string
           <SectionLabel label={t("schedule.past")} index={upcoming.length > 0 ? 2 : 1} />
           <ul className="flex flex-col gap-2">
             {past.map((event) => (
-              <EventRow key={event.id} event={event} onOpen={canEdit ? () => setEditing(event) : undefined} />
+              <EventRow
+                key={event.id}
+                event={event}
+                onOpen={canEdit ? () => setEditing(event) : undefined}
+              />
             ))}
           </ul>
         </section>

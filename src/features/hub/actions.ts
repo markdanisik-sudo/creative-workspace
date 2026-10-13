@@ -6,7 +6,14 @@ import { logError, type ActionResult } from "@/lib/errors";
 import { getI18n } from "@/lib/i18n/server";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
-import { EVENT_KINDS, REQUEST_STATUSES, UNITS, type EventKind, type RequestStatus, type Unit } from "./types";
+import {
+  EVENT_KINDS,
+  REQUEST_STATUSES,
+  UNITS,
+  type EventKind,
+  type RequestStatus,
+  type Unit,
+} from "./types";
 
 const LIMITS = { title: 300, notes: 5000, name: 120, location: 300, body: 5000 } as const;
 
@@ -20,7 +27,11 @@ function cleanOptional(value: unknown, max: number): string | null {
   return clean(value, max) || null;
 }
 
-async function fail(context: string, error: unknown, extra?: Record<string, unknown>): Promise<ActionResult<never>> {
+async function fail(
+  context: string,
+  error: unknown,
+  extra?: Record<string, unknown>,
+): Promise<ActionResult<never>> {
   const { t } = await getI18n();
   logError(context, error, extra);
   return { ok: false, error: t("errors.generic") };
@@ -70,7 +81,11 @@ export async function updateProjectDetails(
 /* Tasks                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export async function createTask(projectId: string, phase: Phase, rawTitle: string): Promise<ActionResult> {
+export async function createTask(
+  projectId: string,
+  phase: Phase,
+  rawTitle: string,
+): Promise<ActionResult> {
   const user = await getCurrentUser();
   const title = clean(rawTitle, LIMITS.title);
   if (!user || !title || !isPhase(phase)) return fail("hub.createTask", "invalid input");
@@ -120,7 +135,8 @@ export async function updateTask(
     if (!isPhase(patch.phase)) return fail("hub.updateTask", "invalid phase");
     update.phase = patch.phase;
   }
-  if (patch.position !== undefined && Number.isFinite(patch.position)) update.position = patch.position;
+  if (patch.position !== undefined && Number.isFinite(patch.position))
+    update.position = patch.position;
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from("project_tasks").update(update).eq("id", taskId);
@@ -157,7 +173,9 @@ export interface EventInput {
 
 function toInstant(date: string, time: string | undefined, offsetMinutes: number): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const [hours, minutes] = /^\d{2}:\d{2}$/.test(time ?? "") ? time!.split(":").map(Number) : [12, 0];
+  const [hours, minutes] = /^\d{2}:\d{2}$/.test(time ?? "")
+    ? time!.split(":").map(Number)
+    : [12, 0];
   const utc = Date.UTC(
     Number(date.slice(0, 4)),
     Number(date.slice(5, 7)) - 1,
@@ -171,7 +189,11 @@ function toInstant(date: string, time: string | undefined, offsetMinutes: number
 function eventRow(input: EventInput) {
   const title = clean(input.title, 200);
   if (!title || !(EVENT_KINDS as readonly string[]).includes(input.kind)) return null;
-  const startsAt = toInstant(input.date, input.allDay ? undefined : input.startTime, input.timezoneOffset);
+  const startsAt = toInstant(
+    input.date,
+    input.allDay ? undefined : input.startTime,
+    input.timezoneOffset,
+  );
   if (!startsAt) return null;
   const endDate = input.endDate || (input.allDay ? undefined : input.date);
   const endsAt = endDate
@@ -189,7 +211,11 @@ function eventRow(input: EventInput) {
   };
 }
 
-export async function saveEvent(projectId: string, eventId: string | null, input: EventInput): Promise<ActionResult> {
+export async function saveEvent(
+  projectId: string,
+  eventId: string | null,
+  input: EventInput,
+): Promise<ActionResult> {
   const row = eventRow(input);
   if (!row) return fail("hub.saveEvent", "invalid input");
   const supabase = await createSupabaseServerClient();
@@ -322,12 +348,16 @@ export interface ServiceInput {
   active: boolean;
 }
 
-export async function saveService(serviceId: string | null, input: ServiceInput): Promise<ActionResult> {
+export async function saveService(
+  serviceId: string | null,
+  input: ServiceInput,
+): Promise<ActionResult> {
   const { t } = await getI18n();
   const name = clean(input.name, LIMITS.name);
   if (!name) return { ok: false, error: t("errors.generic") };
   const price = input.unitPrice.trim() === "" ? null : Number(input.unitPrice.replace(",", "."));
-  if (price !== null && (!Number.isFinite(price) || price < 0)) return { ok: false, error: t("errors.generic") };
+  if (price !== null && (!Number.isFinite(price) || price < 0))
+    return { ok: false, error: t("errors.generic") };
   const currency = clean(input.currency, 3).toUpperCase() || "CZK";
   const row = {
     name,

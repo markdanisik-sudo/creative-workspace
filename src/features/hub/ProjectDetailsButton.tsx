@@ -39,8 +39,19 @@ export function ProjectDetailsButton({ project }: { project: ProjectDetails }) {
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title={t("hub.detailsTitle")}>
         <form onSubmit={submit} className="flex flex-col gap-4">
-          <TextField label={t("project.projectName")} name="name" defaultValue={project.name} maxLength={120} required />
-          <TextField label={t("hub.client")} name="client" defaultValue={project.clientName ?? ""} maxLength={120} />
+          <TextField
+            label={t("project.projectName")}
+            name="name"
+            defaultValue={project.name}
+            maxLength={120}
+            required
+          />
+          <TextField
+            label={t("hub.client")}
+            name="client"
+            defaultValue={project.clientName ?? ""}
+            maxLength={120}
+          />
           <TextArea
             label={t("hub.description")}
             name="description"

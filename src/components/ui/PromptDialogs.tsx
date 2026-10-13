@@ -16,7 +16,14 @@ interface RenameDialogProps {
 }
 
 /** Single-field rename. `onSubmit` resolves to an error message, or null on success. */
-export function RenameDialog({ open, onClose, title, label, initialValue, onSubmit }: RenameDialogProps) {
+export function RenameDialog({
+  open,
+  onClose,
+  title,
+  label,
+  initialValue,
+  onSubmit,
+}: RenameDialogProps) {
   const { t } = useI18n();
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
@@ -67,7 +74,14 @@ interface ConfirmDialogProps {
 }
 
 /** Reserved for actions that cannot be undone. */
-export function ConfirmDialog({ open, onClose, title, description, confirmLabel, onConfirm }: ConfirmDialogProps) {
+export function ConfirmDialog({
+  open,
+  onClose,
+  title,
+  description,
+  confirmLabel,
+  onConfirm,
+}: ConfirmDialogProps) {
   const { t } = useI18n();
   const [pending, setPending] = useState(false);
   return (
