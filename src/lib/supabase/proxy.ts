@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "./database.types";
+import { devAutoSignInEnabled, devSignIn } from "./dev-sign-in";
 import { supabaseKey, supabaseUrl } from "./env";
 
 const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth", "/invite"];
@@ -31,8 +32,19 @@ export async function updateSession(request: NextRequest) {
 
   // Do not run code between client creation and getClaims(): it refreshes the session.
   const { data } = await supabase.auth.getClaims();
-  const isSignedIn = Boolean(data?.claims?.sub);
+  let isSignedIn = Boolean(data?.claims?.sub);
   const { pathname } = request.nextUrl;
+
+  // Local development without a password (see dev-sign-in.ts). The invite
+  // page is left alone so the client flow can still be tried out.
+  if (
+    !isSignedIn &&
+    devAutoSignInEnabled() &&
+    !pathname.startsWith("/invite") &&
+    !pathname.startsWith("/api/")
+  ) {
+    isSignedIn = await devSignIn(supabase);
+  }
 
   if (!isSignedIn && !isPublicPath(pathname) && !pathname.startsWith("/api/")) {
     const url = request.nextUrl.clone();

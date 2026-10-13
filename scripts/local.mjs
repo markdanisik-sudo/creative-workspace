@@ -70,6 +70,7 @@ try {
 }
 const url = status.API_URL;
 const key = status.PUBLISHABLE_KEY ?? status.ANON_KEY;
+const secretKey = status.SECRET_KEY ?? status.SERVICE_ROLE_KEY;
 if (!url || !key) fail("The database did not report its address and key.");
 
 // Keep any other settings (e.g. a tldraw license key) the file already has.
@@ -80,14 +81,23 @@ const kept = existsSync(envPath)
         (line) =>
           line.trim() &&
           !line.startsWith("NEXT_PUBLIC_SUPABASE_URL=") &&
-          !line.startsWith("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="),
+          !line.startsWith("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=") &&
+          !line.startsWith("SUPABASE_SECRET_KEY="),
       )
   : [];
 writeFileSync(
   envPath,
-  [`NEXT_PUBLIC_SUPABASE_URL=${url}`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${key}`, ...kept].join(
-    "\n",
-  ) + "\n",
+  [
+    `NEXT_PUBLIC_SUPABASE_URL=${url}`,
+    `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${key}`,
+    // Local-only key for signing in without a password (src/lib/supabase/dev-sign-in.ts).
+    `SUPABASE_SECRET_KEY=${secretKey ?? ""}`,
+    // Set to false to see the sign-in page again.
+    ...(kept.some((line) => line.startsWith("LAB_DEV_AUTO_SIGN_IN="))
+      ? []
+      : ["LAB_DEV_AUTO_SIGN_IN=true"]),
+    ...kept,
+  ].join("\n") + "\n",
 );
 say("Settings written to .env.local");
 
