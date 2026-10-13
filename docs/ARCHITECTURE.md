@@ -76,13 +76,31 @@ canvas_objects  board_id, id, type, parent_id, x, y, width, height, rotation, z_
 canvas_connections  board_id, id, type, from_id, to_id, data jsonb   (arrow bindings)
 board_assets    board_id, id, type, file_id, data jsonb             (image/video/bookmark/file metadata)
 files           id, owner_id, project_id, board_id, storage_path, name, mime_type, size_bytes, width, height
-project_summaries  view: projects + item_count, board_count, cover image
+project_summaries  view: projects + item_count, board_count, cover image, client_name, phase,
+                   next_event_at, open_request_count
+
+studio_members      user_id                     (the first account; runs the workspace)
+project_members     project_id, user_id, role   (clients invited to a project)
+project_invitations project_id, email, token_hash, expires_at, accepted_by
+project_tasks       project_id, phase, title, notes, due_date, done, position
+project_events      project_id, kind, title, starts_at, ends_at, all_day, location, notes
+comments            project_id, board_id?, author_id, body
+services            name, description, unit, unit_price, currency, active   (add-on catalog)
+project_requests    project_id, service_id?, title/unit/price snapshot, quantity, details, status
 ```
+
+### Client portal
+
+- Access to a project goes through `private.accessible_project_ids()`. The studio sees every project, and clients see only the projects in their `project_members` rows. Every object table's policies use it, so a client can never read another client's job.
+- Invitations: the studio creates a random token, the database stores only its sha256, and the link `/invite/<token>` is shown once. `get_invitation` (callable by anon) shows the invite page. `accept_invitation` checks that the signed-in email matches the invited one, that the invitation hasn't expired and hasn't been used, then adds the membership.
+- `studio_is_set_up()` closes public sign-up once the studio account exists.
+- A request stores a snapshot of the service's title, unit and price at the moment it is made. The server reads these from `services`, so a client cannot set its own price.
+- UI language: `lab-locale` cookie, or `Accept-Language` on the first visit (Slovak maps to Czech). Theme: `lab-theme` cookie (system, light or dark), resolved by an inline script before first paint.
 
 - `canvas_objects.id` is the canvas record id. The primary key is `(board_id, id)`, so boards can be duplicated later without id collisions.
 - `z_index` is a **fractional index string**. Re-ordering one object never rewrites its neighbours, which matters for collaboration.
 - `data` holds type-specific properties (text, colours, checklist items, crop, …) plus a schema `version`. New object types need no migration.
-- Every table carries `owner_id`, either directly or through its project. RLS policies check ownership with `auth.uid()`. Collaboration will later replace "owner" with a `project_members` table without changing any object table.
+- Every table carries `owner_id`, either directly or through its project. RLS policies check ownership with `auth.uid()`. Membership (`project_members`) extends access to invited clients without changing any object table.
 - Triggers keep `updated_at` and the parent project's `updated_at` current, so "last modified" is always correct.
 
 ### Storage

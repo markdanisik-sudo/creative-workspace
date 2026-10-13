@@ -1,5 +1,6 @@
 import { createShapeId, toRichText, type Editor, type TLShapePartial } from "tldraw";
-import type { BoardTemplateId } from "@/features/boards/templates";
+import { templateName, type BoardTemplateId } from "@/features/boards/templates";
+import type { Translator } from "@/lib/i18n";
 import { newChecklistItem } from "./shapes/ChecklistShapeUtil";
 import { CHECKLIST_TYPE } from "./shapes/types";
 
@@ -49,55 +50,52 @@ function checklist(title: string, items: string[], x: number, y: number): TLShap
   } as TLShapePartial;
 }
 
-function buildTemplate(id: BoardTemplateId): TLShapePartial[] {
+function buildTemplate(id: BoardTemplateId, t: Translator["t"]): TLShapePartial[] {
   switch (id) {
     case "moodboard":
       return [
-        heading("Moodboard", 0, -90),
-        section("Imagery", 0, 0, 960, 640),
-        section("Colour", 960 + GAP, 0, 400, 300),
-        section("Type & tone", 960 + GAP, 300 + GAP, 400, 300),
+        heading(templateName(id, t), 0, -90),
+        section(t("templates.content.imagery"), 0, 0, 960, 640),
+        section(t("templates.content.colour"), 960 + GAP, 0, 400, 300),
+        section(t("templates.content.typeAndTone"), 960 + GAP, 300 + GAP, 400, 300),
       ];
     case "storyboard": {
       const frameW = 400;
       const frameH = 225;
       const rowStride = frameH + 110;
       return [
-        heading("Storyboard", 0, -90),
+        heading(templateName(id, t), 0, -90),
         ...Array.from({ length: 6 }, (_, i) => {
           const x = (i % 3) * (frameW + GAP);
           const y = Math.floor(i / 3) * rowStride;
           return [
-            section(`Shot ${i + 1}`, x, y, frameW, frameH),
-            caption("Action · dialogue · sound", x, y + frameH + 14),
+            section(t("templates.content.shot", { number: i + 1 }), x, y, frameW, frameH),
+            caption(t("templates.content.shotCaption"), x, y + frameH + 14),
           ];
         }).flat(),
       ];
     }
     case "references":
       return [
-        heading("References", 0, -90),
-        section("Images", 0, 0, 720, 520),
-        section("Links", 720 + GAP, 0, 520, 520),
-        section("Notes", 0, 520 + GAP, 1240 + GAP, 260),
+        heading(templateName(id, t), 0, -90),
+        section(t("templates.content.images"), 0, 0, 720, 520),
+        section(t("templates.content.links"), 720 + GAP, 0, 520, 520),
+        section(t("templates.content.notes"), 0, 520 + GAP, 1240 + GAP, 260),
       ];
-    case "shot-list":
+    case "shot-list": {
+      const title = t("templates.content.shotListTitle");
       return [
-        heading("Shot list", 0, -90),
-        checklist(
-          "Shot list",
-          ["Establishing shot", "Close-up", "Interior", "Detail", "Hero shot"],
-          0,
-          0,
-        ),
-        note("Location, call time, gear", 320, 0),
+        heading(title, 0, -90),
+        checklist(title, t("templates.content.shotItems").split("|"), 0, 0),
+        note(t("templates.content.logistics"), 320, 0),
       ];
+    }
     case "ideas":
       return [
-        heading("Ideas", 0, -90),
-        note("What should it feel like?", 0, 0),
-        note("Who is it for?", 240, 0, "light-green"),
-        note("What must we see?", 480, 0, "light-violet"),
+        heading(templateName(id, t), 0, -90),
+        note(t("templates.content.ideaFeeling"), 0, 0),
+        note(t("templates.content.ideaAudience"), 240, 0, "light-green"),
+        note(t("templates.content.ideaMustSee"), 480, 0, "light-violet"),
       ];
     case "blank":
       return [];
@@ -105,8 +103,8 @@ function buildTemplate(id: BoardTemplateId): TLShapePartial[] {
 }
 
 /** Seeds a new board with its template's starter content. */
-export function applyTemplate(editor: Editor, id: BoardTemplateId) {
-  const shapes = buildTemplate(id);
+export function applyTemplate(editor: Editor, id: BoardTemplateId, t: Translator["t"]) {
+  const shapes = buildTemplate(id, t);
   if (shapes.length === 0) return;
   editor.run(
     () => {

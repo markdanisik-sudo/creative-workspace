@@ -1,17 +1,17 @@
 import Link from "next/link";
+import { getI18n } from "@/lib/i18n/server";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const { t } = await getI18n();
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-3 px-6 text-center">
-      <h1 className="text-headline font-medium">We couldn&apos;t find that.</h1>
-      <p className="max-w-sm text-callout text-text-secondary">
-        It may have been moved or deleted, or you may not have access.
-      </p>
+      <h1 className="text-headline font-medium">{t("errors.notFoundTitle")}</h1>
+      <p className="max-w-sm text-callout text-text-secondary">{t("errors.notFoundBody")}</p>
       <Link
         href="/projects"
-        className="mt-4 inline-flex h-9 items-center rounded-md bg-ink px-4 text-body font-medium text-text-inverse hover:bg-ink-hover"
+        className="mt-4 inline-flex h-10 items-center rounded-full bg-ink px-5 text-body font-semibold text-text-inverse hover:bg-ink-hover"
       >
-        Back to projects
+        {t("errors.backToProjects")}
       </Link>
     </main>
   );

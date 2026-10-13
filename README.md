@@ -1,6 +1,6 @@
 # m.studio.lab
 
-A calm, visual workspace for creative work: moodboards, treatments, shot lists and references on an infinite canvas.
+A client portal for photo and film production. Each client signs in to their own job, and the studio and client work on it together: moodboards and shot lists on an infinite canvas, production phases, a task plan, shoot dates, a discussion and add-on requests (an extra shoot day, another edit). The interface is in English and Czech, with a light and dark theme.
 
 > The name is set in `src/lib/config.ts`; the logo in `src/components/brand/Wordmark.tsx`.
 
@@ -19,7 +19,7 @@ npm install       # once, and after pulling changes
 npm run local     # starts the local database, writes .env.local, runs the app
 ```
 
-Open http://localhost:3000 and create an account (any email; the local stack does not send confirmation emails). Stop the app with Ctrl+C and the database with `npm run local:stop`.
+Open http://localhost:3000 and create an account (any email; the local stack does not send confirmation emails). **The first account becomes the studio.** After that, sign-up is closed: clients join only through an invitation link that the studio creates under a project's **People** tab. Stop the app with Ctrl+C and the database with `npm run local:stop`.
 
 Prefer to do it by hand? `npx supabase start`, copy the URL and publishable key it prints into `.env.local` (see `.env.example`), then `npm run dev`.
 
@@ -35,6 +35,20 @@ Prefer to do it by hand? `npx supabase start`, copy the URL and publishable key 
 - **tldraw license**: production domains need `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` ([pricing](https://tldraw.dev/pricing)). Without it, the canvas does not load in production. Localhost works without a key.
 - Enable email confirmation and set up SMTP in Supabase Auth.
 - Rate-limit `/api/unfurl` at the edge if the app is public.
+
+## Roles
+
+| | Studio | Client |
+| --- | --- | --- |
+| Projects | creates, edits and deletes all of them | sees only the projects they were invited to |
+| Boards | creates, renames and deletes them; edits the canvas | edits the canvas |
+| Phase, details, schedule | edits | reads |
+| Plan (tasks) | edits | edits |
+| Discussion | posts; deletes any message | posts; deletes their own messages |
+| Add-ons | manages the catalog in Settings; approves, declines or marks requests done | requests add-ons; withdraws their own requests while they are still waiting |
+| People | invites clients and removes them | no access |
+
+All of this is enforced by Postgres row-level security (`supabase/migrations`), not only by the UI. Invitation links are single-use, expire after 30 days and are stored only as a hash.
 
 ## Scripts
 
@@ -56,6 +70,11 @@ src/app                 routes: auth, dashboard, project, board, API
 src/components/ui       design-system primitives
 src/features/auth       sign in/up/out and profile
 src/features/projects   dashboard data and project UI
+src/features/hub        job hub: phases, plan, schedule, requests, discussion
+src/features/people     invitations and project members
+src/features/settings   appearance and the add-on catalog
+src/lib/i18n            EN/CS dictionaries and translator
+src/lib/preferences     theme and language cookies
 src/features/boards     board templates and actions
 src/features/canvas     canvas host, shapes, persistence, assets, canvas UI
 src/lib                 Supabase clients, link unfurling, formatting, errors

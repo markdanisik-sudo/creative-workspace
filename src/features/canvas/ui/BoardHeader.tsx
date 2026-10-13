@@ -9,6 +9,7 @@ import { Menu, MenuItem, MenuLabel, MenuSeparator } from "@/components/ui/Menu";
 import { RenameDialog } from "@/components/ui/PromptDialogs";
 import { renameBoard } from "@/features/boards/actions";
 import { NewBoardDialog } from "@/features/boards/NewBoardDialog";
+import { useI18n } from "@/lib/i18n/client";
 import type { SaveStatus } from "../persistence/BoardSaver";
 import { Panel } from "./Panel";
 import { SaveIndicator } from "./SaveIndicator";
@@ -38,6 +39,7 @@ export function BoardHeader({
   onShowShortcuts,
 }: BoardHeaderProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const [name, setName] = useState(boardName);
   const [dialog, setDialog] = useState<"rename" | "new" | null>(null);
 
@@ -47,7 +49,7 @@ export function BoardHeader({
         <Panel className="min-w-0 animate-fade-in">
           <Link
             href={`/projects/${projectId}`}
-            aria-label={`Back to ${projectName}`}
+            aria-label={t("canvas.backTo", { name: projectName })}
             title={projectName}
             className="flex h-9 min-w-0 items-center gap-1 rounded-md pr-2 pl-1.5 text-body text-text-secondary transition-colors hover:bg-surface-hover hover:text-text"
           >
@@ -58,7 +60,7 @@ export function BoardHeader({
             /
           </span>
           <Menu
-            label="Boards"
+            label={t("canvas.boards")}
             trigger={(props) => (
               <button
                 type="button"
@@ -70,7 +72,7 @@ export function BoardHeader({
               </button>
             )}
           >
-            <MenuLabel>Boards in {projectName}</MenuLabel>
+            <MenuLabel>{t("canvas.boardsIn", { project: projectName })}</MenuLabel>
             {boards.map((board) => (
               <MenuItem
                 key={board.id}
@@ -84,17 +86,17 @@ export function BoardHeader({
             ))}
             <MenuSeparator />
             <MenuItem icon={<Plus size={15} />} onSelect={() => setDialog("new")}>
-              New board…
+              {t("canvas.newBoardEllipsis")}
             </MenuItem>
             <MenuItem icon={<Pencil size={15} />} onSelect={() => setDialog("rename")}>
-              Rename board…
+              {t("canvas.renameBoardEllipsis")}
             </MenuItem>
           </Menu>
         </Panel>
 
         <Panel className="animate-fade-in">
           <SaveIndicator status={saveStatus} />
-          <IconButton label="Keyboard shortcuts (?)" onClick={onShowShortcuts}>
+          <IconButton label={t("canvas.shortcutsWithKey")} onClick={onShowShortcuts}>
             <Keyboard size={17} />
           </IconButton>
         </Panel>
@@ -103,8 +105,8 @@ export function BoardHeader({
       <RenameDialog
         open={dialog === "rename"}
         onClose={() => setDialog(null)}
-        title="Rename board"
-        label="Board name"
+        title={t("board.renameTitle")}
+        label={t("board.boardName")}
         initialValue={name}
         onSubmit={async (value) => {
           const result = await renameBoard(boardId, value);

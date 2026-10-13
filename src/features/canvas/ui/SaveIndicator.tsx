@@ -1,17 +1,19 @@
 import { Check, CloudOff } from "lucide-react";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/client";
+import type { MessageKey } from "@/lib/i18n";
 import type { SaveStatus } from "../persistence/BoardSaver";
 
-const LABELS: Record<SaveStatus, string> = {
-  idle: "",
-  saving: "Saving…",
-  saved: "Saved",
-  error: "Couldn't save — retrying",
+const LABELS: Record<Exclude<SaveStatus, "idle">, MessageKey> = {
+  saving: "canvas.saving",
+  saved: "canvas.saved",
+  error: "canvas.saveError",
 };
 
 /** Quiet save state: only draws attention when something is wrong. */
 export function SaveIndicator({ status }: { status: SaveStatus }) {
+  const { t } = useI18n();
   if (status === "idle") return null;
   return (
     <span
@@ -25,7 +27,7 @@ export function SaveIndicator({ status }: { status: SaveStatus }) {
       {status === "saving" ? <Spinner size={12} /> : null}
       {status === "saved" ? <Check size={13} aria-hidden="true" /> : null}
       {status === "error" ? <CloudOff size={13} aria-hidden="true" /> : null}
-      <span className={cn(status !== "error" && "hidden sm:inline")}>{LABELS[status]}</span>
+      <span className={cn(status !== "error" && "hidden sm:inline")}>{t(LABELS[status])}</span>
     </span>
   );
 }

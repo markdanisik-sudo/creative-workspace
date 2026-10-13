@@ -11,6 +11,7 @@ import {
 } from "tldraw";
 import { formatBytes } from "@/lib/format";
 import { logError } from "@/lib/errors";
+import { useI18n } from "@/lib/i18n/client";
 import { fileKindLabel } from "../assets/files";
 import { FILE_TYPE, type FileShape } from "./types";
 import styles from "./shapes.module.css";
@@ -80,6 +81,7 @@ export class FileShapeUtil extends BaseBoxShapeUtil<FileShape> {
 
 function FileCard({ shape }: { shape: FileShape }) {
   const editor = useEditor();
+  const { t, locale } = useI18n();
   const asset = useValue(
     "file asset",
     () =>
@@ -88,7 +90,7 @@ function FileCard({ shape }: { shape: FileShape }) {
         : undefined,
     [editor, shape.props.assetId],
   );
-  const name = asset?.props.name || "File";
+  const name = asset?.props.name || t("canvas.file");
   const uploading = !asset?.props.src;
 
   return (
@@ -105,8 +107,8 @@ function FileCard({ shape }: { shape: FileShape }) {
           <span className={styles.fileName}>{name}</span>
           <span className={styles.fileMeta}>
             {uploading
-              ? "Uploading…"
-              : `${formatBytes(asset?.props.fileSize ?? 0)} · Double-click to open`}
+              ? t("canvas.uploading")
+              : `${formatBytes(asset?.props.fileSize ?? 0, locale)} · ${t("canvas.openHint")}`}
           </span>
         </span>
       </div>

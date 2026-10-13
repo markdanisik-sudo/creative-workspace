@@ -15,6 +15,7 @@ import { useRef, useState } from "react";
 import { useEditor } from "tldraw";
 import { Menu, MenuItem, MenuSeparator } from "@/components/ui/Menu";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/client";
 import { DOCUMENT_MIME_TYPES, IMAGE_MIME_TYPES, VIDEO_MIME_TYPES } from "../assets/files";
 import { addChecklist, addFiles, addNote, addSection, addText } from "./actions";
 import { LinkDialog } from "./LinkDialog";
@@ -31,6 +32,7 @@ const ACCEPT: Record<PickerKind, string> = {
 
 export function AddMenu() {
   const editor = useEditor();
+  const { t } = useI18n();
   const [linkOpen, setLinkOpen] = useState(false);
   const inputs = useRef<Partial<Record<PickerKind, HTMLInputElement | null>>>({});
 
@@ -39,13 +41,13 @@ export function AddMenu() {
   return (
     <>
       <Menu
-        label="Add to board"
+        label={t("canvas.addToBoard")}
         side="top"
         trigger={(props) => (
           <button
             type="button"
-            aria-label="Add"
-            title="Add"
+            aria-label={t("canvas.add")}
+            title={t("canvas.add")}
             className={cn(
               "flex size-9 items-center justify-center rounded-full bg-ink text-text-inverse",
               "transition-[transform,background-color] duration-150 ease-out hover:bg-ink-hover active:scale-95",
@@ -58,38 +60,41 @@ export function AddMenu() {
         )}
       >
         <MenuItem icon={<Type size={ICON_SIZE} />} shortcut="T" onSelect={() => addText(editor)}>
-          Text
+          {t("canvas.text")}
         </MenuItem>
         <MenuItem
           icon={<StickyNote size={ICON_SIZE} />}
           shortcut="N"
           onSelect={() => addNote(editor)}
         >
-          Note
+          {t("canvas.note")}
         </MenuItem>
-        <MenuItem icon={<CheckSquare size={ICON_SIZE} />} onSelect={() => addChecklist(editor)}>
-          Checklist
+        <MenuItem
+          icon={<CheckSquare size={ICON_SIZE} />}
+          onSelect={() => addChecklist(editor, t("canvas.checklistTitle"))}
+        >
+          {t("canvas.checklist")}
         </MenuItem>
         <MenuSeparator />
         <MenuItem icon={<ImageIcon size={ICON_SIZE} />} onSelect={() => pick("image")}>
-          Image
+          {t("canvas.image")}
         </MenuItem>
         <MenuItem icon={<Film size={ICON_SIZE} />} onSelect={() => pick("video")}>
-          Video
+          {t("canvas.video")}
         </MenuItem>
         <MenuItem icon={<Link2 size={ICON_SIZE} />} onSelect={() => setLinkOpen(true)}>
-          Link
+          {t("canvas.link")}
         </MenuItem>
         <MenuItem icon={<File size={ICON_SIZE} />} onSelect={() => pick("file")}>
-          File
+          {t("canvas.file")}
         </MenuItem>
         <MenuSeparator />
         <MenuItem
           icon={<Frame size={ICON_SIZE} />}
           shortcut="F"
-          onSelect={() => addSection(editor)}
+          onSelect={() => addSection(editor, t("canvas.sectionName"))}
         >
-          Section
+          {t("canvas.section")}
         </MenuItem>
       </Menu>
 

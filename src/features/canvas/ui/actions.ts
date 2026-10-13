@@ -60,7 +60,8 @@ export function addNote(editor: Editor) {
   );
 }
 
-export function addChecklist(editor: Editor) {
+/** `title` is the translated default checklist title. */
+export function addChecklist(editor: Editor, title: string) {
   editor.setCurrentTool("select");
   const items = [newChecklistItem()];
   createAndEdit(
@@ -68,7 +69,7 @@ export function addChecklist(editor: Editor) {
     {
       id: createShapeId(),
       type: CHECKLIST_TYPE,
-      props: { title: "Checklist", items },
+      props: { title, items },
     } as TLShapePartial,
     { w: CHECKLIST_DEFAULT_WIDTH, h: checklistHeight(items.length) },
   );
@@ -76,7 +77,8 @@ export function addChecklist(editor: Editor) {
 
 export const SECTION_SIZE = { w: 720, h: 480 };
 
-export function addSection(editor: Editor) {
+/** `name` is the translated default section name. */
+export function addSection(editor: Editor, name: string) {
   editor.setCurrentTool("select");
   const point = placementPoint(editor, SECTION_SIZE);
   const id = createShapeId();
@@ -87,7 +89,7 @@ export function addSection(editor: Editor) {
       type: "frame",
       x: point.x - SECTION_SIZE.w / 2,
       y: point.y - SECTION_SIZE.h / 2,
-      props: { ...SECTION_SIZE, name: "Section" },
+      props: { ...SECTION_SIZE, name },
     });
     editor.select(id);
   });

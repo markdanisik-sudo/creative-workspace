@@ -4,7 +4,7 @@ import "tldraw/tldraw.css";
 import "./canvas.css";
 
 import { getAssetUrls } from "@tldraw/assets/selfHosted";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   createTLStore,
   DefaultFontStyle,
@@ -20,7 +20,8 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { isBoardTemplateId } from "@/features/boards/templates";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-import { friendlyErrors, logError } from "@/lib/errors";
+import { logError } from "@/lib/errors";
+import { useI18n } from "@/lib/i18n/client";
 import { MAX_UPLOAD_BYTES } from "./assets/files";
 import { createSupabaseAssetStore } from "./assets/supabase-asset-store";
 import { assetUtils, BOARD_PAGE_ID, bindingUtils, shapeUtils } from "./config";
@@ -36,6 +37,7 @@ import { ContextBar } from "./ui/ContextBar";
 import { ShortcutsDialog } from "./ui/ShortcutsDialog";
 import { restoreCamera, watchCamera } from "./camera";
 import { registerMediaPlacement } from "./media-placement";
+import { useAppTheme } from "./useAppTheme";
 
 export interface BoardCanvasProps {
   userId: string;
@@ -107,7 +109,14 @@ function CanvasUi({
   ...props
 }: Omit<BoardCanvasProps, "userId"> & { saveStatus: SaveStatus }) {
   const editor = useEditor();
+  const { locale } = useI18n();
+  const theme = useAppTheme();
   useExternalContent();
+
+  // tldraw's own UI (context menu, toasts, dialogs) follows the app's language and theme.
+  useLayoutEffect(() => {
+    editor.user.updateUserPreferences({ locale, colorScheme: theme });
+  }, [editor, locale, theme]);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const showShortcuts = useCallback(() => setShortcutsOpen(true), []);
 
@@ -140,6 +149,7 @@ export function BoardCanvas({
   boardName,
   boards,
 }: BoardCanvasProps) {
+  const { t } = useI18n();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [attempt, setAttempt] = useState(0);
@@ -185,7 +195,6 @@ export function BoardCanvas({
     (editor: Editor) => {
       if (state.status !== "ready") return;
 
-      editor.user.updateUserPreferences({ colorScheme: "system" });
       applyDefaultPreferences(editor);
       editor.setStyleForNextShapes(DefaultFontStyle, "sans", { history: "ignore" });
       editor.setStyleForNextShapes(DefaultSizeStyle, "m", { history: "ignore" });
@@ -204,7 +213,7 @@ export function BoardCanvas({
 
       const isNew = editor.getCurrentPageShapeIds().size === 0;
       if (isNew && state.template && isBoardTemplateId(state.template)) {
-        applyTemplate(editor, state.template);
+        applyTemplate(editor, state.template, t);
       } else if (!restoreCamera(editor, boardId) && !isNew) {
         editor.zoomToFit({ animation: { duration: 0 } });
         if (editor.getZoomLevel() > 1) editor.resetZoom();
@@ -235,14 +244,14 @@ export function BoardCanvas({
         saver.dispose();
       };
     },
-    [state, boardId, supabase],
+    [state, boardId, supabase, t],
   );
 
   if (state.status === "loading") {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-bg text-text-tertiary">
         <Spinner size={20} />
-        <span className="sr-only">Loading board</span>
+        <span className="sr-only">{t("canvas.loadingBoard")}</span>
       </div>
     );
   }
@@ -250,8 +259,8 @@ export function BoardCanvas({
   if (state.status === "error") {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-bg px-6 text-center">
-        <p className="text-title font-semibold">This board couldn&apos;t be opened.</p>
-        <p className="text-callout text-text-secondary">{friendlyErrors.generic}</p>
+        <p className="text-title font-semibold">{t("canvas.couldNotOpen")}</p>
+        <p className="text-callout text-text-secondary">{t("errors.generic")}</p>
         <Button
           variant="primary"
           onClick={() => {
@@ -259,7 +268,7 @@ export function BoardCanvas({
             setAttempt((n) => n + 1);
           }}
         >
-          Try again
+          {t("common.tryAgain")}
         </Button>
       </div>
     );

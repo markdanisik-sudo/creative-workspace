@@ -32,6 +32,8 @@ import {
 import { Button, IconButton } from "@/components/ui/Button";
 import { Menu, MenuItem, useMenuClose } from "@/components/ui/Menu";
 import { cn } from "@/lib/cn";
+import type { MessageKey } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import { startCrop } from "./actions";
 import { Panel, PanelDivider } from "./Panel";
 
@@ -58,28 +60,36 @@ const COLORS: TLDefaultColorStyle[] = [
   "green",
 ];
 
-const SIZES: { value: TLDefaultSizeStyle; label: string }[] = [
-  { value: "s", label: "Small" },
-  { value: "m", label: "Medium" },
-  { value: "l", label: "Large" },
-  { value: "xl", label: "Extra large" },
+const SIZES: { value: TLDefaultSizeStyle; label: MessageKey }[] = [
+  { value: "s", label: "canvas.sizeSmall" },
+  { value: "m", label: "canvas.sizeMedium" },
+  { value: "l", label: "canvas.sizeLarge" },
+  { value: "xl", label: "canvas.sizeExtraLarge" },
 ];
 
-const TEXT_ALIGNS: { value: TLDefaultTextAlignStyle; label: string }[] = [
-  { value: "start", label: "Left" },
-  { value: "middle", label: "Center" },
-  { value: "end", label: "Right" },
+const TEXT_ALIGNS: { value: TLDefaultTextAlignStyle; label: MessageKey }[] = [
+  { value: "start", label: "canvas.left" },
+  { value: "middle", label: "canvas.center" },
+  { value: "end", label: "canvas.right" },
 ];
 
 type AlignOperation = "left" | "center-horizontal" | "right" | "top" | "center-vertical" | "bottom";
 
-const ALIGNMENTS: { op: AlignOperation; label: string; icon: ReactNode }[] = [
-  { op: "left", label: "Align left", icon: <AlignStartVertical size={ICON} /> },
-  { op: "center-horizontal", label: "Align centers", icon: <AlignCenterVertical size={ICON} /> },
-  { op: "right", label: "Align right", icon: <AlignEndVertical size={ICON} /> },
-  { op: "top", label: "Align top", icon: <AlignStartHorizontal size={ICON} /> },
-  { op: "center-vertical", label: "Align middles", icon: <AlignCenterHorizontal size={ICON} /> },
-  { op: "bottom", label: "Align bottom", icon: <AlignEndHorizontal size={ICON} /> },
+const ALIGNMENTS: { op: AlignOperation; label: MessageKey; icon: ReactNode }[] = [
+  { op: "left", label: "canvas.alignLeft", icon: <AlignStartVertical size={ICON} /> },
+  {
+    op: "center-horizontal",
+    label: "canvas.alignCenters",
+    icon: <AlignCenterVertical size={ICON} />,
+  },
+  { op: "right", label: "canvas.alignRight", icon: <AlignEndVertical size={ICON} /> },
+  { op: "top", label: "canvas.alignTop", icon: <AlignStartHorizontal size={ICON} /> },
+  {
+    op: "center-vertical",
+    label: "canvas.alignMiddles",
+    icon: <AlignCenterHorizontal size={ICON} />,
+  },
+  { op: "bottom", label: "canvas.alignBottom", icon: <AlignEndHorizontal size={ICON} /> },
 ];
 
 function sharedValue<T>(
@@ -97,6 +107,7 @@ function ColorSwatches({
   onPick: (c: TLDefaultColorStyle) => void;
 }) {
   const editor = useEditor();
+  const { t } = useI18n();
   const close = useMenuClose();
   const mode = useValue("color mode", () => editor.getColorMode(), [editor]);
   const colors = editor.getCurrentTheme().colors[mode];
@@ -108,7 +119,7 @@ function ColorSwatches({
           type="button"
           role="menuitem"
           tabIndex={-1}
-          aria-label={color.replace("-", " ")}
+          aria-label={t(`canvas.colors.${color}`)}
           aria-current={current === color || undefined}
           onClick={() => {
             onPick(color);
@@ -128,6 +139,7 @@ function ColorSwatches({
 
 export function ContextBar() {
   const editor = useEditor();
+  const { t } = useI18n();
   const [bar, setBar] = useState<HTMLDivElement | null>(null);
   const [barSize, setBarSize] = useState({ width: 0, height: 44 });
 
@@ -205,7 +217,12 @@ export function ContextBar() {
       className="pointer-events-none absolute z-[300]"
       style={{ top: Math.max(top, EDGE_MARGIN), left, transform: "translateX(-50%)" }}
     >
-      <Panel ref={setBar} role="toolbar" aria-label="Selection" className="animate-pop-in">
+      <Panel
+        ref={setBar}
+        role="toolbar"
+        aria-label={t("canvas.selection")}
+        className="animate-pop-in"
+      >
         {state.isCropping ? (
           <Button
             size="sm"
@@ -215,12 +232,16 @@ export function ContextBar() {
               editor.setCurrentTool("select.idle");
             }}
           >
-            Done
+            {t("common.done")}
           </Button>
         ) : (
           <>
             {single?.type === "image" ? (
-              <IconButton label="Crop" size="sm" onClick={() => startCrop(editor, single.id)}>
+              <IconButton
+                label={t("canvas.crop")}
+                size="sm"
+                onClick={() => startCrop(editor, single.id)}
+              >
                 <Crop size={ICON} />
               </IconButton>
             ) : null}
@@ -228,9 +249,9 @@ export function ContextBar() {
             {ids.length > 1 ? (
               <>
                 <Menu
-                  label="Align"
+                  label={t("canvas.align")}
                   trigger={(props) => (
-                    <IconButton label="Align" size="sm" {...props}>
+                    <IconButton label={t("canvas.align")} size="sm" {...props}>
                       <AlignStartVertical size={ICON} />
                     </IconButton>
                   )}
@@ -241,12 +262,12 @@ export function ContextBar() {
                       icon={icon}
                       onSelect={() => run("align", () => editor.alignShapes(ids, op))}
                     >
-                      {label}
+                      {t(label)}
                     </MenuItem>
                   ))}
                 </Menu>
                 <IconButton
-                  label="Tidy up"
+                  label={t("canvas.tidy")}
                   size="sm"
                   onClick={() => run("tidy", () => editor.packShapes(ids, TIDY_GAP))}
                 >
@@ -257,12 +278,12 @@ export function ContextBar() {
 
             {selection.color !== undefined ? (
               <Menu
-                label="Colour"
+                label={t("canvas.colour")}
                 trigger={(props) => (
                   <button
                     type="button"
-                    aria-label="Colour"
-                    title="Colour"
+                    aria-label={t("canvas.colour")}
+                    title={t("canvas.colour")}
                     className="flex size-8 items-center justify-center rounded-sm hover:bg-surface-hover"
                     {...props}
                   >
@@ -292,12 +313,12 @@ export function ContextBar() {
 
             {selection.size !== undefined ? (
               <Menu
-                label="Size"
+                label={t("canvas.textSize")}
                 trigger={(props) => (
                   <button
                     type="button"
-                    aria-label="Text size"
-                    title="Text size"
+                    aria-label={t("canvas.textSize")}
+                    title={t("canvas.textSize")}
                     className="h-8 min-w-8 rounded-sm px-2 text-caption font-semibold text-text-secondary uppercase hover:bg-surface-hover hover:text-text"
                     {...props}
                   >
@@ -313,7 +334,7 @@ export function ContextBar() {
                       run("size", () => editor.setStyleForSelectedShapes(DefaultSizeStyle, value))
                     }
                   >
-                    {label}
+                    {t(label)}
                   </MenuItem>
                 ))}
               </Menu>
@@ -321,9 +342,9 @@ export function ContextBar() {
 
             {selection.textAlign !== undefined ? (
               <Menu
-                label="Alignment"
+                label={t("canvas.textAlignment")}
                 trigger={(props) => (
-                  <IconButton label="Text alignment" size="sm" {...props}>
+                  <IconButton label={t("canvas.textAlignment")} size="sm" {...props}>
                     {selection.textAlign === "middle" ? (
                       <AlignCenterVertical size={ICON} />
                     ) : selection.textAlign === "end" ? (
@@ -344,7 +365,7 @@ export function ContextBar() {
                       )
                     }
                   >
-                    {label}
+                    {t(label)}
                   </MenuItem>
                 ))}
               </Menu>
@@ -352,7 +373,7 @@ export function ContextBar() {
 
             <PanelDivider />
             <IconButton
-              label="Duplicate (⌘D)"
+              label={t("canvas.duplicate")}
               size="sm"
               onClick={() =>
                 run("duplicate", () =>
@@ -363,21 +384,21 @@ export function ContextBar() {
               <Copy size={ICON} />
             </IconButton>
             <IconButton
-              label="Bring forward (])"
+              label={t("canvas.bringForward")}
               size="sm"
               onClick={() => run("forward", () => editor.bringForward(ids))}
             >
               <ArrowUpToLine size={ICON} />
             </IconButton>
             <IconButton
-              label="Send backward ([)"
+              label={t("canvas.sendBackward")}
               size="sm"
               onClick={() => run("backward", () => editor.sendBackward(ids))}
             >
               <ArrowDownToLine size={ICON} />
             </IconButton>
             <IconButton
-              label={selection.allLocked ? "Unlock" : "Lock"}
+              label={selection.allLocked ? t("canvas.unlock") : t("canvas.lock")}
               size="sm"
               active={selection.allLocked}
               onClick={() => run("lock", () => editor.toggleLock(ids))}
@@ -385,7 +406,7 @@ export function ContextBar() {
               {selection.allLocked ? <Lock size={ICON} /> : <LockOpen size={ICON} />}
             </IconButton>
             <IconButton
-              label="Delete (⌫)"
+              label={t("canvas.deleteShape")}
               size="sm"
               className="hover:text-danger"
               onClick={() => run("delete", () => editor.deleteShapes(ids))}

@@ -23,6 +23,7 @@ describe("helpers", () => {
     expect(formatBytes(512)).toBe("512 B");
     expect(formatBytes(1536)).toBe("1.5 KB");
     expect(formatBytes(25 * 1024 * 1024)).toBe("25 MB");
+    expect(formatBytes(1536, "cs")).toBe("1,5 KB");
   });
   it("formats money per locale", () => {
     expect(formatMoney(12000, "CZK", "cs").replace(/\s/g, " ")).toBe("12 000 Kč");

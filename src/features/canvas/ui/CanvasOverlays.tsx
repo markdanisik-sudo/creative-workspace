@@ -3,9 +3,11 @@
 import { useEffect, useState, type RefObject } from "react";
 import { useEditor, useValue } from "tldraw";
 import { cn } from "@/lib/cn";
+import { useI18n } from "@/lib/i18n/client";
 
 /** A quiet frame that appears while files are dragged over the board. */
 export function DropOverlay({ targetRef }: { targetRef: RefObject<HTMLElement | null> }) {
+  const { t } = useI18n();
   const [active, setActive] = useState(false);
 
   useEffect(() => {
@@ -52,7 +54,7 @@ export function DropOverlay({ targetRef }: { targetRef: RefObject<HTMLElement | 
       )}
     >
       <span className="rounded-full bg-surface px-4 py-2 text-body font-medium shadow-md">
-        Drop to add to board
+        {t("canvas.dropToAdd")}
       </span>
     </div>
   );
@@ -61,6 +63,7 @@ export function DropOverlay({ targetRef }: { targetRef: RefObject<HTMLElement | 
 /** Typography-only hint on an empty board. */
 export function EmptyBoardHint() {
   const editor = useEditor();
+  const { t } = useI18n();
   const isEmpty = useValue("empty board", () => editor.getCurrentPageShapeIds().size === 0, [
     editor,
   ]);
@@ -68,10 +71,8 @@ export function EmptyBoardHint() {
   return (
     <div className="pointer-events-none absolute inset-0 z-[200] flex items-center justify-center px-6">
       <div className="flex max-w-sm flex-col items-center gap-2 text-center animate-fade-in">
-        <p className="text-title font-semibold text-text-secondary">Start with anything.</p>
-        <p className="text-callout text-text-tertiary">
-          Drop images or files here, paste a link, or press + to add text, notes and checklists.
-        </p>
+        <p className="text-title font-semibold text-text-secondary">{t("canvas.emptyTitle")}</p>
+        <p className="text-callout text-text-tertiary">{t("canvas.emptyBody")}</p>
       </div>
     </div>
   );

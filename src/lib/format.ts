@@ -48,7 +48,7 @@ export function formatMoney(amount: number, currency: string, locale: Locale): s
   }).format(amount);
 }
 
-export function formatBytes(bytes: number): string {
+export function formatBytes(bytes: number, locale: string = "en"): string {
   if (bytes < 1024) return `${bytes} B`;
   const units = ["KB", "MB", "GB"];
   let value = bytes / 1024;
@@ -57,7 +57,12 @@ export function formatBytes(bytes: number): string {
     value /= 1024;
     unit++;
   }
-  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+  const digits = value < 10 ? 1 : 0;
+  const number = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+  return `${number} ${units[unit]}`;
 }
 
 export function initials(name: string): string {

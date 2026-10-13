@@ -10,6 +10,7 @@ import {
   type TLResizeInfo,
 } from "tldraw";
 import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
+import { useI18n } from "@/lib/i18n/client";
 import { CHECKLIST_TYPE, type ChecklistItem, type ChecklistShape } from "./types";
 import styles from "./shapes.module.css";
 
@@ -42,7 +43,8 @@ export class ChecklistShapeUtil extends ShapeUtil<ChecklistShape> {
     return {
       w: CHECKLIST_DEFAULT_WIDTH,
       h: checklistHeight(items.length),
-      title: "Checklist",
+      // Empty: the card shows the translated "Checklist" placeholder.
+      title: "",
       items,
     };
   }
@@ -108,6 +110,7 @@ export class ChecklistShapeUtil extends ShapeUtil<ChecklistShape> {
 
 function ChecklistComponent({ shape }: { shape: ChecklistShape }) {
   const editor = useEditor();
+  const { t } = useI18n();
   const isEditing = useIsEditing(shape.id);
   const rootRef = useRef<HTMLDivElement>(null);
   // Item to focus after a structural edit (add/remove), applied once it renders.
@@ -184,8 +187,8 @@ function ChecklistComponent({ shape }: { shape: ChecklistShape }) {
           <input
             className={styles.checklistTitle}
             value={title}
-            placeholder="Checklist"
-            aria-label="Checklist title"
+            placeholder={t("canvas.checklistTitle")}
+            aria-label={t("canvas.checklistTitleLabel")}
             onChange={(event) => update({ title: event.target.value })}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === "ArrowDown") {
@@ -199,7 +202,7 @@ function ChecklistComponent({ shape }: { shape: ChecklistShape }) {
           />
         ) : (
           <div className={styles.checklistTitle} style={{ height: TITLE_HEIGHT }}>
-            {title || "Checklist"}
+            {title || t("canvas.checklistTitle")}
           </div>
         )}
 
@@ -210,7 +213,7 @@ function ChecklistComponent({ shape }: { shape: ChecklistShape }) {
                 type="button"
                 role="checkbox"
                 aria-checked={item.checked}
-                aria-label={item.text || "Item"}
+                aria-label={item.text || t("canvas.checklistItem", { number: index + 1 })}
                 className={styles.checkbox}
                 data-checked={item.checked}
                 // Toggling works without entering edit mode.
@@ -232,8 +235,8 @@ function ChecklistComponent({ shape }: { shape: ChecklistShape }) {
                   className={styles.checklistInput}
                   data-checked={item.checked}
                   value={item.text}
-                  placeholder="New item"
-                  aria-label={`Item ${index + 1}`}
+                  placeholder={t("canvas.newItem")}
+                  aria-label={t("canvas.checklistItem", { number: index + 1 })}
                   onChange={(event) =>
                     setItems(
                       items.map((it) =>
@@ -246,7 +249,7 @@ function ChecklistComponent({ shape }: { shape: ChecklistShape }) {
                 />
               ) : (
                 <span className={styles.checklistText} data-checked={item.checked}>
-                  {item.text || <span className={styles.placeholder}>New item</span>}
+                  {item.text || <span className={styles.placeholder}>{t("canvas.newItem")}</span>}
                 </span>
               )}
             </li>
@@ -261,12 +264,10 @@ function ChecklistComponent({ shape }: { shape: ChecklistShape }) {
               onPointerDown={stopEventPropagation}
               onClick={() => addItemAfter(items.length - 1)}
             >
-              + Add item
+              {t("canvas.addItem")}
             </button>
           ) : (
-            <span>
-              {done} of {items.length} done
-            </span>
+            <span>{t("canvas.progress", { done, total: items.length })}</span>
           )}
         </div>
       </div>
