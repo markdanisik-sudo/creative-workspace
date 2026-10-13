@@ -5,16 +5,69 @@ import { supabaseUrl } from "./env";
 
 /**
  * Local development only: signs the visitor in as the studio account so the
- * app can be used without a password. Enabled by `npm run local`, which writes
- * LAB_DEV_AUTO_SIGN_IN and the local stack's secret key to .env.local.
- * Never active in a production build.
+ * app can be used without a password. On by default whenever `next dev` runs
+ * against the local Supabase stack; set LAB_DEV_AUTO_SIGN_IN=false in
+ * .env.local to turn it off. Never active in a production build or against a
+ * hosted database.
  */
 export function devAutoSignInEnabled() {
   return (
     process.env.NODE_ENV === "development" &&
-    process.env.LAB_DEV_AUTO_SIGN_IN === "true" &&
-    Boolean(process.env.SUPABASE_SECRET_KEY)
+    process.env.LAB_DEV_AUTO_SIGN_IN !== "false" &&
+    isLocalStack()
   );
+}
+
+function isLocalStack() {
+  try {
+    const { hostname } = new URL(supabaseUrl);
+    return hostname === "127.0.0.1" || hostname === "localhost";
+  } catch {
+    return false;
+  }
+}
+
+let localSecretKey: Promise<string | null> | null = null;
+
+/** The local stack's secret key: from .env.local, or asked from the Supabase CLI once. */
+function secretKey(): Promise<string | null> {
+  if (process.env.SUPABASE_SECRET_KEY) return Promise.resolve(process.env.SUPABASE_SECRET_KEY);
+  localSecretKey ??= import("node:child_process").then(
+    ({ execFile }) =>
+      new Promise<string | null>((resolve) => {
+        execFile(
+          "npx",
+          ["supabase", "status", "-o", "json"],
+          { timeout: 60_000 },
+          (error, stdout) => {
+            if (error) {
+              report("could not read the local database settings", error);
+              localSecretKey = null;
+              return resolve(null);
+            }
+            try {
+              const status = JSON.parse(stdout.slice(stdout.indexOf("{")));
+              resolve(status.SECRET_KEY ?? status.SERVICE_ROLE_KEY ?? null);
+            } catch (parseError) {
+              report("could not read the local database settings", parseError);
+              localSecretKey = null;
+              resolve(null);
+            }
+          },
+        );
+      }),
+  );
+  return localSecretKey;
+}
+
+/** Why the last automatic sign-in failed, for the sign-in page to show. */
+const state = globalThis as unknown as { __labDevSignInError?: string | null };
+export function lastDevSignInError() {
+  return state.__labDevSignInError ?? null;
+}
+function report(message: string, error: unknown) {
+  console.error(`[dev-sign-in] ${message}`, error);
+  state.__labDevSignInError = `${message}: ${error instanceof Error ? error.message : String(error)}`;
 }
 
 const DEV_STUDIO_EMAIL = "studio@m-studio-lab.local";
@@ -43,7 +96,7 @@ async function studioEmail(admin: SupabaseClient<Database>): Promise<string | nu
     user_metadata: { display_name: "Studio" },
   });
   if (error) {
-    console.error("[dev-sign-in] could not create the studio account", error);
+    report("could not create the studio account", error);
     return null;
   }
   cachedEmail = DEV_STUDIO_EMAIL;
@@ -52,14 +105,16 @@ async function studioEmail(admin: SupabaseClient<Database>): Promise<string | nu
 
 /** A one-time sign-in token for the studio account, or null if unavailable. */
 async function devStudioSignInToken(): Promise<string | null> {
-  const admin = createClient<Database>(supabaseUrl, process.env.SUPABASE_SECRET_KEY!, {
+  const key = await secretKey();
+  if (!key) return null;
+  const admin = createClient<Database>(supabaseUrl, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
   const email = await studioEmail(admin);
   if (!email) return null;
   const { data, error } = await admin.auth.admin.generateLink({ type: "magiclink", email });
   if (error) {
-    console.error("[dev-sign-in] could not create a sign-in link", error);
+    report("could not create a sign-in link", error);
     cachedEmail = null;
     return null;
   }
@@ -80,7 +135,8 @@ export function devSignIn(
     const token = await devStudioSignInToken();
     if (!token) return false;
     const { error } = await supabase.auth.verifyOtp({ type: "magiclink", token_hash: token });
-    if (error) console.error("[dev-sign-in] sign-in failed", error);
+    if (error) report("sign-in failed", error);
+    else state.__labDevSignInError = null;
     return !error;
   });
   queue = attempt.catch(() => undefined);

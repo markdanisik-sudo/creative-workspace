@@ -102,6 +102,7 @@ writeFileSync(
 say("Settings written to .env.local");
 
 // 4. App
+say("Automatic sign-in as the studio: on (this computer only).");
 say(`Starting the app… open http://localhost:${PORT} when it says Ready. Press Ctrl+C to stop.`);
 const app = spawn("npx", ["next", "dev", "-p", PORT], {
   cwd: root,

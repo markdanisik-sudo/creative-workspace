@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AuthForm } from "@/features/auth/AuthForm";
 import { getI18n } from "@/lib/i18n/server";
+import { devAutoSignInEnabled, lastDevSignInError } from "@/lib/supabase/dev-sign-in";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -17,7 +18,20 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
   if (read("check-email")) notice = t("auth.checkEmail");
   if (read("link-expired")) notice = t("auth.linkExpired");
 
+  // Local development: say why the automatic studio sign-in didn't happen.
+  const devError = devAutoSignInEnabled() ? lastDevSignInError() : null;
+
   return (
-    <AuthForm mode="sign-in" next={read("next")} defaultEmail={read("email")} notice={notice} />
+    <>
+      {devError ? (
+        <p
+          role="alert"
+          className="mb-4 rounded-lg bg-danger-surface p-3 font-mono text-caption text-danger"
+        >
+          Automatic sign-in failed — {devError}
+        </p>
+      ) : null}
+      <AuthForm mode="sign-in" next={read("next")} defaultEmail={read("email")} notice={notice} />
+    </>
   );
 }
