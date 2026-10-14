@@ -213,6 +213,38 @@
   }
 }
 
+/* Feel like an app on phones. */
+@media (pointer: coarse) {
+  /* iOS zooms into fields under 16px; keep the layout still. (Not the canvas,
+     which sizes its own text editor.) */
+  :where(input, textarea, select):not(.tl-container *) {
+    font-size: 16px !important;
+  }
+}
+
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Opened from the Home Screen: no rubber-band page bounce, and long-pressing
+   controls doesn't select their labels or pop up link previews. */
+@media (display-mode: standalone) {
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+
+  a,
+  button,
+  [role="button"],
+  [role="tab"],
+  nav {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

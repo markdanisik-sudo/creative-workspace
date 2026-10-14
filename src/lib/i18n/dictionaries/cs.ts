@@ -197,6 +197,15 @@ export const cs: Dictionary = {
       ideaMustSee: "Co tam musí být vidět?",
     },
   },
+  install: {
+    title: "Přidejte si {name} na plochu",
+    body: "Otevře se na celou obrazovku jako aplikace — jedním klepnutím.",
+    stepShare: "Klepněte na Sdílet v liště Safari (v iOS 26 pod tlačítkem ⋯).",
+    stepAdd: "Zvolte „Přidat na plochu“ a potvrďte Přidat.",
+    install: "Nainstalovat aplikaci",
+    notNow: "Teď ne",
+    signInNote: "V aplikaci se jednou přihlaste stejným e-mailem a heslem.",
+  },
   hub: {
     short: {
       overview: "Přehled",

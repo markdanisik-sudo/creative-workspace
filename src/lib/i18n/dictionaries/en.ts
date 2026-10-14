@@ -184,6 +184,15 @@ export const en = {
       ideaMustSee: "What must we see?",
     },
   },
+  install: {
+    title: "Add {name} to your Home Screen",
+    body: "It opens full screen like an app — one tap away.",
+    stepShare: "Tap Share in the Safari toolbar (in iOS 26, under the ⋯ button).",
+    stepAdd: "Choose “Add to Home Screen”, then Add.",
+    install: "Install app",
+    notNow: "Not now",
+    signInNote: "In the app, sign in once with the same email and password.",
+  },
   hub: {
     short: {
       overview: "Overview",

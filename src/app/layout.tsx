@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { APP_NAME } from "@/lib/config";
+import { ServiceWorker } from "@/components/app/ServiceWorker";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getI18n } from "@/lib/i18n/server";
 import { getThemePreference } from "@/lib/preferences/server";
@@ -41,6 +42,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full">
         <I18nProvider locale={locale}>{children}</I18nProvider>
+        <ServiceWorker />
       </body>
     </html>
   );
