@@ -1,8 +1,10 @@
 // Starts the whole app on this computer with one command: `npm run local`.
 // 1. checks Node.js and Docker, 2. starts the local database (Supabase),
-// 3. writes .env.local with the local keys, 4. runs the app at http://localhost:3000.
+// 3. writes .env.local with the local keys, 4. runs the app at http://localhost:3000
+// and, on the same Wi-Fi, at http://<this computer's address>:3000 for phones.
 import { execSync, spawn } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { networkInterfaces } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -68,10 +70,55 @@ try {
 } catch {
   fail("Could not read the database settings. Try `npx supabase stop` and run this again.");
 }
-const url = status.API_URL;
+const localUrl = status.API_URL;
 const key = status.PUBLISHABLE_KEY ?? status.ANON_KEY;
 const secretKey = status.SECRET_KEY ?? status.SERVICE_ROLE_KEY;
-if (!url || !key) fail("The database did not report its address and key.");
+if (!localUrl || !key) fail("The database did not report its address and key.");
+
+/** This computer's address on the local network (Wi-Fi), if it has one. */
+function lanAddress() {
+  const isPrivate = (address) => /^(192\.168|10|172\.(1[6-9]|2\d|3[01]))\./.test(address);
+  // Skip virtual networks (Docker, VMs, VPNs) that phones can't reach.
+  const isVirtual = (name) => /^(bridge|docker|br-|veth|vmnet|utun|vboxnet|llw|awdl)/.test(name);
+  const candidates = Object.entries(networkInterfaces())
+    .filter(([name]) => !isVirtual(name))
+    .flatMap(([name, entries]) =>
+      (entries ?? [])
+        .filter((entry) => entry.family === "IPv4" && !entry.internal && isPrivate(entry.address))
+        .map((entry) => ({ name, address: entry.address })),
+    );
+  // en0 is the Wi-Fi (or built-in Ethernet) on a Mac.
+  return (
+    (
+      candidates.find((candidate) => candidate.name === "en0") ??
+      candidates.find(
+        (candidate) =>
+          candidate.name.startsWith("en") ||
+          candidate.name.startsWith("eth") ||
+          candidate.name.startsWith("wl"),
+      ) ??
+      candidates[0]
+    )?.address ?? null
+  );
+}
+
+// Phones load the app from this computer, so the browser must reach the
+// database at the network address too, not at 127.0.0.1.
+// LAB_LAN_ADDRESS overrides the guess (e.g. LAB_LAN_ADDRESS=192.168.1.20 npm run local).
+const lan = process.env.LAB_LAN_ADDRESS || lanAddress();
+let url = localUrl;
+if (lan) {
+  const lanUrl = localUrl.replace(/127\.0\.0\.1|localhost/, lan);
+  try {
+    const response = await fetch(`${lanUrl}/auth/v1/health`, {
+      headers: { apikey: key },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (response.ok) url = lanUrl;
+  } catch {
+    // Not reachable over the network; phones won't work, this computer will.
+  }
+}
 
 // Keep any other settings (e.g. a tldraw license key) the file already has.
 const kept = existsSync(envPath)
@@ -102,8 +149,20 @@ writeFileSync(
 say("Settings written to .env.local");
 
 // 4. App
-say("Automatic sign-in as the studio: on (this computer only).");
+say("Automatic sign-in as the studio: on (local development only).");
 say(`Starting the app… open http://localhost:${PORT} when it says Ready. Press Ctrl+C to stop.`);
+if (url !== localUrl) {
+  const phoneUrl = `http://${lan}:${PORT}`;
+  say(`On your phone (same Wi-Fi as this computer), open ${phoneUrl} or scan:`);
+  try {
+    const { default: qrcode } = await import("qrcode-terminal");
+    qrcode.generate(phoneUrl, { small: true });
+  } catch {
+    // The QR code is a nicety; the address above is enough.
+  }
+} else {
+  say("Phone access is off: this computer is not on a Wi-Fi/local network.");
+}
 const app = spawn("npx", ["next", "dev", "-p", PORT], {
   cwd: root,
   stdio: "inherit",

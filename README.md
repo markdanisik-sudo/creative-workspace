@@ -21,6 +21,8 @@ npm run local     # starts the local database, writes .env.local, runs the app
 
 Open http://localhost:3000. In development against the local database you are **signed in automatically as the studio** (never in production or against a hosted database; set `LAB_DEV_AUTO_SIGN_IN=false` in `.env.local` to see the sign-in page). If the database is empty, a studio account is created for you. The first account is the studio; after that, sign-up is closed and clients join only through an invitation link that the studio creates under a project's **People** tab. The invite page is not signed in automatically, so you can try the client flow in a private window.
 
+**On your phone:** `npm run local` also prints an address (and a QR code) such as `http://192.168.1.20:3000`. Open it on a phone on the same Wi-Fi while the app runs on this computer. In Safari, Share → _Add to Home Screen_ opens it full screen like an app. If the detected address is wrong, set it yourself: `LAB_LAN_ADDRESS=192.168.1.20 npm run local`.
+
 Prefer to do it by hand? `npx supabase start`, copy the URL and publishable key it prints into `.env.local` (see `.env.example`), then `npm run dev`.
 
 ### Using a hosted Supabase project

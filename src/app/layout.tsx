@@ -12,6 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
     description: t("brand.tagline"),
+    appleWebApp: { capable: true, title: APP_NAME, statusBarStyle: "default" },
   };
 }
 

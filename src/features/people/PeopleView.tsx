@@ -38,7 +38,15 @@ function InviteForm({ projectId }: { projectId: string }) {
 
   const copy = async () => {
     if (!created) return;
-    await navigator.clipboard.writeText(created.link);
+    try {
+      await navigator.clipboard.writeText(created.link);
+    } catch {
+      // No clipboard API over plain http (e.g. a phone on the dev server):
+      // fall back to copying the selected text of the link field.
+      const field = document.getElementById("invite-link") as HTMLInputElement | null;
+      field?.select();
+      document.execCommand("copy");
+    }
     setCopied(true);
   };
 
@@ -70,6 +78,7 @@ function InviteForm({ projectId }: { projectId: string }) {
           </span>
           <div className="flex items-center gap-2">
             <input
+              id="invite-link"
               readOnly
               value={created.link}
               onFocus={(event) => event.currentTarget.select()}

@@ -3,6 +3,7 @@
 import { ArrowUp, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
+  useEffect,
   useOptimistic,
   useRef,
   useState,
@@ -17,6 +18,7 @@ import { cn } from "@/lib/cn";
 import { formatEdited } from "@/lib/format";
 import { deleteComment, postComment } from "./actions";
 import type { Comment } from "./types";
+import { randomUuid } from "@/lib/ids";
 
 /** The job's conversation: a single thread, oldest first, composer at the bottom. */
 export function Discussion({
@@ -46,6 +48,17 @@ export function Discussion({
         : current.filter((comment) => comment.id !== change.removeId),
   );
 
+  // Like Messages: open at the newest message and follow new ones, so the
+  // composer never covers the end of the thread.
+  // (After the router's own scroll-to-top on navigation, hence the frame.)
+  useEffect(() => {
+    // The sticky composer always counts as visible, so scroll the page itself.
+    const frame = requestAnimationFrame(() =>
+      window.scrollTo({ top: document.documentElement.scrollHeight }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [thread.length]);
+
   const send = (event?: FormEvent) => {
     event?.preventDefault();
     const body = draft.trim();
@@ -54,7 +67,7 @@ export function Discussion({
     startTransition(async () => {
       applyOptimistic({
         add: {
-          id: `tmp-${crypto.randomUUID()}`,
+          id: `tmp-${randomUuid()}`,
           body,
           author: viewer,
           createdAt: new Date().toISOString(),
@@ -86,7 +99,7 @@ export function Discussion({
   };
 
   return (
-    <div className="flex max-w-3xl flex-col gap-6">
+    <div className="flex max-w-3xl flex-col gap-6 pb-8">
       {thread.length === 0 ? (
         <p className="text-callout text-text-secondary">{t("discussion.empty")}</p>
       ) : (

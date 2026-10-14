@@ -13,6 +13,7 @@ import { useLayoutEffect, useRef, type KeyboardEvent } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { CHECKLIST_TYPE, type ChecklistItem, type ChecklistShape } from "./types";
 import styles from "./shapes.module.css";
+import { randomUuid } from "@/lib/ids";
 
 const PADDING = 16;
 const TITLE_HEIGHT = 30;
@@ -26,7 +27,7 @@ export function checklistHeight(itemCount: number) {
 }
 
 export function newChecklistItem(text = ""): ChecklistItem {
-  return { id: crypto.randomUUID(), text, checked: false };
+  return { id: randomUuid(), text, checked: false };
 }
 
 export class ChecklistShapeUtil extends ShapeUtil<ChecklistShape> {

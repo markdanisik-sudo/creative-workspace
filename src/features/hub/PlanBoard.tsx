@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
 import { createTask, deleteTask, updateTask } from "./actions";
 import type { Task } from "./types";
+import { randomUuid } from "@/lib/ids";
 
 const DRAG_TYPE = "application/x-lab-task";
 
@@ -370,7 +371,7 @@ export function PlanBoard({
                 <AddTask
                   onAdd={async (title) => {
                     const optimistic: Task = {
-                      id: `tmp-${crypto.randomUUID()}`,
+                      id: `tmp-${randomUuid()}`,
                       phase,
                       title,
                       notes: null,

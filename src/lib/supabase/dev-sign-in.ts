@@ -21,7 +21,12 @@ export function devAutoSignInEnabled() {
 function isLocalStack() {
   try {
     const { hostname } = new URL(supabaseUrl);
-    return hostname === "127.0.0.1" || hostname === "localhost";
+    // This computer, or its address on the local network (phones on the same Wi-Fi).
+    return (
+      hostname === "127.0.0.1" ||
+      hostname === "localhost" ||
+      /^(192\.168|10|172\.(1[6-9]|2\d|3[01]))\./.test(hostname)
+    );
   } catch {
     return false;
   }

@@ -5,6 +5,7 @@ import { logError } from "@/lib/errors";
 import { SignedUrlCache } from "./SignedUrlCache";
 import { createImagePreview } from "./preview";
 import { extensionForMimeType, STORAGE_SRC_PREFIX, storagePathFromSrc } from "./files";
+import { randomUuid } from "@/lib/ids";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 60;
 
@@ -49,7 +50,7 @@ export function createSupabaseAssetStore(context: AssetStoreContext): TLAssetSto
     urls,
 
     async upload(asset, file, abortSignal) {
-      const id = crypto.randomUUID();
+      const id = randomUuid();
       const path = `${folder}/${id}.${extensionForMimeType(file.type)}`;
 
       const upload = await supabase.storage.from(STORAGE_BUCKET).upload(path, file, {
