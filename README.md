@@ -25,17 +25,32 @@ Open http://localhost:3000. In development against the local database you are **
 
 Prefer to do it by hand? `npx supabase start`, copy the URL and publishable key it prints into `.env.local` (see `.env.example`), then `npm run dev`.
 
-### Using a hosted Supabase project
+### Putting it online (Supabase + Vercel)
 
-1. Create a project, then run `npx supabase link` and `npx supabase db push` to apply `supabase/migrations`.
-2. Put the project URL and publishable (anon) key in `.env.local`.
-3. Under Auth → URL configuration, add `https://<your-domain>/auth/callback`.
-4. Set `NEXT_PUBLIC_SITE_URL` to your domain so confirmation emails link back correctly.
+No terminal needed; every push to the repository then redeploys automatically.
+
+1. **Supabase**: create a project (region Frankfurt; a database password with letters and digits only). Under Authentication → Sign In / Providers → Email, turn off _Confirm email_ so invited clients get in straight away.
+2. From Supabase copy: the **Project URL** and **publishable key** (Project Settings → API Keys), and the **Session pooler** connection string (Connect button), with your password filled in.
+3. **tldraw**: get a license key at [tldraw.dev](https://tldraw.dev/pricing) for your domain (e.g. `*.vercel.app`). Without it the board does not load on the public site.
+4. **Vercel**: sign in with GitHub, _Add New → Project_, import this repository, and add the environment variables:
+
+   | Name                                   | Value                            |
+   | -------------------------------------- | -------------------------------- |
+   | `NEXT_PUBLIC_SUPABASE_URL`             | Project URL                      |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | publishable key                  |
+   | `SUPABASE_DB_URL`                      | Session pooler connection string |
+   | `NEXT_PUBLIC_TLDRAW_LICENSE_KEY`       | tldraw key                       |
+
+   Deploy. The `vercel-build` script applies `supabase/migrations` to the database before each build.
+
+5. Open the site and **create your account right away**: the first account becomes the studio, and sign-up closes after it.
+6. In Supabase → Authentication → URL Configuration, set the Site URL to your Vercel address.
+7. On iPhone: open the address in Safari → Share → _Add to Home Screen_.
 
 ### Production checklist
 
 - **tldraw license**: production domains need `NEXT_PUBLIC_TLDRAW_LICENSE_KEY` ([pricing](https://tldraw.dev/pricing)). Without it, the canvas does not load in production. Localhost works without a key.
-- Enable email confirmation and set up SMTP in Supabase Auth.
+- For email confirmation or password-reset emails at volume, set up SMTP in Supabase Auth.
 - Rate-limit `/api/unfurl` at the edge if the app is public.
 
 ## Roles

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getI18n } from "@/lib/i18n/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { logError } from "@/lib/errors";
+import { siteOrigin } from "@/lib/site";
 
 export interface AuthFormState {
   error?: string;
@@ -102,7 +103,7 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
     if (studioExists) return { email, name, error: t("auth.inviteOnlyTitle") };
   }
 
-  const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const origin = await siteOrigin();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
