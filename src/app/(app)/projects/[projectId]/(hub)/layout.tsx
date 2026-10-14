@@ -70,7 +70,7 @@ export default async function ProjectHubLayout({
           <PhaseStepper projectId={project.id} phase={project.phase} canEdit={viewer.isStudio} />
         </div>
 
-        <div className="mb-10">
+        <div className="sm:mb-10">
           <HubTabs
             projectId={project.id}
             isStudio={viewer.isStudio}

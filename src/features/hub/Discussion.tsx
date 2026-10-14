@@ -155,7 +155,7 @@ export function Discussion({
       <form
         ref={formRef}
         onSubmit={send}
-        className="sticky bottom-4 flex items-end gap-2 rounded-[18px] bg-surface p-2 pl-4 shadow-md"
+        className="sticky bottom-[calc(max(12px,env(safe-area-inset-bottom))+72px)] flex sm:bottom-4 items-end gap-2 rounded-[18px] bg-surface p-2 pl-4 shadow-md"
       >
         <textarea
           value={draft}

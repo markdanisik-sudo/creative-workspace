@@ -198,6 +198,14 @@ export const cs: Dictionary = {
     },
   },
   hub: {
+    short: {
+      overview: "Přehled",
+      plan: "Plán",
+      schedule: "Termíny",
+      requests: "Doplňky",
+      discussion: "Diskuze",
+      people: "Lidé",
+    },
     tabs: "Části projektu",
     overview: "Přehled",
     plan: "Plán",

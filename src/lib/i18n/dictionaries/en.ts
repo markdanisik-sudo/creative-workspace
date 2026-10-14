@@ -185,6 +185,14 @@ export const en = {
     },
   },
   hub: {
+    short: {
+      overview: "Overview",
+      plan: "Plan",
+      schedule: "Dates",
+      requests: "Add-ons",
+      discussion: "Chat",
+      people: "People",
+    },
     tabs: "Project sections",
     overview: "Overview",
     plan: "Plan",

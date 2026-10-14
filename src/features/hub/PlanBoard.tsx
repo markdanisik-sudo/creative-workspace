@@ -272,6 +272,7 @@ export function PlanBoard({
   const [tasks, setTasks] = useState(initial);
   const [openId, setOpenId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<Phase | null>(null);
+  const [mobilePhase, setMobilePhase] = useState<Phase>(currentPhase);
   const [, startTransition] = useTransition();
 
   // Server data wins whenever it changes (another person's edit, a refresh).
@@ -319,73 +320,107 @@ export function PlanBoard({
 
   const openTask = tasks.find((task) => task.id === openId) ?? null;
 
+  const renderColumn = (phase: Phase) => {
+    const column = tasks.filter((task) => task.phase === phase).sort(byPosition);
+    const done = column.filter((task) => task.done).length;
+    return (
+      <section
+        key={phase}
+        aria-label={t(`phases.${phase}`)}
+        onDragOver={(event) => {
+          if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
+          event.preventDefault();
+          setDropTarget(phase);
+        }}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node)) setDropTarget(null);
+        }}
+        onDrop={(event) => onDrop(event, phase)}
+        className={cn(
+          "flex min-h-64 flex-col gap-2 rounded-xl bg-surface-muted/70 p-2 transition-[box-shadow,background-color] duration-200",
+          phase === currentPhase && "bg-surface-muted shadow-[inset_0_0_0_1.5px_var(--text)]",
+          dropTarget === phase && "shadow-[inset_0_0_0_2px_var(--focus)]",
+        )}
+      >
+        <header className="flex items-baseline justify-between px-2 pt-1.5 pb-1">
+          <h2 className="text-body font-semibold">{t(`phases.${phase}`)}</h2>
+          <span className="text-caption text-text-secondary tabular-nums">
+            {column.length > 0 ? t("plan.doneCount", { done, total: column.length }) : ""}
+          </span>
+        </header>
+        <ul className="flex flex-col gap-2">
+          {column.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onOpen={() => setOpenId(task.id)}
+              onToggle={() => patch(task.id, { done: !task.done })}
+              onDragStart={(event) => {
+                event.dataTransfer.setData(DRAG_TYPE, task.id);
+                event.dataTransfer.effectAllowed = "move";
+              }}
+            />
+          ))}
+        </ul>
+        <AddTask
+          onAdd={async (title) => {
+            const optimistic: Task = {
+              id: `tmp-${randomUuid()}`,
+              phase,
+              title,
+              notes: null,
+              dueDate: null,
+              done: false,
+              position: (column.at(-1)?.position ?? 0) + 1,
+            };
+            setTasks((current) => [...current, optimistic]);
+            run(() => createTask(projectId, phase, title));
+          }}
+        />
+      </section>
+    );
+  };
+
+  const countFor = (phase: Phase) => tasks.filter((task) => task.phase === phase).length;
+
   return (
     <>
-      <p className="mb-4 hidden text-caption text-text-secondary sm:block">{t("plan.dragHint")}</p>
-      <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0">
-        <div className="grid min-w-[1000px] grid-cols-5 gap-3">
-          {PHASES.map((phase) => {
-            const column = tasks.filter((task) => task.phase === phase).sort(byPosition);
-            const done = column.filter((task) => task.done).length;
-            return (
-              <section
-                key={phase}
-                aria-label={t(`phases.${phase}`)}
-                onDragOver={(event) => {
-                  if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
-                  event.preventDefault();
-                  setDropTarget(phase);
-                }}
-                onDragLeave={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget as Node))
-                    setDropTarget(null);
-                }}
-                onDrop={(event) => onDrop(event, phase)}
-                className={cn(
-                  "flex min-h-64 flex-col gap-2 rounded-xl bg-surface-muted/70 p-2 transition-[box-shadow,background-color] duration-200",
-                  phase === currentPhase &&
-                    "bg-surface-muted shadow-[inset_0_0_0_1.5px_var(--text)]",
-                  dropTarget === phase && "shadow-[inset_0_0_0_2px_var(--focus)]",
-                )}
-              >
-                <header className="flex items-baseline justify-between px-2 pt-1.5 pb-1">
-                  <h2 className="text-body font-semibold">{t(`phases.${phase}`)}</h2>
-                  <span className="text-caption text-text-secondary tabular-nums">
-                    {column.length > 0 ? t("plan.doneCount", { done, total: column.length }) : ""}
-                  </span>
-                </header>
-                <ul className="flex flex-col gap-2">
-                  {column.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onOpen={() => setOpenId(task.id)}
-                      onToggle={() => patch(task.id, { done: !task.done })}
-                      onDragStart={(event) => {
-                        event.dataTransfer.setData(DRAG_TYPE, task.id);
-                        event.dataTransfer.effectAllowed = "move";
-                      }}
-                    />
-                  ))}
-                </ul>
-                <AddTask
-                  onAdd={async (title) => {
-                    const optimistic: Task = {
-                      id: `tmp-${randomUuid()}`,
-                      phase,
-                      title,
-                      notes: null,
-                      dueDate: null,
-                      done: false,
-                      position: (column.at(-1)?.position ?? 0) + 1,
-                    };
-                    setTasks((current) => [...current, optimistic]);
-                    run(() => createTask(projectId, phase, title));
-                  }}
-                />
-              </section>
-            );
-          })}
+      {/* Phone: one phase at a time, picked from a row of chips. */}
+      <div className="sm:hidden">
+        <div
+          role="tablist"
+          aria-label={t("hub.phaseLabel")}
+          className="-mx-4 mb-4 flex gap-1.5 overflow-x-auto px-4 pb-1"
+        >
+          {PHASES.map((phase) => (
+            <button
+              key={phase}
+              type="button"
+              role="tab"
+              aria-selected={mobilePhase === phase}
+              onClick={() => setMobilePhase(phase)}
+              className={cn(
+                "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-body font-medium transition-colors",
+                mobilePhase === phase
+                  ? "bg-ink text-text-inverse"
+                  : "bg-surface text-text-secondary shadow-sm",
+              )}
+            >
+              {t(`phases.${phase}`)}
+              {countFor(phase) > 0 ? (
+                <span className="text-caption tabular-nums opacity-60">{countFor(phase)}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+        {renderColumn(mobilePhase)}
+      </div>
+
+      {/* Larger screens: the whole board, cards drag between phases. */}
+      <div className="hidden sm:block">
+        <p className="mb-4 text-caption text-text-secondary">{t("plan.dragHint")}</p>
+        <div className="overflow-x-auto pb-4">
+          <div className="grid min-w-[1000px] grid-cols-5 gap-3">{PHASES.map(renderColumn)}</div>
         </div>
       </div>
 
