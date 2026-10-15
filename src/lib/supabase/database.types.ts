@@ -419,6 +419,73 @@ export type Database = {
           },
         ];
       };
+      project_images: {
+        Row: {
+          caption: string | null;
+          collection: string;
+          created_at: string;
+          height: number | null;
+          id: string;
+          location_id: string | null;
+          position: number;
+          preview_path: string | null;
+          project_id: string;
+          storage_path: string;
+          uploaded_by: string | null;
+          width: number | null;
+        };
+        Insert: {
+          caption?: string | null;
+          collection: string;
+          created_at?: string;
+          height?: number | null;
+          id?: string;
+          location_id?: string | null;
+          position?: number;
+          preview_path?: string | null;
+          project_id: string;
+          storage_path: string;
+          uploaded_by?: string | null;
+          width?: number | null;
+        };
+        Update: {
+          caption?: string | null;
+          collection?: string;
+          created_at?: string;
+          height?: number | null;
+          id?: string;
+          location_id?: string | null;
+          position?: number;
+          preview_path?: string | null;
+          project_id?: string;
+          storage_path?: string;
+          uploaded_by?: string | null;
+          width?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_images_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "project_locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_images_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_images_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       project_invitations: {
         Row: {
           accepted_at: string | null;
@@ -463,6 +530,63 @@ export type Database = {
           },
           {
             foreignKeyName: "project_invitations_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_locations: {
+        Row: {
+          address: string | null;
+          contact: string | null;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          name: string;
+          notes: string | null;
+          position: number;
+          project_id: string;
+          status: string;
+          updated_at: string;
+        };
+        Insert: {
+          address?: string | null;
+          contact?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name: string;
+          notes?: string | null;
+          position?: number;
+          project_id: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Update: {
+          address?: string | null;
+          contact?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name?: string;
+          notes?: string | null;
+          position?: number;
+          project_id?: string;
+          status?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_locations_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_locations_project_id_fkey";
             columns: ["project_id"];
             isOneToOne: false;
             referencedRelation: "projects";
@@ -642,6 +766,45 @@ export type Database = {
           },
         ];
       };
+      project_workspaces: {
+        Row: {
+          brief: NonNullable<Json>;
+          project_id: string;
+          shot_defaults: NonNullable<Json>;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          brief?: NonNullable<Json>;
+          project_id: string;
+          shot_defaults?: NonNullable<Json>;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          brief?: NonNullable<Json>;
+          project_id?: string;
+          shot_defaults?: NonNullable<Json>;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_workspaces_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_workspaces_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       projects: {
         Row: {
           client_name: string | null;
@@ -717,6 +880,82 @@ export type Database = {
         };
         Relationships: [];
       };
+      shots: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          day_night: string | null;
+          description: string | null;
+          done: boolean;
+          duration_seconds: number | null;
+          id: string;
+          int_ext: string | null;
+          location_id: string | null;
+          notes: string | null;
+          position: number;
+          project_id: string;
+          scene: string | null;
+          specs: NonNullable<Json>;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          day_night?: string | null;
+          description?: string | null;
+          done?: boolean;
+          duration_seconds?: number | null;
+          id?: string;
+          int_ext?: string | null;
+          location_id?: string | null;
+          notes?: string | null;
+          position?: number;
+          project_id: string;
+          scene?: string | null;
+          specs?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          day_night?: string | null;
+          description?: string | null;
+          done?: boolean;
+          duration_seconds?: number | null;
+          id?: string;
+          int_ext?: string | null;
+          location_id?: string | null;
+          notes?: string | null;
+          position?: number;
+          project_id?: string;
+          scene?: string | null;
+          specs?: NonNullable<Json>;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "shots_location_id_fkey";
+            columns: ["location_id"];
+            isOneToOne: false;
+            referencedRelation: "project_locations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shots_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "shots_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       studio_members: {
         Row: {
           created_at: string;
@@ -788,6 +1027,7 @@ export type Database = {
     };
     Functions: {
       accept_invitation: { Args: { invite_token: string }; Returns: string };
+      accept_invitation_by_id: { Args: { invitation_id: string }; Returns: string };
       current_user_is_studio: { Args: Record<PropertyKey, never>; Returns: boolean };
       get_invitation: {
         Args: { invite_token: string };
@@ -796,6 +1036,15 @@ export type Database = {
           invited_by_name: string;
           project_name: string;
           status: string;
+        }[];
+      };
+      my_invitations: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          created_at: string;
+          id: string;
+          invited_by_name: string;
+          project_name: string;
         }[];
       };
       studio_is_set_up: { Args: Record<PropertyKey, never>; Returns: boolean };

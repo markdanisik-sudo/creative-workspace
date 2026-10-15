@@ -366,6 +366,50 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     expect(data).toEqual({ item_count: 2, board_count: 1, open_request_count: 0, phase: "brief" });
   });
 
+  describe("joining from the list of invitations", () => {
+    let invitationId: string;
+    let invitee: Actor;
+
+    beforeAll(async () => {
+      invitee = await createUser(admin);
+      const { data, error } = await studio.client
+        .from("project_invitations")
+        .insert({
+          project_id: projectId,
+          email: invitee.email.toLowerCase(),
+          token_hash: newInviteToken().hash,
+          invited_by: studio.id,
+        })
+        .select("id")
+        .single();
+      if (error) throw error;
+      invitationId = data.id;
+    });
+
+    it("lists an invitation only for the address it was sent to", async () => {
+      const mine = await invitee.client.rpc("my_invitations");
+      expect(mine.data?.map((row) => row.id)).toContain(invitationId);
+      const theirs = await outsider.client.rpc("my_invitations");
+      expect(theirs.data?.map((row) => row.id) ?? []).not.toContain(invitationId);
+    });
+
+    it("refuses someone else's invitation and accepts your own", async () => {
+      const stolen = await outsider.client.rpc("accept_invitation_by_id", {
+        invitation_id: invitationId,
+      });
+      expect(stolen.error).not.toBeNull();
+
+      const joined = await invitee.client.rpc("accept_invitation_by_id", {
+        invitation_id: invitationId,
+      });
+      expect(joined.data).toBe(projectId);
+      const visible = await invitee.client.from("projects").select("id").eq("id", projectId);
+      expect(visible.data).toHaveLength(1);
+      const after = await invitee.client.rpc("my_invitations");
+      expect(after.data?.map((row) => row.id) ?? []).not.toContain(invitationId);
+    });
+  });
+
   it("cascades project deletion", async () => {
     const remove = await studio.client.from("projects").delete().eq("id", projectId);
     expect(remove.error).toBeNull();

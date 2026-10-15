@@ -7,7 +7,8 @@ import { requireViewer } from "@/features/auth/session";
 import { NewProjectButton } from "@/features/projects/NewProjectDialog";
 import { ProjectIndex } from "@/features/projects/ProjectIndex";
 import { listProjects, search } from "@/features/projects/queries";
-import { StartPanel } from "@/features/projects/StartPanel";
+import { StartChoices } from "@/features/projects/StartChoices";
+import { listMyInvitations } from "@/features/people/queries";
 import type { ProjectSummary } from "@/features/projects/types";
 import { WorkCard } from "@/features/projects/WorkCard";
 import type { Translator } from "@/lib/i18n";
@@ -158,26 +159,13 @@ async function ProjectsView({
   isStudio: boolean;
 }) {
   const { t } = i18n;
-  const projects = await listProjects();
+  const [projects, invitations] = await Promise.all([listProjects(), listMyInvitations()]);
 
   if (projects.length === 0) {
     return (
       <>
         <Masthead name={viewerName} projects={projects} i18n={i18n} />
-        {isStudio ? null : (
-          <p className="-mt-8 mb-10 max-w-xl text-callout text-text-secondary">
-            {t("dashboard.clientStartNote")}
-          </p>
-        )}
-        <StartPanel index={1} />
-        <div className="mt-6 flex items-center gap-3 text-body text-text-secondary">
-          {t("dashboard.orBeginWith")}
-          <NewProjectButton
-            variant="secondary"
-            label={t("dashboard.blankProject")}
-            askClient={isStudio}
-          />
-        </div>
+        <StartChoices invitations={invitations} askClient={isStudio} />
       </>
     );
   }
@@ -206,13 +194,15 @@ async function ProjectsView({
           </div>
         </section>
 
-        <StartPanel index={2} />
+        <section aria-label={t("dashboard.startProject")}>
+          <StartChoices invitations={invitations} askClient={isStudio} firstIndex={2} />
+        </section>
 
         {projects.length > RECENT_COUNT || isStudio ? (
           <section aria-label={t("dashboard.allProjects")} className="flex flex-col gap-6">
             <SectionLabel
               label={t("dashboard.allProjects")}
-              index={isStudio ? 3 : 2}
+              index={4}
               aside={<SortSwitch current={sort} t={t} />}
             />
             <ProjectIndex projects={indexed} i18n={i18n} canManage={isStudio} />

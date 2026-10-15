@@ -102,6 +102,19 @@ export const en = {
     menuStatement: "We feel your story.",
   },
   dashboard: {
+    joinLabel: "Join",
+    startTitle: "Start a new project",
+    startBody: "Brief, moodboard, shot list and locations — everything for the shoot in one place.",
+    startCta: "Create project",
+    joinTitle: "Join a project",
+    joinBody: "Pick a project the studio has invited you to.",
+    joinEmpty: "No open invitations for your email yet.",
+    joinInvitedBy: "Invited by {name}",
+    joinAction: "Join",
+    joinCodeLabel: "Have an invitation link or code?",
+    joinCodePlaceholder: "Paste the link or code",
+    joinInvalidCode:
+      "That invitation link or code doesn't work. Check it, or ask the studio for a new one.",
     fromClient: "From client",
     clientStartNote:
       "Start a new project here — the studio sees it straight away. Projects the studio invites you to appear here too.",

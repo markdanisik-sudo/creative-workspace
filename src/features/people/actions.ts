@@ -92,3 +92,45 @@ export async function acceptInvitation(token: string): Promise<ActionResult> {
   }
   redirect(`/projects/${data}`);
 }
+
+/** The token from a pasted invitation link, or the raw code itself. */
+function tokenFromInput(input: string): string | null {
+  const value = input.trim();
+  const match = value.match(/\/invite\/([A-Za-z0-9_-]{20,})/);
+  if (match) return match[1];
+  return /^[A-Za-z0-9_-]{20,}$/.test(value) ? value : null;
+}
+
+/** "Join a project": accept an invitation sent to the viewer's email. */
+export async function joinProject(
+  choice: { invitationId: string } | { code: string },
+): Promise<ActionResult> {
+  const { t } = await getI18n();
+  const supabase = await createSupabaseServerClient();
+  let result;
+  if ("invitationId" in choice) {
+    result = await supabase.rpc("accept_invitation_by_id", { invitation_id: choice.invitationId });
+  } else {
+    const token = tokenFromInput(choice.code);
+    if (!token) return { ok: false, error: t("dashboard.joinInvalidCode") };
+    result = await supabase.rpc("accept_invitation", { invite_token: token });
+  }
+  const { data, error } = result;
+  if (error || !data) {
+    if (error?.message.includes("invitation_email_mismatch")) {
+      const { data: invite } =
+        "code" in choice
+          ? await supabase.rpc("get_invitation", { invite_token: tokenFromInput(choice.code)! })
+          : { data: null };
+      return { ok: false, error: t("invite.emailMismatch", { email: invite?.[0]?.email ?? "" }) };
+    }
+    if (error?.message.includes("invitation_expired"))
+      return { ok: false, error: t("invite.expiredTitle") };
+    if (error?.message.includes("invitation_already_used"))
+      return { ok: false, error: t("invite.acceptedTitle") };
+    logError("people.join", error);
+    return { ok: false, error: t("dashboard.joinInvalidCode") };
+  }
+  revalidatePath("/projects");
+  redirect(`/projects/${data}`);
+}

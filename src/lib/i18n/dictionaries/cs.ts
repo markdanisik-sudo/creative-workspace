@@ -114,6 +114,19 @@ export const cs: Dictionary = {
     menuStatement: "Cítíme váš příběh.",
   },
   dashboard: {
+    joinLabel: "Připojení",
+    startTitle: "Začít nový projekt",
+    startBody: "Brief, moodboard, shot list a lokace — všechno k natáčení na jednom místě.",
+    startCta: "Vytvořit projekt",
+    joinTitle: "Připojit se k projektu",
+    joinBody: "Vyberte projekt, do kterého vás studio pozvalo.",
+    joinEmpty: "Na váš e-mail zatím nečeká žádná pozvánka.",
+    joinInvitedBy: "Pozval/a {name}",
+    joinAction: "Připojit",
+    joinCodeLabel: "Máte odkaz nebo kód z pozvánky?",
+    joinCodePlaceholder: "Vložte odkaz nebo kód",
+    joinInvalidCode:
+      "Tento odkaz nebo kód nefunguje. Zkontrolujte ho, nebo si řekněte studiu o nový.",
     fromClient: "Od klienta",
     clientStartNote:
       "Tady můžete začít nový projekt — studio ho hned uvidí. Objeví se tu i projekty, ke kterým vás studio pozve.",

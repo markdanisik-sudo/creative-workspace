@@ -76,3 +76,21 @@ export function NewProjectButton({
     </>
   );
 }
+
+/** The new-project dialog on its own, for triggers other than the button. */
+export function NewProjectDialog({
+  open,
+  onClose,
+  askClient = true,
+}: {
+  open: boolean;
+  onClose: () => void;
+  askClient?: boolean;
+}) {
+  const { t } = useI18n();
+  return (
+    <Dialog open={open} onClose={onClose} title={t("project.newProjectTitle")}>
+      <NewProjectForm onCancel={onClose} askClient={askClient} />
+    </Dialog>
+  );
+}
