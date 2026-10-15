@@ -8,7 +8,7 @@ import { TextField } from "@/components/ui/Input";
 import { useI18n } from "@/lib/i18n/client";
 import { createProject, type CreateProjectState } from "./actions";
 
-function NewProjectForm({ onCancel }: { onCancel: () => void }) {
+function NewProjectForm({ onCancel, askClient }: { onCancel: () => void; askClient: boolean }) {
   const { t } = useI18n();
   const [state, action, pending] = useActionState<CreateProjectState, FormData>(createProject, {});
   return (
@@ -22,13 +22,15 @@ function NewProjectForm({ onCancel }: { onCancel: () => void }) {
         maxLength={120}
         error={state.error}
       />
-      <TextField
-        label={t("project.clientName")}
-        name="client"
-        placeholder={t("auth.optional")}
-        autoComplete="organization"
-        maxLength={120}
-      />
+      {askClient ? (
+        <TextField
+          label={t("project.clientName")}
+          name="client"
+          placeholder={t("auth.optional")}
+          autoComplete="organization"
+          maxLength={120}
+        />
+      ) : null}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onCancel}>
           {t("common.cancel")}
@@ -45,11 +47,14 @@ export function NewProjectButton({
   variant = "primary",
   label,
   compact = false,
+  askClient = true,
 }: {
   variant?: "primary" | "secondary";
   label?: string;
   /** Icon-only on small screens. */
   compact?: boolean;
+  /** The studio names the client; a client starting a project doesn't. */
+  askClient?: boolean;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -66,7 +71,7 @@ export function NewProjectButton({
         <span className={compact ? "max-sm:sr-only" : undefined}>{text}</span>
       </Button>
       <Dialog open={open} onClose={() => setOpen(false)} title={t("project.newProjectTitle")}>
-        <NewProjectForm onCancel={() => setOpen(false)} />
+        <NewProjectForm onCancel={() => setOpen(false)} askClient={askClient} />
       </Dialog>
     </>
   );

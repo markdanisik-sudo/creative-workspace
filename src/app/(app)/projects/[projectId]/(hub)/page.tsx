@@ -6,7 +6,7 @@ import { requireViewer } from "@/features/auth/session";
 import { BoardGrid } from "@/features/boards/BoardGrid";
 import { EventDate } from "@/features/hub/EventDate";
 import { getProjectDetails, listComments, listEvents, listRequests } from "@/features/hub/queries";
-import { listBoards } from "@/features/projects/queries";
+import { getProject, listBoards } from "@/features/projects/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { formatEdited } from "@/lib/format";
 
@@ -47,14 +47,17 @@ function SideCard({
 
 export default async function ProjectOverviewPage({ params }: PageProps<"/projects/[projectId]">) {
   const { projectId } = await params;
-  const [viewer, i18n, boards, events, requests, comments] = await Promise.all([
+  const [viewer, i18n, boards, events, requests, comments, summary] = await Promise.all([
     requireViewer(),
     getI18n(),
     listBoards(projectId),
     listEvents(projectId),
     listRequests(projectId),
     listComments(projectId, 3),
+    getProject(projectId),
   ]);
+  // The studio, or the client who started this project, manages its boards.
+  const canManageBoards = viewer.isStudio || summary?.ownerId === viewer.id;
   const { t, locale } = i18n;
   const base = `/projects/${projectId}`;
   const startOfToday = new Date(new Date().toDateString()).getTime();
@@ -67,7 +70,7 @@ export default async function ProjectOverviewPage({ params }: PageProps<"/projec
     <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
       <section className="flex flex-col gap-6" aria-label={t("project.boards")}>
         <SectionLabel label={t("project.boards")} index={1} />
-        <BoardGrid projectId={projectId} boards={boards} canManage={viewer.isStudio} />
+        <BoardGrid projectId={projectId} boards={boards} canManage={canManageBoards} />
       </section>
 
       <aside className="flex flex-col gap-3 lg:pt-10">

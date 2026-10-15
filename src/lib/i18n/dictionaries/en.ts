@@ -102,6 +102,9 @@ export const en = {
     menuStatement: "We feel your story.",
   },
   dashboard: {
+    fromClient: "From client",
+    clientStartNote:
+      "Start a new project here — the studio sees it straight away. Projects the studio invites you to appear here too.",
     title: "Projects",
     greeting: "Good to see you, {name}.",
     greetingActive: "Pick up where you left off.",

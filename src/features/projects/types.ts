@@ -23,6 +23,9 @@ export interface ProjectSummary {
   coverUrl: string | null;
   nextEventAt: string | null;
   openRequestCount: number;
+  ownerId: string | null;
+  /** Started by a client rather than the studio. */
+  createdByClient: boolean;
 }
 
 export interface BoardSummary {

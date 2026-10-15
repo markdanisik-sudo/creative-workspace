@@ -90,13 +90,83 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     expect(data).toHaveLength(1);
   });
 
-  it("only lets the studio create projects", async () => {
-    const insert = await outsider.client.from("projects").insert({ name: "Nope" });
-    expect(insert.error).not.toBeNull();
+  it("lets people create only projects they own", async () => {
     const spoof = await outsider.client
       .from("projects")
       .insert({ name: "spoof", owner_id: studio.id });
     expect(spoof.error).not.toBeNull();
+  });
+
+  describe("projects started by a client", () => {
+    let ownProjectId: string;
+
+    beforeAll(async () => {
+      const project = await outsider.client
+        .from("projects")
+        .insert({ name: "Client brief" })
+        .select()
+        .single();
+      if (project.error) throw project.error;
+      ownProjectId = project.data.id;
+    });
+
+    it("makes the client a member and shows the project to the studio", async () => {
+      const membership = await outsider.client
+        .from("project_members")
+        .select("user_id")
+        .eq("project_id", ownProjectId);
+      expect(membership.data).toEqual([{ user_id: outsider.id }]);
+
+      const seen = await studio.client
+        .from("project_summaries")
+        .select("id, created_by_client")
+        .eq("id", ownProjectId)
+        .single();
+      expect(seen.data).toEqual({ id: ownProjectId, created_by_client: true });
+
+      const studioOwn = await studio.client
+        .from("project_summaries")
+        .select("created_by_client")
+        .eq("id", projectId)
+        .single();
+      expect(studioOwn.data?.created_by_client).toBe(false);
+    });
+
+    it("keeps it private from other clients", async () => {
+      const other = await client.client.from("projects").select("id").eq("id", ownProjectId);
+      expect(other.data).toEqual([]);
+    });
+
+    it("lets the client manage boards in their own project only", async () => {
+      const board = await outsider.client
+        .from("boards")
+        .insert({ project_id: ownProjectId, name: "Ideas" })
+        .select()
+        .single();
+      expect(board.error).toBeNull();
+      const rename = await outsider.client
+        .from("boards")
+        .update({ name: "References" })
+        .eq("id", board.data!.id)
+        .select();
+      expect(rename.data).toHaveLength(1);
+
+      const intoStudioProject = await outsider.client
+        .from("boards")
+        .insert({ project_id: projectId, name: "Nope" });
+      expect(intoStudioProject.error).not.toBeNull();
+    });
+
+    it("leaves deleting the project to the studio", async () => {
+      const removed = await outsider.client
+        .from("projects")
+        .delete()
+        .eq("id", ownProjectId)
+        .select();
+      expect(removed.data ?? []).toEqual([]);
+      const still = await studio.client.from("projects").select("id").eq("id", ownProjectId);
+      expect(still.data).toHaveLength(1);
+    });
   });
 
   it("hides projects from people who are not invited", async () => {

@@ -37,7 +37,14 @@ export function WorkCard({
           </p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <PhaseBadge phase={project.phase} t={t} />
+          <div className="flex items-center gap-1.5">
+            {canManage && project.createdByClient ? (
+              <span className="rounded-full bg-ink px-2 py-0.5 text-[11px] font-semibold text-text-inverse">
+                {t("dashboard.fromClient")}
+              </span>
+            ) : null}
+            <PhaseBadge phase={project.phase} t={t} />
+          </div>
           <span className="text-[11px] text-text-tertiary">
             {formatEdited(project.updatedAt, locale)}
           </span>

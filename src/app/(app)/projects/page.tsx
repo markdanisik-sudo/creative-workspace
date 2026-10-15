@@ -164,22 +164,20 @@ async function ProjectsView({
     return (
       <>
         <Masthead name={viewerName} projects={projects} i18n={i18n} />
-        {isStudio ? (
-          <>
-            <StartPanel index={1} />
-            <div className="mt-6 flex items-center gap-3 text-body text-text-secondary">
-              {t("dashboard.orBeginWith")}
-              <NewProjectButton variant="secondary" label={t("dashboard.blankProject")} />
-            </div>
-          </>
-        ) : (
-          <section className="flex flex-col items-start gap-3 border-t border-border-strong pt-8">
-            <h2 className="text-headline font-medium">{t("dashboard.clientEmptyTitle")}</h2>
-            <p className="max-w-md text-callout text-text-secondary">
-              {t("dashboard.clientEmptyBody")}
-            </p>
-          </section>
+        {isStudio ? null : (
+          <p className="-mt-8 mb-10 max-w-xl text-callout text-text-secondary">
+            {t("dashboard.clientStartNote")}
+          </p>
         )}
+        <StartPanel index={1} />
+        <div className="mt-6 flex items-center gap-3 text-body text-text-secondary">
+          {t("dashboard.orBeginWith")}
+          <NewProjectButton
+            variant="secondary"
+            label={t("dashboard.blankProject")}
+            askClient={isStudio}
+          />
+        </div>
       </>
     );
   }
@@ -208,7 +206,7 @@ async function ProjectsView({
           </div>
         </section>
 
-        {isStudio ? <StartPanel index={2} /> : null}
+        <StartPanel index={2} />
 
         {projects.length > RECENT_COUNT || isStudio ? (
           <section aria-label={t("dashboard.allProjects")} className="flex flex-col gap-6">
@@ -233,7 +231,10 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
 
   return (
     <div className="min-h-dvh">
-      <AppHeader viewer={viewer} actions={viewer.isStudio ? <NewProjectButton compact /> : null} />
+      <AppHeader
+        viewer={viewer}
+        actions={<NewProjectButton compact askClient={viewer.isStudio} />}
+      />
       <main className="mx-auto max-w-[1272px] px-4 pb-32 sm:px-8">
         {query ? (
           <SearchResultsView query={query} i18n={i18n} canManage={viewer.isStudio} />

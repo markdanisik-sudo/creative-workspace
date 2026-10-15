@@ -56,7 +56,9 @@ export default async function ProjectHubLayout({
               <br />
               {t("project.lastEdit", { when: formatEdited(summary.updatedAt, locale) })}
             </p>
-            {viewer.isStudio ? <ProjectDetailsButton project={project} /> : null}
+            {viewer.isStudio || summary.ownerId === viewer.id ? (
+              <ProjectDetailsButton project={project} />
+            ) : null}
           </div>
         </header>
 

@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { STORAGE_BUCKET } from "@/lib/supabase/env";
 import { logError, type ActionResult } from "@/lib/errors";
-import { isBoardTemplateId, templateBoardName } from "@/features/boards/templates";
+import { isBoardTemplateId, templateBoardName, templateName } from "@/features/boards/templates";
+import { requireViewer } from "@/features/auth/session";
 import { getI18n } from "@/lib/i18n/server";
 
 const MAX_NAME_LENGTH = 120;
@@ -33,8 +34,17 @@ export async function createProject(
 ): Promise<CreateProjectState> {
   const { t } = await getI18n();
   const supabase = await createSupabaseServerClient();
-  const name = cleanName(formData.get("name"), t("project.untitled"));
-  const clientName = cleanName(formData.get("client"), "") || null;
+  const template = formData.get("template");
+  const useTemplate = isBoardTemplateId(template) && template !== "blank";
+  // Started from a template without a name: call it after the template.
+  const name = cleanName(
+    formData.get("name"),
+    useTemplate ? templateName(template, t) : t("project.untitled"),
+  );
+  const viewer = await requireViewer();
+  // A project a client starts is labelled with their name for the studio.
+  const clientName =
+    cleanName(formData.get("client"), "") || (viewer.isStudio ? null : viewer.displayName);
 
   const project = await supabase
     .from("projects")
@@ -46,8 +56,6 @@ export async function createProject(
     return { error: t("errors.generic") };
   }
 
-  const template = formData.get("template");
-  const useTemplate = isBoardTemplateId(template) && template !== "blank";
   const board = await supabase
     .from("boards")
     .insert({

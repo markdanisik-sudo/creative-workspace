@@ -24,6 +24,8 @@ type SummaryRow = {
   phase: string | null;
   next_event_at: string | null;
   open_request_count: number | null;
+  owner_id: string | null;
+  created_by_client: boolean | null;
 };
 
 async function toProjectSummaries(rows: SummaryRow[]): Promise<ProjectSummary[]> {
@@ -47,6 +49,8 @@ async function toProjectSummaries(rows: SummaryRow[]): Promise<ProjectSummary[]>
             phase: isPhase(row.phase) ? row.phase : "brief",
             nextEventAt: row.next_event_at,
             openRequestCount: row.open_request_count ?? 0,
+            ownerId: row.owner_id,
+            createdByClient: row.created_by_client ?? false,
           },
         ]
       : [],
@@ -54,7 +58,7 @@ async function toProjectSummaries(rows: SummaryRow[]): Promise<ProjectSummary[]>
 }
 
 const SUMMARY_COLUMNS =
-  "id, name, description, updated_at, item_count, board_count, cover_path, client_name, phase, next_event_at, open_request_count";
+  "id, name, description, updated_at, item_count, board_count, cover_path, client_name, phase, next_event_at, open_request_count, owner_id, created_by_client";
 
 export async function listProjects(): Promise<ProjectSummary[]> {
   const supabase = await createSupabaseServerClient();

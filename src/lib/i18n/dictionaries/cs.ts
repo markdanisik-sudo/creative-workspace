@@ -114,6 +114,9 @@ export const cs: Dictionary = {
     menuStatement: "Cítíme váš příběh.",
   },
   dashboard: {
+    fromClient: "Od klienta",
+    clientStartNote:
+      "Tady můžete začít nový projekt — studio ho hned uvidí. Objeví se tu i projekty, ke kterým vás studio pozve.",
     title: "Projekty",
     greeting: "Rádi vás vidíme, {name}.",
     greetingActive: "Pokračujte, kde jste skončili.",

@@ -35,6 +35,9 @@ export function ProjectIndex({
               {project.clientName ? `${project.clientName} · ` : ""}
               {t(`phases.${project.phase}`)} · {tp("plural.board", project.boardCount)} ·{" "}
               {formatEdited(project.updatedAt, locale)}
+              {canManage && project.createdByClient ? (
+                <span className="font-semibold text-text"> · {t("dashboard.fromClient")}</span>
+              ) : null}
             </span>
           </div>
           {canManage ? (

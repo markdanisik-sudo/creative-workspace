@@ -740,6 +740,7 @@ export type Database = {
           client_name: string | null;
           cover_path: string | null;
           created_at: string | null;
+          created_by_client: boolean | null;
           description: string | null;
           id: string | null;
           item_count: number | null;
@@ -755,6 +756,7 @@ export type Database = {
           client_name?: string | null;
           cover_path?: never;
           created_at?: string | null;
+          created_by_client?: never;
           description?: string | null;
           id?: string | null;
           item_count?: never;
@@ -770,6 +772,7 @@ export type Database = {
           client_name?: string | null;
           cover_path?: never;
           created_at?: string | null;
+          created_by_client?: never;
           description?: string | null;
           id?: string | null;
           item_count?: never;
