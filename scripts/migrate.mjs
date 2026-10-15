@@ -4,8 +4,17 @@
 // Vercel ↔ Supabase integration sets. Skipped when none is set.
 import { execFileSync } from "node:child_process";
 
+// The integration may prefix its names (e.g. STORAGE_URL_NON_POOLING).
+const byPattern = (pattern) =>
+  Object.keys(process.env)
+    .filter((name) => pattern.test(name) && /^postgres(ql)?:\/\//.test(process.env[name] ?? ""))
+    .map((name) => process.env[name])[0];
 const dbUrl =
-  process.env.SUPABASE_DB_URL || process.env.POSTGRES_URL_NON_POOLING || process.env.POSTGRES_URL;
+  process.env.SUPABASE_DB_URL ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  byPattern(/_URL_NON_POOLING$/) ||
+  process.env.POSTGRES_URL ||
+  byPattern(/_URL$/);
 if (!dbUrl) {
   console.log("▸ No database connection string is set; skipping database migrations.");
   process.exit(0);
