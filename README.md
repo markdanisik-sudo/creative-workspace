@@ -29,6 +29,10 @@ Prefer to do it by hand? `npx supabase start`, copy the URL and publishable key 
 
 No terminal needed; every push to the repository then redeploys automatically.
 
+**Shortest way:** import the repository in Vercel, then in the project's _Storage_ tab create a **Supabase** database and connect it. The integration sets the Supabase URL, key and `POSTGRES_*` connection strings; the build applies the migrations with them. Redeploy, then continue with steps 3, 5–7 below (and turn off _Confirm email_ in Supabase, step 1).
+
+**Manual way:**
+
 1. **Supabase**: create a project (region Frankfurt; a database password with letters and digits only). Under Authentication → Sign In / Providers → Email, turn off _Confirm email_ so invited clients get in straight away.
 2. From Supabase copy: the **Project URL** and **publishable key** (Project Settings → API Keys), and the **Session pooler** connection string (Connect button), with your password filled in.
 3. **tldraw**: get a license key at [tldraw.dev](https://tldraw.dev/pricing) for your domain (e.g. `*.vercel.app`). Without it the board does not load on the public site.
