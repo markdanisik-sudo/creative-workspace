@@ -410,6 +410,72 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     });
   });
 
+  describe("production workspace", () => {
+    it("lets members write the brief, shots and locations together", async () => {
+      const brief = await client.client
+        .from("project_workspaces")
+        .upsert(
+          { project_id: projectId, brief: { goal: "Autumn film" } },
+          { onConflict: "project_id" },
+        );
+      expect(brief.error).toBeNull();
+      const edit = await studio.client
+        .from("project_workspaces")
+        .update({ shot_defaults: { camera: "ARRI Alexa 35" } })
+        .eq("project_id", projectId)
+        .select("brief");
+      expect(edit.data?.[0]?.brief).toEqual({ goal: "Autumn film" });
+
+      const location = await client.client
+        .from("project_locations")
+        .insert({ project_id: projectId, name: "Rooftop" })
+        .select("id")
+        .single();
+      expect(location.error).toBeNull();
+      const shot = await client.client
+        .from("shots")
+        .insert({ project_id: projectId, location_id: location.data!.id, specs: { size: "CU" } })
+        .select("id")
+        .single();
+      expect(shot.error).toBeNull();
+      const done = await studio.client
+        .from("shots")
+        .update({ done: true })
+        .eq("id", shot.data!.id)
+        .select("done");
+      expect(done.data).toEqual([{ done: true }]);
+    });
+
+    it("keeps outsiders out of the workspace", async () => {
+      const brief = await outsider.client
+        .from("project_workspaces")
+        .select("brief")
+        .eq("project_id", projectId);
+      const shots = await outsider.client.from("shots").select("id").eq("project_id", projectId);
+      expect(brief.data).toEqual([]);
+      expect(shots.data).toEqual([]);
+      const write = await outsider.client
+        .from("shots")
+        .insert({ project_id: projectId, description: "nope" });
+      expect(write.error).not.toBeNull();
+    });
+
+    it("only records images from the uploader's own folder", async () => {
+      const own = await client.client.from("project_images").insert({
+        project_id: projectId,
+        collection: "moodboard",
+        storage_path: `${client.id}/${projectId}/images/a.jpg`,
+      });
+      expect(own.error).toBeNull();
+      const spoofed = await client.client.from("project_images").insert({
+        project_id: projectId,
+        collection: "moodboard",
+        storage_path: `${studio.id}/${projectId}/images/b.jpg`,
+      });
+      expect(spoofed.error).not.toBeNull();
+    });
+  });
+
   it("cascades project deletion", async () => {
     const remove = await studio.client.from("projects").delete().eq("id", projectId);
     expect(remove.error).toBeNull();
