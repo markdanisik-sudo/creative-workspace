@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { describeError, fail, ok, type Result } from "@/lib/result";
-import { createSupabaseServerClient, requireUser } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/session";
+import { getStore, StoreError } from "@/lib/store";
 import { cleanParty } from "@/lib/validate";
 
 export async function saveContact(
@@ -23,22 +24,31 @@ export async function saveContact(
     email: party.email ?? null,
     phone: party.phone ?? null,
   };
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = id
-    ? await supabase.from("contacts").update(values).eq("id", id).select("id").single()
-    : await supabase.from("contacts").insert(values).select("id").single();
-  if (error || !data) {
-    return fail(error?.code === "23505" ? "Kontakt s tímto IČO už máš." : describeError(error));
+  const store = await getStore();
+  try {
+    if (id) {
+      if (!(await store.updateContact(id, values))) return fail("Kontakt neexistuje.");
+    } else {
+      id = await store.insertContact(values);
+    }
+  } catch (error) {
+    if (error instanceof StoreError && error.code === "23505") {
+      return fail("Kontakt s tímto IČO už máš.");
+    }
+    return fail(describeError(error));
   }
   revalidatePath("/", "layout");
-  return ok({ id: data.id });
+  return ok({ id });
 }
 
 export async function deleteContact(id: string): Promise<Result> {
   await requireUser();
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.from("contacts").delete().eq("id", id).select("id");
-  if (error || !data?.length) return fail(describeError(error ?? { code: "42501" }));
+  try {
+    if (!(await (await getStore()).deleteContact(id)))
+      return fail(describeError({ code: "42501" }));
+  } catch (error) {
+    return fail(describeError(error));
+  }
   revalidatePath("/", "layout");
   return ok(undefined);
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Logo } from "@/components/app/Logo";
 import { TabBar, TopNav } from "@/components/app/Nav";
 import { ToastProvider } from "@/components/ui/Toast";
-import { requireUser } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/session";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   await requireUser();

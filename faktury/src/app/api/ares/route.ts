@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/session";
 
 /**
  * Company details from ARES (the Czech business register) by IČO, so a

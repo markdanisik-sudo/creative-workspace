@@ -1,13 +1,13 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { cache } from "react";
 import type { Database } from "./database.types";
-import { supabaseKey, supabaseUrl } from "./env";
+import { assertSupabaseConfigured, supabaseKey, supabaseUrl } from "./env";
 
 /** Server client bound to the request's auth cookies. */
 export async function createSupabaseServerClient() {
+  assertSupabaseConfigured();
   const cookieStore = await cookies();
 
   return createServerClient<Database>(supabaseUrl, supabaseKey, {
@@ -47,10 +47,3 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (error || !claims?.sub) return null;
   return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null };
 });
-
-/** For pages and actions: the signed-in user, or a redirect to sign in. */
-export async function requireUser(): Promise<CurrentUser> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/sign-in");
-  return user;
-}

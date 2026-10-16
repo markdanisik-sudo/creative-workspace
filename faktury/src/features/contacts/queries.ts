@@ -1,25 +1,7 @@
 import "server-only";
 import { cache } from "react";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getStore } from "@/lib/store";
 
-export interface Contact {
-  id: string;
-  name: string;
-  street: string | null;
-  city: string | null;
-  zip: string | null;
-  country: string;
-  ico: string | null;
-  dic: string | null;
-  email: string | null;
-  phone: string | null;
-}
+export type { Contact } from "@/lib/store/types";
 
-export const listContacts = cache(async (): Promise<Contact[]> => {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
-    .from("contacts")
-    .select("id, name, street, city, zip, country, ico, dic, email, phone")
-    .order("name");
-  return data ?? [];
-});
+export const listContacts = cache(async () => (await getStore()).listContacts());

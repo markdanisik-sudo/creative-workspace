@@ -1,0 +1,95 @@
+name: Faktury for Mac
+
+# Builds Faktury.dmg on a Mac and publishes it as the "faktury-mac" release,
+# so the latest version is always at
+# https://github.com/<owner>/<repo>/releases/tag/faktury-mac
+
+on:
+  push:
+    branches: [claude/creative-visual-workspace-qcg56n]
+    paths: ["faktury/**", ".github/workflows/faktury-mac.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: faktury-mac
+  cancel-in-progress: true
+
+jobs:
+  dmg:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: faktury
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            faktury/package-lock.json
+            faktury/desktop/package-lock.json
+
+      - name: Install
+        run: |
+          npm ci
+          npm ci --prefix desktop
+
+      - name: Check
+        run: |
+          npx next typegen
+          npx tsc --noEmit
+          npx vitest run src
+
+      - name: Build the app's server
+        run: node scripts/build-desktop-server.mjs
+
+      - name: Build Faktury.dmg
+        working-directory: faktury/desktop
+        run: npx electron-builder --mac dmg --universal --publish never
+
+      - name: Smoke test (the packaged server, run by the app's own runtime)
+        working-directory: faktury/desktop
+        run: |
+          APP="dist/mac-universal/Faktury.app"
+          test -f "$APP/Contents/Resources/server/server.js"
+          test -d "$APP/Contents/Resources/server/node_modules/next"
+          codesign --verify --deep --strict "$APP"
+          DATA="$(mktemp -d)"
+          ELECTRON_RUN_AS_NODE=1 NODE_ENV=production PORT=4123 HOSTNAME=127.0.0.1 \
+            FAKTURY_STORE=local FAKTURY_DB="$DATA/faktury.sqlite" FAKTURY_LOCAL_TOKEN=ci \
+            "$APP/Contents/MacOS/Faktury" "$APP/Contents/Resources/server/server.js" > "$DATA/server.log" 2>&1 &
+          for i in $(seq 1 60); do curl -s -o /dev/null http://127.0.0.1:4123/ && break; sleep 1; done
+          for page in / /faktury /kontakty /nastaveni /import /faktury/nova; do
+            status=$(curl -s -o /dev/null -w "%{http_code}" -b "faktury_token=ci" "http://127.0.0.1:4123$page")
+            echo "$page $status"
+            test "$status" = 200 || { cat "$DATA/server.log"; exit 1; }
+          done
+          test "$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4123/)" = 403
+          test -f "$DATA/faktury.sqlite"
+          kill %1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Faktury-dmg
+          path: faktury/desktop/dist/Faktury.dmg
+
+      - name: Publish the "faktury-mac" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: faktury/desktop
+        run: |
+          gh release delete faktury-mac --yes --cleanup-tag || true
+          gh release create faktury-mac dist/Faktury.dmg \
+            --target "$GITHUB_SHA" \
+            --title "Faktury pro Mac" \
+            --notes "Stáhni **Faktury.dmg**, otevři ho a přetáhni Faktury do složky Aplikace.
+
+          Při prvním spuštění macOS napíše, že aplikaci nemůže ověřit (není podepsaná placeným certifikátem Apple). Otevři **Nastavení systému → Soukromí a zabezpečení**, sjeď dolů a klikni na **Přesto otevřít**. Stačí jednou.
+
+          Data jsou jen v tomto Macu (~/Library/Application Support/Faktury). Zálohu uděláš v aplikaci: Nastavení → Zálohovat."

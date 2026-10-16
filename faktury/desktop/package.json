@@ -1,0 +1,54 @@
+{
+  "name": "faktury-desktop",
+  "productName": "Faktury",
+  "version": "1.0.0",
+  "description": "Fakturace, přehled příjmů a ISDOC — data v tomto Macu.",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "dist": "electron-builder --mac dmg --universal --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.8.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "cz.mstudiolab.faktury",
+    "productName": "Faktury",
+    "copyright": "m.studio.lab",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs"
+    ],
+    "extraResources": [
+      {
+        "from": "../.next/standalone",
+        "to": "server",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "afterPack": "./after-pack.cjs",
+    "mac": {
+      "category": "public.app-category.finance",
+      "icon": "icon.png",
+      "identity": null,
+      "hardenedRuntime": false,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "Faktury",
+      "artifactName": "Faktury.dmg"
+    }
+  }
+}

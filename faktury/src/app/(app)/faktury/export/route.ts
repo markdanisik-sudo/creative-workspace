@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { listInvoices } from "@/features/invoices/queries";
 import { buildIsdoc } from "@/lib/isdoc/build";
 import { isdocFileName } from "@/lib/isdoc/filename";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/session";
 
 /** Every invoice of a year (or all) as ISDOC files in one ZIP, for the accountant. */
 export async function GET(request: NextRequest) {

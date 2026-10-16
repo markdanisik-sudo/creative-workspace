@@ -59,6 +59,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // This app lives in a folder of a larger repository; it is its own root.
+  turbopack: { root: import.meta.dirname },
+  outputFileTracingRoot: import.meta.dirname,
+  // The Mac app runs a self-contained server (see desktop/).
+  ...(process.env.FAKTURY_DESKTOP_BUILD
+    ? { output: "standalone" as const, images: { unoptimized: true } }
+    : {}),
   poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

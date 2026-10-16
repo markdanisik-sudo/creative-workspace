@@ -3,8 +3,12 @@ import type { ReactNode } from "react";
 import { BusinessForm } from "@/features/business/BusinessForm";
 import { getBusiness } from "@/features/business/queries";
 import { signOut, signOutEverywhere } from "@/features/auth/actions";
+import { RestoreBackup } from "@/features/backup/RestoreBackup";
 import { TwoFactorSettings } from "@/features/security/TwoFactorSettings";
-import { createSupabaseServerClient, requireUser } from "@/lib/supabase/server";
+import { isLocal } from "@/lib/mode";
+import { requireUser } from "@/lib/session";
+import { databasePath } from "@/lib/store/path";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Nastavení" };
 
@@ -31,9 +35,13 @@ function Section({
 export default async function SettingsPage({ searchParams }: PageProps<"/nastaveni">) {
   const { vitej } = await searchParams;
   const [user, business] = await Promise.all([requireUser(), getBusiness()]);
-  const supabase = await createSupabaseServerClient();
-  const { data: factors } = await supabase.auth.mfa.listFactors();
-  const factor = factors?.totp.find((item) => item.status === "verified") ?? null;
+  const local = isLocal();
+  let factorId: string | null = null;
+  if (!local) {
+    const supabase = await createSupabaseServerClient();
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    factorId = factors?.totp.find((item) => item.status === "verified")?.id ?? null;
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -50,56 +58,85 @@ export default async function SettingsPage({ searchParams }: PageProps<"/nastave
       >
         <BusinessForm business={business} />
       </Section>
-      <Section title="Zabezpečení" description={`Přihlášen jako ${user.email ?? ""}`}>
-        <div className="flex flex-col gap-6">
-          <TwoFactorSettings enabledFactorId={factor?.id ?? null} />
-          <div className="flex flex-wrap gap-2 border-t border-border pt-5">
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="h-9 rounded-full bg-surface-muted px-4 text-body font-medium hover:bg-surface-pressed"
-              >
-                Odhlásit se
-              </button>
-            </form>
-            <form action={signOutEverywhere}>
-              <button
-                type="submit"
-                className="h-9 rounded-full px-4 text-body font-medium text-danger hover:bg-danger-surface"
-              >
-                Odhlásit na všech zařízeních
-              </button>
-            </form>
-          </div>
-        </div>
-      </Section>
+      {!local ? (
+        <>
+          <Section title="Zabezpečení" description={`Přihlášen jako ${user.email ?? ""}`}>
+            <div className="flex flex-col gap-6">
+              <TwoFactorSettings enabledFactorId={factorId} />
+              <div className="flex flex-wrap gap-2 border-t border-border pt-5">
+                <form action={signOut}>
+                  <button
+                    type="submit"
+                    className="h-9 rounded-full bg-surface-muted px-4 text-body font-medium hover:bg-surface-pressed"
+                  >
+                    Odhlásit se
+                  </button>
+                </form>
+                <form action={signOutEverywhere}>
+                  <button
+                    type="submit"
+                    className="h-9 rounded-full px-4 text-body font-medium text-danger hover:bg-danger-surface"
+                  >
+                    Odhlásit na všech zařízeních
+                  </button>
+                </form>
+              </div>
+            </div>
+          </Section>
+          <Section
+            title="Aplikace"
+            description="Faktury se instalují jako samostatná aplikace — bez App Storu."
+          >
+            <ul className="flex flex-col gap-3 text-body text-text-secondary">
+              <li>
+                <b className="text-text">Mac (Safari):</b> Soubor → Přidat do Docku. Aplikace se
+                otevře ve vlastním okně a najdeš ji v Launchpadu.
+              </li>
+              <li>
+                <b className="text-text">Mac / Windows (Chrome):</b> ikona instalace vpravo v
+                adresním řádku → Instalovat.
+              </li>
+              <li>
+                <b className="text-text">iPhone:</b> v Safari Sdílet → Přidat na plochu.
+              </li>
+            </ul>
+          </Section>
+        </>
+      ) : null}
       <Section
-        title="Aplikace"
-        description="Faktury se instalují jako samostatná aplikace — bez App Storu."
+        title="Data"
+        description={local ? "Faktury jsou uložené jen v tomto Macu." : "Pro účetní nebo zálohu."}
       >
-        <ul className="flex flex-col gap-3 text-body text-text-secondary">
-          <li>
-            <b className="text-text">Mac (Safari):</b> Soubor → Přidat do Docku. Aplikace se otevře
-            ve vlastním okně a najdeš ji v Launchpadu.
-          </li>
-          <li>
-            <b className="text-text">Mac / Windows (Chrome):</b> ikona instalace vpravo v adresním
-            řádku → Instalovat.
-          </li>
-          <li>
-            <b className="text-text">iPhone:</b> v Safari Sdílet → Přidat na plochu.
-          </li>
-        </ul>
-      </Section>
-      <Section title="Data" description="Pro účetní nebo zálohu.">
-        {/* A file download (ZIP), not a page. */}
-        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a
-          href="/faktury/export"
-          className="inline-flex h-9 items-center rounded-full bg-surface-muted px-4 text-body font-medium hover:bg-surface-pressed"
-        >
-          Stáhnout všechny faktury (ISDOC v ZIPu)
-        </a>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap gap-2">
+            {/* File downloads, not pages. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a
+              href="/faktury/export"
+              className="inline-flex h-9 items-center rounded-full bg-surface-muted px-4 text-body font-medium hover:bg-surface-pressed"
+            >
+              Stáhnout všechny faktury (ISDOC v ZIPu)
+            </a>
+            {local ? (
+              <a
+                href="/zaloha"
+                className="inline-flex h-9 items-center rounded-full bg-ink px-4 text-body font-medium text-text-inverse hover:bg-ink-hover"
+              >
+                Zálohovat
+              </a>
+            ) : null}
+          </div>
+          {local ? (
+            <>
+              <p className="text-body text-text-secondary">
+                Záloha je jeden soubor se vším — fakturami, kontakty i nastavením. Ulož si ho třeba
+                do iCloudu. Data se zálohují i Time Machinem.
+              </p>
+              <RestoreBackup />
+              <p className="text-caption break-all text-text-tertiary">{databasePath()}</p>
+            </>
+          ) : null}
+        </div>
       </Section>
     </div>
   );

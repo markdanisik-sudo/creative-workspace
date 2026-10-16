@@ -3,7 +3,7 @@ import { getInvoice } from "@/features/invoices/queries";
 import { isUuid } from "@/lib/ids";
 import { buildIsdoc } from "@/lib/isdoc/build";
 import { isdocFileName } from "@/lib/isdoc/filename";
-import { getCurrentUser } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/session";
 
 /** Downloads the invoice as ISDOC (for the accountant or accounting software). */
 export async function GET(_: Request, { params }: RouteContext<"/faktury/[id]/isdoc">) {
