@@ -4,13 +4,28 @@ import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/app/AppHeader";
 import { requireViewer } from "@/features/auth/session";
 import { HubTabs } from "@/features/hub/HubTabs";
-import { PhaseStepper } from "@/features/hub/PhaseStepper";
+import { PhaseStepper, type PhaseProgress } from "@/features/hub/PhaseStepper";
 import { ProjectDetailsButton } from "@/features/hub/ProjectDetailsButton";
-import { getProjectDetails } from "@/features/hub/queries";
+import { getProjectDetails, listTasks } from "@/features/hub/queries";
+import { listShotChecks, type ShotCheck } from "@/features/workspace/queries";
+import type { Task } from "@/features/hub/types";
+import { PHASES } from "@/features/projects/types";
 import { getProject } from "@/features/projects/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { formatEdited } from "@/lib/format";
 import { isUuid } from "@/lib/ids";
+
+/** Done / total checklist items per phase (production also counts shots). */
+function phaseProgress(tasks: Task[], shots: ShotCheck[]): PhaseProgress {
+  const progress = Object.fromEntries(
+    PHASES.map((phase) => {
+      const items = tasks.filter((task) => task.phase === phase).map((task) => task.done);
+      if (phase === "production") items.push(...shots.map((shot) => shot.done));
+      return [phase, { done: items.filter(Boolean).length, total: items.length }];
+    }),
+  ) as PhaseProgress;
+  return progress;
+}
 
 /** Shared chrome for every section of a job: title, phase track and tabs. */
 export default async function ProjectHubLayout({
@@ -20,11 +35,13 @@ export default async function ProjectHubLayout({
   const { projectId } = await params;
   if (!isUuid(projectId)) notFound();
 
-  const [viewer, i18n, project, summary] = await Promise.all([
+  const [viewer, i18n, project, summary, tasks, shots] = await Promise.all([
     requireViewer(),
     getI18n(),
     getProjectDetails(projectId),
     getProject(projectId),
+    listTasks(projectId),
+    listShotChecks(projectId),
   ]);
   if (!project || !summary) notFound();
   const { t, tp, locale } = i18n;
@@ -69,7 +86,7 @@ export default async function ProjectHubLayout({
         ) : null}
 
         <div className="mb-10 rounded-xl bg-surface px-5 py-4 shadow-sm">
-          <PhaseStepper projectId={project.id} phase={project.phase} canEdit={viewer.isStudio} />
+          <PhaseStepper phase={project.phase} progress={phaseProgress(tasks, shots)} t={t} />
         </div>
 
         <div className="sm:mb-10">

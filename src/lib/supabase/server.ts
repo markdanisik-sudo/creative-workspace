@@ -28,13 +28,21 @@ export async function createSupabaseServerClient() {
   });
 }
 
+export interface CurrentUser {
+  id: string;
+  email: string | null;
+}
+
 /**
- * The signed-in user for this request, verified with the auth server.
- * Deduplicated per request.
+ * The signed-in user for this request. Reads the verified claims of the
+ * session token (checked locally against the project's signing keys), so it
+ * doesn't cost a round trip to the auth server on every page. Deduplicated
+ * per request.
  */
-export const getCurrentUser = cache(async () => {
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  return data.user;
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) return null;
+  return { id: claims.sub, email: typeof claims.email === "string" ? claims.email : null };
 });

@@ -73,7 +73,8 @@ export async function listProjects(): Promise<ProjectSummary[]> {
   return toProjectSummaries(data);
 }
 
-export async function getProject(projectId: string): Promise<ProjectSummary | null> {
+/** One project's summary; deduplicated per request (the hub layout and pages share it). */
+export const getProject = cache(async (projectId: string): Promise<ProjectSummary | null> => {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("project_summaries")
@@ -87,7 +88,7 @@ export async function getProject(projectId: string): Promise<ProjectSummary | nu
   if (!data) return null;
   const [project] = await toProjectSummaries([data]);
   return project ?? null;
-}
+});
 
 type BoardRow = {
   id: string;

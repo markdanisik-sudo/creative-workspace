@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { logError } from "@/lib/errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signStoragePaths } from "@/lib/supabase/storage";
@@ -113,3 +114,28 @@ export async function getWorkspace(projectId: string): Promise<WorkspaceData> {
     })),
   };
 }
+
+export interface ShotCheck {
+  id: string;
+  description: string | null;
+  size: string | null;
+  done: boolean;
+}
+
+/** The shot list as a checklist (for the overview on a shoot day). */
+export const listShotChecks = cache(async (projectId: string): Promise<ShotCheck[]> => {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("shots")
+    .select("id, description, specs, done")
+    .eq("project_id", projectId)
+    .order("position")
+    .order("created_at");
+  if (error) logError("workspace.shotChecks", error, { projectId });
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    description: row.description,
+    size: asRecord(row.specs).size ?? null,
+    done: row.done,
+  }));
+});

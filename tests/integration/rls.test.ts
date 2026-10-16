@@ -476,6 +476,38 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     });
   });
 
+  it("moves the project to the next phase when a phase's checklist is done", async () => {
+    const task = await studio.client
+      .from("project_tasks")
+      .insert({
+        project_id: projectId,
+        phase: "brief",
+        title: "Brief approved",
+        created_by: studio.id,
+      })
+      .select("id")
+      .single();
+    expect(task.error).toBeNull();
+    const before = await studio.client
+      .from("projects")
+      .select("phase")
+      .eq("id", projectId)
+      .single();
+    expect(before.data?.phase).toBe("brief");
+
+    // A client ticking the last item moves the phase, though clients can't edit projects.
+    const { data: briefTasks } = await client.client
+      .from("project_tasks")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("phase", "brief");
+    for (const row of briefTasks ?? []) {
+      await client.client.from("project_tasks").update({ done: true }).eq("id", row.id);
+    }
+    const after = await studio.client.from("projects").select("phase").eq("id", projectId).single();
+    expect(after.data?.phase).toBe("preproduction");
+  });
+
   it("cascades project deletion", async () => {
     const remove = await studio.client.from("projects").delete().eq("id", projectId);
     expect(remove.error).toBeNull();

@@ -61,7 +61,7 @@ function peopleFor(ids: (string | null)[]) {
   return getPeople([...new Set(ids.filter((id): id is string => Boolean(id)))].sort().join(","));
 }
 
-export async function listTasks(projectId: string): Promise<Task[]> {
+export const listTasks = cache(async (projectId: string): Promise<Task[]> => {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("project_tasks")
@@ -79,7 +79,7 @@ export async function listTasks(projectId: string): Promise<Task[]> {
     done: row.done,
     position: row.position,
   }));
-}
+});
 
 export async function listEvents(projectId: string): Promise<ProjectEvent[]> {
   const supabase = await createSupabaseServerClient();

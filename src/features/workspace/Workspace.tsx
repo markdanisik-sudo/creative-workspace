@@ -137,7 +137,7 @@ export function Workspace({
         ref={panelRef}
         aria-label={active.title}
         style={{ viewTransitionName: `ws-${active.id}` }}
-        className="flex min-h-[70vh] flex-col rounded-[28px] bg-surface p-4 shadow-sm sm:p-8"
+        className="surface-invert flex min-h-[70vh] flex-col rounded-[28px] bg-surface p-4 shadow-sm sm:p-8"
       >
         <header className="mb-6 flex items-center justify-between gap-4 sm:mb-8">
           <button
@@ -172,7 +172,7 @@ export function Workspace({
           aria-label={t("workspace.open", { name: module.title })}
           style={{ viewTransitionName: `ws-${module.id}` }}
           className={cn(
-            "group relative flex min-h-[260px] flex-col overflow-hidden rounded-[24px] bg-surface text-left shadow-sm",
+            "surface-invert group relative flex min-h-[260px] flex-col overflow-hidden rounded-[24px] bg-surface text-left shadow-sm",
             "transition-[box-shadow,transform] duration-300 ease-out hover:shadow-md active:scale-[0.995]",
             "focus-visible:outline-offset-4 lg:min-h-0",
             module.className,

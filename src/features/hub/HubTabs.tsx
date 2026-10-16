@@ -3,6 +3,7 @@
 import {
   CalendarDays,
   LayoutGrid,
+  ListChecks,
   MessageCircle,
   Sparkles,
   Users,
@@ -39,7 +40,8 @@ export function HubTabs({
   const pathname = usePathname();
   const base = `/projects/${projectId}`;
   const tabs: Tab[] = [
-    { segment: "", label: t("hub.overview"), short: t("hub.short.overview"), icon: LayoutGrid },
+    { segment: "", label: t("hub.overview"), short: t("hub.short.overview"), icon: ListChecks },
+    { segment: "plan", label: t("hub.plan"), short: t("hub.short.plan"), icon: LayoutGrid },
     {
       segment: "schedule",
       label: t("hub.schedule"),

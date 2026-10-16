@@ -7,6 +7,7 @@ import { STORAGE_BUCKET } from "@/lib/supabase/env";
 import { logError, type ActionResult } from "@/lib/errors";
 import { isBoardTemplateId, templateBoardName, templateName } from "@/features/boards/templates";
 import { requireViewer } from "@/features/auth/session";
+import { DEFAULT_STEPS } from "@/features/hub/default-steps";
 import { getI18n } from "@/lib/i18n/server";
 
 const MAX_NAME_LENGTH = 120;
@@ -55,6 +56,18 @@ export async function createProject(
     logError("projects.create", project.error);
     return { error: t("errors.generic") };
   }
+
+  // Every project starts with the studio's standard checklist.
+  const steps = await supabase.from("project_tasks").insert(
+    DEFAULT_STEPS.map((step, index) => ({
+      project_id: project.data.id,
+      phase: step.phase,
+      title: t(step.key),
+      position: index + 1,
+      created_by: viewer.id,
+    })),
+  );
+  if (steps.error) logError("projects.createSteps", steps.error);
 
   const board = await supabase
     .from("boards")
