@@ -109,7 +109,9 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
     password,
     options: {
       data: { display_name: name || null },
-      emailRedirectTo: invite ? `${origin}/invite/${invite}` : `${origin}/auth/callback`,
+      emailRedirectTo: invite
+        ? `${origin}/auth/callback?next=${encodeURIComponent(`/invite/${invite}`)}`
+        : `${origin}/auth/callback`,
     },
   });
 
@@ -136,5 +138,12 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
 export async function signOut() {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
+  redirect("/sign-in");
+}
+
+/** Signs out on every device (revokes all refresh tokens). */
+export async function signOutEverywhere() {
+  const supabase = await createSupabaseServerClient();
+  await supabase.auth.signOut({ scope: "global" });
   redirect("/sign-in");
 }

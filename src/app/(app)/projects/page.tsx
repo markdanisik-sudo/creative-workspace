@@ -8,7 +8,7 @@ import { NewProjectButton } from "@/features/projects/NewProjectDialog";
 import { ProjectIndex } from "@/features/projects/ProjectIndex";
 import { listProjects, search } from "@/features/projects/queries";
 import { StartChoices } from "@/features/projects/StartChoices";
-import { listMyInvitations } from "@/features/people/queries";
+import { emailJoinEnabled, listMyInvitations } from "@/features/people/queries";
 import type { ProjectSummary } from "@/features/projects/types";
 import { WorkCard } from "@/features/projects/WorkCard";
 import type { Translator } from "@/lib/i18n";
@@ -159,13 +159,17 @@ async function ProjectsView({
   isStudio: boolean;
 }) {
   const { t } = i18n;
-  const [projects, invitations] = await Promise.all([listProjects(), listMyInvitations()]);
+  const [projects, invitations, listEnabled] = await Promise.all([
+    listProjects(),
+    listMyInvitations(),
+    emailJoinEnabled(),
+  ]);
 
   if (projects.length === 0) {
     return (
       <>
         <Masthead name={viewerName} projects={projects} i18n={i18n} />
-        <StartChoices invitations={invitations} askClient={isStudio} />
+        <StartChoices invitations={invitations} listEnabled={listEnabled} askClient={isStudio} />
       </>
     );
   }
@@ -195,7 +199,12 @@ async function ProjectsView({
         </section>
 
         <section aria-label={t("dashboard.startProject")}>
-          <StartChoices invitations={invitations} askClient={isStudio} firstIndex={2} />
+          <StartChoices
+            invitations={invitations}
+            listEnabled={listEnabled}
+            askClient={isStudio}
+            firstIndex={2}
+          />
         </section>
 
         {projects.length > RECENT_COUNT || isStudio ? (

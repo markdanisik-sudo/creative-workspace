@@ -29,7 +29,40 @@ const supabaseKey = findEnv(
   /SUPABASE_ANON_KEY$/,
 );
 
+const isProduction = process.env.NODE_ENV === "production";
+
+/**
+ * Browser-side protections on every response: no framing (clickjacking), no
+ * MIME sniffing, minimal referrers, no camera/mic/location, HTTPS only.
+ */
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+  },
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+      ...(isProduction ? ["upgrade-insecure-requests"] : []),
+    ].join("; "),
+  },
+  ...(isProduction
+    ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]
+    : []),
+];
+
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   env: {
     ...(supabaseUrl ? { NEXT_PUBLIC_SUPABASE_URL: supabaseUrl } : {}),
     ...(supabaseKey ? { NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabaseKey } : {}),

@@ -7,6 +7,7 @@ import { TextField } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { useToast } from "@/components/ui/Toast";
 import { saveStudioBilling } from "@/features/budget/actions";
+import { SecretField } from "@/features/security/SecretField";
 import type { StudioBilling } from "@/features/budget/types";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -73,20 +74,18 @@ export function StudioBillingForm({ billing }: { billing: StudioBilling }) {
           maxLength={20}
         />
       </div>
-      <TextField
+      <SecretField
         label={t("billing.iban")}
         name="iban"
         defaultValue={billing.iban ?? ""}
         maxLength={40}
-        autoComplete="off"
       />
       <div className="flex flex-col gap-1">
-        <TextField
+        <SecretField
           label={t("billing.bankAccount")}
           name="bankAccount"
           defaultValue={billing.bankAccount ?? ""}
           maxLength={40}
-          autoComplete="off"
         />
         <span className="text-caption text-text-tertiary">{t("billing.bankAccountHint")}</span>
       </div>

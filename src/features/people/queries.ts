@@ -24,3 +24,10 @@ export async function listMyInvitations(): Promise<OpenInvitation[]> {
     createdAt: row.created_at,
   }));
 }
+
+/** Joining from the list needs confirmed email addresses (see app_settings). */
+export async function emailJoinEnabled(): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase.from("app_settings").select("emails_verified").maybeSingle();
+  return data?.emails_verified ?? false;
+}

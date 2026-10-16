@@ -53,6 +53,22 @@ export async function updateSession(request: NextRequest) {
     return redirectWithCookies(url, response);
   }
 
+  // Two-factor: a password-only session of an account with a second factor
+  // must enter its code before going anywhere else. (Read from the session
+  // cookie; no network round trip.)
+  if (isSignedIn && !pathname.startsWith("/verify") && !pathname.startsWith("/auth")) {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.currentLevel === "aal1" && aal.nextLevel === "aal2") {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Second factor required" }, { status: 401 });
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/verify";
+      url.search = isPublicPath(pathname) ? "" : `?next=${encodeURIComponent(pathname)}`;
+      return redirectWithCookies(url, response);
+    }
+  }
+
   if (isSignedIn && (pathname === "/sign-in" || pathname === "/sign-up")) {
     const url = request.nextUrl.clone();
     url.pathname = "/projects";

@@ -6,7 +6,7 @@
  * and an outsider with an account but no invitation.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -39,6 +39,20 @@ async function createUser(admin: Client): Promise<Actor> {
 function newInviteToken() {
   const token = randomBytes(32).toString("base64url");
   return { token, hash: createHash("sha256").update(token).digest("hex") };
+}
+
+/** The current 6-digit code for a base32 TOTP secret (what an authenticator app shows). */
+function totp(secret: string): string {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const char of secret.replace(/=+$/, ""))
+    bits += alphabet.indexOf(char).toString(2).padStart(5, "0");
+  const key = Buffer.from(bits.match(/.{8}/g)!.map((byte) => parseInt(byte, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
+  const hash = createHmac("sha1", key).update(counter).digest();
+  const offset = hash[hash.length - 1] & 15;
+  return String((hash.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, "0");
 }
 
 describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
@@ -101,6 +115,22 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     let ownProjectId: string;
 
     beforeAll(async () => {
+      // An account nobody invited can't start projects…
+      const uninvited = await outsider.client.from("projects").insert({ name: "Spam" });
+      expect(uninvited.error).not.toBeNull();
+
+      // …a client invited to some other project can.
+      const other = await admin
+        .from("projects")
+        .insert({ name: "Earlier job", owner_id: studio.id })
+        .select("id")
+        .single();
+      if (other.error) throw other.error;
+      const membership = await admin
+        .from("project_members")
+        .insert({ project_id: other.data.id, user_id: outsider.id });
+      if (membership.error) throw membership.error;
+
       const project = await outsider.client
         .from("projects")
         .insert({ name: "Client brief" })
@@ -386,6 +416,16 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
       invitationId = data.id;
     });
 
+    it("stays off until sign-up confirms email addresses", async () => {
+      const hidden = await invitee.client.rpc("my_invitations");
+      expect(hidden.data ?? []).toEqual([]);
+      const refused = await invitee.client.rpc("accept_invitation_by_id", {
+        invitation_id: invitationId,
+      });
+      expect(refused.error).not.toBeNull();
+      await admin.from("app_settings").update({ emails_verified: true }).eq("id", true);
+    });
+
     it("lists an invitation only for the address it was sent to", async () => {
       const mine = await invitee.client.rpc("my_invitations");
       expect(mine.data?.map((row) => row.id)).toContain(invitationId);
@@ -407,6 +447,7 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
       expect(visible.data).toHaveLength(1);
       const after = await invitee.client.rpc("my_invitations");
       expect(after.data?.map((row) => row.id) ?? []).not.toContain(invitationId);
+      await admin.from("app_settings").update({ emails_verified: false }).eq("id", true);
     });
   });
 
@@ -579,6 +620,47 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
         .insert({ project_id: projectId, url: "https://f.io/abc", label: "Final" });
       expect(studioLink.error).toBeNull();
     });
+  });
+
+  it("needs the second factor to change bank details once it is turned on", async () => {
+    const email = `mfa-${randomUUID()}@example.test`;
+    const password = `pw-${randomUUID()}`;
+    const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+    const userId = created.data.user!.id;
+    await admin.from("studio_members").insert({ user_id: userId });
+
+    const first = createClient<Database>(url, publishableKey, { auth: { persistSession: false } });
+    await first.auth.signInWithPassword({ email, password });
+    const enrolled = await first.auth.mfa.enroll({ factorType: "totp" });
+    expect(enrolled.error).toBeNull();
+    const verified = await first.auth.mfa.challengeAndVerify({
+      factorId: enrolled.data!.id,
+      code: totp(enrolled.data!.totp.secret),
+    });
+    expect(verified.error).toBeNull();
+
+    // A password-only session (e.g. a leaked password) can't change them…
+    const passwordOnly = createClient<Database>(url, publishableKey, {
+      auth: { persistSession: false },
+    });
+    await passwordOnly.auth.signInWithPassword({ email, password });
+    const blocked = await passwordOnly
+      .from("studio_billing")
+      .update({ iban: "CZ6508000000192000145399" })
+      .eq("id", true)
+      .select();
+    expect(blocked.data ?? []).toEqual([]);
+
+    // …the session that entered the code can.
+    const allowed = await first
+      .from("studio_billing")
+      .update({ phone: "+420 777 000 000" })
+      .eq("id", true)
+      .select("phone");
+    expect(allowed.data).toEqual([{ phone: "+420 777 000 000" }]);
+
+    await admin.from("studio_members").delete().eq("user_id", userId);
+    await admin.auth.admin.deleteUser(userId);
   });
 
   it("cascades project deletion", async () => {

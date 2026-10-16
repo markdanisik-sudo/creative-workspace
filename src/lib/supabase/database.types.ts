@@ -23,6 +23,21 @@ export type Database = {
   };
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          emails_verified: boolean;
+          id: boolean;
+        };
+        Insert: {
+          emails_verified?: boolean;
+          id?: boolean;
+        };
+        Update: {
+          emails_verified?: boolean;
+          id?: boolean;
+        };
+        Relationships: [];
+      };
       board_assets: {
         Row: {
           board_id: string;

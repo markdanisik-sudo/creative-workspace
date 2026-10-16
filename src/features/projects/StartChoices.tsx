@@ -29,10 +29,13 @@ function Label({ text, index, dark }: { text: string; index: number; dark?: bool
 /** Two ways in: start a new project, or join one the studio invited you to. */
 export function StartChoices({
   invitations,
+  listEnabled,
   askClient,
   firstIndex = 1,
 }: {
   invitations: OpenInvitation[];
+  /** The email-based list is off until sign-up confirms email addresses. */
+  listEnabled: boolean;
   askClient: boolean;
   firstIndex?: number;
 }) {
@@ -86,10 +89,12 @@ export function StartChoices({
             <h2 id="join-title" className="text-display font-medium tracking-tight sm:text-hero">
               {t("dashboard.joinTitle")}
             </h2>
-            <p className="max-w-md text-callout text-text-secondary">{t("dashboard.joinBody")}</p>
+            <p className="max-w-md text-callout text-text-secondary">
+              {listEnabled ? t("dashboard.joinBody") : t("dashboard.joinBodyCode")}
+            </p>
           </div>
 
-          {invitations.length > 0 ? (
+          {!listEnabled ? null : invitations.length > 0 ? (
             <ul className="flex flex-col border-t border-border-strong">
               {invitations.map((invitation) => (
                 <li

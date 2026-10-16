@@ -5,7 +5,9 @@ import { AppHeader } from "@/components/app/AppHeader";
 import { LanguageSwitch } from "@/components/app/LanguageSwitch";
 import { Button } from "@/components/ui/Button";
 import { SectionLabel } from "@/components/ui/SectionLabel";
-import { signOut } from "@/features/auth/actions";
+import { signOut, signOutEverywhere } from "@/features/auth/actions";
+import { TwoFactorSettings } from "@/features/security/TwoFactorSettings";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ProfileForm } from "@/features/auth/ProfileForm";
 import { requireViewer } from "@/features/auth/session";
 import { listServices } from "@/features/hub/queries";
@@ -39,6 +41,9 @@ export default async function SettingsPage() {
   const [services, billing] = viewer.isStudio
     ? await Promise.all([listServices({ activeOnly: false }), getStudioBilling()])
     : [[], null];
+  const supabase = await createSupabaseServerClient();
+  const { data: factors } = await supabase.auth.mfa.listFactors();
+  const verifiedFactorId = factors?.totp.find((factor) => factor.status === "verified")?.id ?? null;
   let index = 0;
 
   return (
@@ -90,6 +95,19 @@ export default async function SettingsPage() {
             </Row>
           </section>
         ) : null}
+
+        <section className="mb-14 flex flex-col gap-4">
+          <SectionLabel label={t("security.title")} index={++index} />
+          <Row label={t("security.twoFactor")}>
+            <TwoFactorSettings enabledFactorId={verifiedFactorId} />
+          </Row>
+          <Row label={t("security.sessions")}>
+            <form action={signOutEverywhere} className="flex flex-col items-start gap-3">
+              <p className="text-body text-text-secondary">{t("security.signOutEverywhereBody")}</p>
+              <Button type="submit">{t("security.signOutEverywhere")}</Button>
+            </form>
+          </Row>
+        </section>
 
         <section className="flex flex-col gap-4">
           <SectionLabel label={t("settings.session")} index={++index} />
