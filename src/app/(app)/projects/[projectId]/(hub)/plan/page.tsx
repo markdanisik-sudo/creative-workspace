@@ -197,7 +197,7 @@ export default async function PlanPage({
           </LinkBox>
           <LinkBox
             title={t("hub.openRequests")}
-            href={`${base}/requests`}
+            href={`${base}/budget`}
             linkLabel={t("hub.seeAll")}
           >
             <p className="mt-auto flex items-baseline gap-2">

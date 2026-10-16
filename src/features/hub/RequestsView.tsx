@@ -9,6 +9,8 @@ import { TextField } from "@/components/ui/Input";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { TextArea } from "@/components/ui/TextArea";
 import { useToast } from "@/components/ui/Toast";
+import { RenameDialog } from "@/components/ui/PromptDialogs";
+import { setRequestPrice } from "@/features/budget/actions";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 import { formatEdited, formatMoney } from "@/lib/format";
@@ -147,18 +149,22 @@ export function RequestsView({
   requests,
   viewerId,
   isStudio,
+  firstIndex = 1,
 }: {
   projectId: string;
   services: Service[];
   requests: AddOnRequest[];
   viewerId: string;
   isStudio: boolean;
+  /** Section numbering when shown inside another page (the budget). */
+  firstIndex?: number;
 }) {
   const { t, locale } = useI18n();
   const router = useRouter();
   const toast = useToast();
   const price = usePrice();
   const [dialog, setDialog] = useState<Service | "custom" | null>(null);
+  const [pricing, setPricing] = useState<AddOnRequest | null>(null);
   const [, startTransition] = useTransition();
 
   const act = (work: () => Promise<{ ok: boolean; error?: string }>) =>
@@ -171,7 +177,7 @@ export function RequestsView({
   return (
     <div className="flex flex-col gap-16">
       <section className="flex flex-col gap-6">
-        <SectionLabel label={t("requests.catalogTitle")} index={1} />
+        <SectionLabel label={t("requests.catalogTitle")} index={firstIndex} />
         <p className="-mt-2 max-w-xl text-callout text-text-secondary">
           {t("requests.catalogBody")}
         </p>
@@ -212,7 +218,7 @@ export function RequestsView({
       </section>
 
       <section className="flex flex-col gap-6">
-        <SectionLabel label={t("requests.history")} index={2} />
+        <SectionLabel label={t("requests.history")} index={firstIndex + 1} />
         {requests.length === 0 ? (
           <p className="text-callout text-text-secondary">{t("requests.empty")}</p>
         ) : (
@@ -256,6 +262,11 @@ export function RequestsView({
                   ) : null}
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
+                  {isStudio && request.unitPrice === null && request.status !== "declined" ? (
+                    <Button size="sm" variant="secondary" onClick={() => setPricing(request)}>
+                      {t("budget.setPrice")}
+                    </Button>
+                  ) : null}
                   {isStudio && request.status === "requested" ? (
                     <>
                       <Button
@@ -304,6 +315,20 @@ export function RequestsView({
           </ul>
         )}
       </section>
+
+      <RenameDialog
+        open={pricing !== null}
+        onClose={() => setPricing(null)}
+        title={pricing ? pricing.title : ""}
+        label={t("budget.unitPrice")}
+        initialValue=""
+        onSubmit={async (value) => {
+          if (!pricing) return null;
+          const result = await setRequestPrice(projectId, pricing.id, value);
+          router.refresh();
+          return result.ok ? null : result.error;
+        }}
+      />
 
       {dialog ? (
         <RequestDialog

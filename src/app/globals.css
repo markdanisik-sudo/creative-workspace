@@ -294,3 +294,15 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
+/* Invoices print on A4 with the page's paper background removed. */
+@page {
+  size: A4;
+  margin: 16mm;
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+}

@@ -508,6 +508,79 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     expect(after.data?.phase).toBe("preproduction");
   });
 
+  describe("budget and invoices", () => {
+    it("keeps the quote and the studio's billing details with the studio", async () => {
+      const line = await client.client
+        .from("budget_items")
+        .insert({ project_id: projectId, title: "Free day", unit_price: 0 });
+      expect(line.error).not.toBeNull();
+      const billing = await client.client
+        .from("studio_billing")
+        .update({ name: "Hacked" })
+        .eq("id", true)
+        .select();
+      expect(billing.data ?? []).toEqual([]);
+
+      const studioLine = await studio.client
+        .from("budget_items")
+        .insert({ project_id: projectId, title: "Shoot day", quantity: 2, unit_price: 20000 });
+      expect(studioLine.error).toBeNull();
+      const studioBilling = await studio.client
+        .from("studio_billing")
+        .update({ name: "m.studio", iban: "CZ6508000000192000145399" })
+        .eq("id", true);
+      expect(studioBilling.error).toBeNull();
+    });
+
+    it("lets the client issue their invoice, numbered once", async () => {
+      const missing = await client.client.rpc("create_invoice", { target: projectId });
+      expect(missing.error?.message).toContain("customer_missing");
+
+      const billing = await client.client
+        .from("project_budgets")
+        .upsert({ project_id: projectId, client_billing: { name: "Massimo Dutti" } });
+      expect(billing.error).toBeNull();
+
+      const first = await client.client.rpc("create_invoice", { target: projectId });
+      expect(first.error).toBeNull();
+      const again = await client.client.rpc("create_invoice", { target: projectId });
+      expect(again.data).toBe(first.data);
+
+      const invoice = await client.client
+        .from("invoices")
+        .select("total, number")
+        .eq("id", first.data!)
+        .single();
+      expect(Number(invoice.data?.total)).toBe(40000);
+      expect(invoice.data?.number).toMatch(/^\d{7}$/);
+
+      const paid = await client.client
+        .from("invoices")
+        .update({ paid_at: new Date().toISOString() })
+        .eq("id", first.data!)
+        .select();
+      expect(paid.data ?? []).toEqual([]);
+    });
+
+    it("keeps outsiders away from budgets, invoices and links", async () => {
+      const invoice = await outsider.client.rpc("create_invoice", { target: projectId });
+      expect(invoice.error).not.toBeNull();
+      const invoices = await outsider.client
+        .from("invoices")
+        .select("id")
+        .eq("project_id", projectId);
+      expect(invoices.data).toEqual([]);
+      const link = await client.client
+        .from("project_links")
+        .insert({ project_id: projectId, url: "https://example.com" });
+      expect(link.error).not.toBeNull();
+      const studioLink = await studio.client
+        .from("project_links")
+        .insert({ project_id: projectId, url: "https://f.io/abc", label: "Final" });
+      expect(studioLink.error).toBeNull();
+    });
+  });
+
   it("cascades project deletion", async () => {
     const remove = await studio.client.from("projects").delete().eq("id", projectId);
     expect(remove.error).toBeNull();

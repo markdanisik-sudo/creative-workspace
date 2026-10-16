@@ -116,6 +116,57 @@ export type Database = {
           },
         ];
       };
+      budget_items: {
+        Row: {
+          created_at: string;
+          id: string;
+          position: number;
+          project_id: string;
+          quantity: number;
+          title: string;
+          unit: string | null;
+          unit_price: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          position?: number;
+          project_id: string;
+          quantity?: number;
+          title: string;
+          unit?: string | null;
+          unit_price?: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          position?: number;
+          project_id?: string;
+          quantity?: number;
+          title?: string;
+          unit?: string | null;
+          unit_price?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "budget_items_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "budget_items_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       canvas_connections: {
         Row: {
           board_id: string;
@@ -335,6 +386,81 @@ export type Database = {
           },
         ];
       };
+      invoices: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          currency: string;
+          customer: NonNullable<Json>;
+          due_on: string;
+          id: string;
+          issued_on: string;
+          items: NonNullable<Json>;
+          number: string;
+          paid_at: string | null;
+          project_id: string;
+          subtotal: number;
+          supplier: NonNullable<Json>;
+          total: number;
+          variable_symbol: string;
+          vat: number;
+          vat_rate: number;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          currency: string;
+          customer: NonNullable<Json>;
+          due_on: string;
+          id?: string;
+          issued_on?: string;
+          items: NonNullable<Json>;
+          number: string;
+          paid_at?: string | null;
+          project_id: string;
+          subtotal: number;
+          supplier: NonNullable<Json>;
+          total: number;
+          variable_symbol: string;
+          vat: number;
+          vat_rate: number;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          currency?: string;
+          customer?: NonNullable<Json>;
+          due_on?: string;
+          id?: string;
+          issued_on?: string;
+          items?: NonNullable<Json>;
+          number?: string;
+          paid_at?: string | null;
+          project_id?: string;
+          subtotal?: number;
+          supplier?: NonNullable<Json>;
+          total?: number;
+          variable_symbol?: string;
+          vat?: number;
+          vat_rate?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invoices_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "invoices_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -358,6 +484,48 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      project_budgets: {
+        Row: {
+          approved_at: string | null;
+          approved_by: string | null;
+          client_billing: NonNullable<Json>;
+          currency: string;
+          project_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          client_billing?: NonNullable<Json>;
+          currency?: string;
+          project_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          approved_at?: string | null;
+          approved_by?: string | null;
+          client_billing?: NonNullable<Json>;
+          currency?: string;
+          project_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_budgets_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_budgets_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       project_events: {
         Row: {
@@ -530,6 +698,51 @@ export type Database = {
           },
           {
             foreignKeyName: "project_invitations_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      project_links: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          kind: string;
+          label: string | null;
+          project_id: string;
+          url: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          kind?: string;
+          label?: string | null;
+          project_id: string;
+          url: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          kind?: string;
+          label?: string | null;
+          project_id?: string;
+          url?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_links_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_links_project_id_fkey";
             columns: ["project_id"];
             isOneToOne: false;
             referencedRelation: "projects";
@@ -956,6 +1169,63 @@ export type Database = {
           },
         ];
       };
+      studio_billing: {
+        Row: {
+          address: string | null;
+          bank_account: string | null;
+          dic: string | null;
+          due_days: number;
+          email: string | null;
+          iban: string | null;
+          ico: string | null;
+          id: boolean;
+          invoice_note: string | null;
+          invoice_seq: number;
+          invoice_year: number | null;
+          name: string;
+          phone: string | null;
+          updated_at: string;
+          vat_payer: boolean;
+          vat_rate: number;
+        };
+        Insert: {
+          address?: string | null;
+          bank_account?: string | null;
+          dic?: string | null;
+          due_days?: number;
+          email?: string | null;
+          iban?: string | null;
+          ico?: string | null;
+          id?: boolean;
+          invoice_note?: string | null;
+          invoice_seq?: number;
+          invoice_year?: number | null;
+          name?: string;
+          phone?: string | null;
+          updated_at?: string;
+          vat_payer?: boolean;
+          vat_rate?: number;
+        };
+        Update: {
+          address?: string | null;
+          bank_account?: string | null;
+          dic?: string | null;
+          due_days?: number;
+          email?: string | null;
+          iban?: string | null;
+          ico?: string | null;
+          id?: boolean;
+          invoice_note?: string | null;
+          invoice_seq?: number;
+          invoice_year?: number | null;
+          name?: string;
+          phone?: string | null;
+          updated_at?: string;
+          vat_payer?: boolean;
+          vat_rate?: number;
+        };
+        Relationships: [];
+      };
       studio_members: {
         Row: {
           created_at: string;
@@ -1028,6 +1298,7 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { invite_token: string }; Returns: string };
       accept_invitation_by_id: { Args: { invitation_id: string }; Returns: string };
+      create_invoice: { Args: { target: string }; Returns: string };
       current_user_is_studio: { Args: Record<PropertyKey, never>; Returns: boolean };
       get_invitation: {
         Args: { invite_token: string };

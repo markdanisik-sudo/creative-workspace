@@ -5,7 +5,7 @@ import {
   LayoutGrid,
   ListChecks,
   MessageCircle,
-  Sparkles,
+  Wallet,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -49,10 +49,10 @@ export function HubTabs({
       icon: CalendarDays,
     },
     {
-      segment: "requests",
-      label: t("hub.requests"),
-      short: t("hub.short.requests"),
-      icon: Sparkles,
+      segment: "budget",
+      label: t("budget.title"),
+      short: t("budget.title"),
+      icon: Wallet,
       badge: openRequests,
     },
     {

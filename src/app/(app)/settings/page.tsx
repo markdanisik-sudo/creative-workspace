@@ -9,6 +9,8 @@ import { signOut } from "@/features/auth/actions";
 import { ProfileForm } from "@/features/auth/ProfileForm";
 import { requireViewer } from "@/features/auth/session";
 import { listServices } from "@/features/hub/queries";
+import { getStudioBilling } from "@/features/budget/queries";
+import { StudioBillingForm } from "@/features/settings/StudioBillingForm";
 import { AppearancePicker } from "@/features/settings/AppearancePicker";
 import { ServicesManager } from "@/features/settings/ServicesManager";
 import { getI18n } from "@/lib/i18n/server";
@@ -34,7 +36,9 @@ export default async function SettingsPage() {
     getI18n(),
     getThemePreference(),
   ]);
-  const services = viewer.isStudio ? await listServices({ activeOnly: false }) : [];
+  const [services, billing] = viewer.isStudio
+    ? await Promise.all([listServices({ activeOnly: false }), getStudioBilling()])
+    : [[], null];
   let index = 0;
 
   return (
@@ -68,6 +72,15 @@ export default async function SettingsPage() {
             <AppearancePicker initial={theme} />
           </Row>
         </section>
+
+        {billing ? (
+          <section className="mb-14 flex flex-col gap-4">
+            <SectionLabel label={t("billing.title")} index={++index} />
+            <Row label={t("billing.title")}>
+              <StudioBillingForm billing={billing} />
+            </Row>
+          </section>
+        ) : null}
 
         {viewer.isStudio ? (
           <section className="mb-14 flex flex-col gap-4">

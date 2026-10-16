@@ -8,6 +8,8 @@ import { useToast } from "@/components/ui/Toast";
 import { PHASES, type Phase } from "@/features/projects/types";
 import type { ShotCheck } from "@/features/workspace/queries";
 import { updateShot } from "@/features/workspace/actions";
+import { DeliveryCard, DeliveryLinksEditor } from "@/features/budget/DeliveryLinks";
+import type { DeliveryLink } from "@/features/budget/types";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format";
@@ -68,11 +70,15 @@ export function PhaseChecklist({
   tasks: initialTasks,
   shots: initialShots,
   currentPhase,
+  deliveryLinks,
+  isStudio,
 }: {
   projectId: string;
   tasks: Task[];
   shots: ShotCheck[];
   currentPhase: Phase;
+  deliveryLinks: DeliveryLink[];
+  isStudio: boolean;
 }) {
   const { t, locale } = useI18n();
   const router = useRouter();
@@ -139,6 +145,7 @@ export function PhaseChecklist({
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-3">
+      <DeliveryCard links={deliveryLinks} />
       <div className="mb-3 flex items-end justify-between gap-4 px-1">
         <p className="text-callout text-text-secondary tabular-nums">
           {all.length > 0 && doneCount === all.length
@@ -159,9 +166,7 @@ export function PhaseChecklist({
           <section
             key={phase}
             aria-labelledby={`phase-${phase}`}
-            className={cn(
-              "surface-invert rounded-[24px] bg-surface p-4 shadow-sm sm:p-6",
-            )}
+            className={cn("surface-invert rounded-[24px] bg-surface p-4 shadow-sm sm:p-6")}
           >
             <header className="flex items-center gap-3 px-1 sm:px-0">
               <span className="text-caption text-text-tertiary tabular-nums">
@@ -217,6 +222,10 @@ export function PhaseChecklist({
                 style={{ width: `${items.length ? (done / items.length) * 100 : 0}%` }}
               />
             </div>
+
+            {phase === "delivery" && isStudio ? (
+              <DeliveryLinksEditor projectId={projectId} links={deliveryLinks} />
+            ) : null}
 
             {open ? (
               <>
