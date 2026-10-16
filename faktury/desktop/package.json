@@ -22,15 +22,6 @@
     "files": [
       "main.cjs"
     ],
-    "extraResources": [
-      {
-        "from": "../.next/standalone",
-        "to": "server",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
     "afterPack": "./after-pack.cjs",
     "mac": {
       "category": "public.app-category.finance",

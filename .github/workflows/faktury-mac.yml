@@ -56,7 +56,9 @@ jobs:
       - name: Smoke test (the packaged server, run by the app's own runtime)
         working-directory: faktury/desktop
         run: |
+          set -x
           APP="dist/mac-universal/Faktury.app"
+          ls "$APP/Contents/Resources" "$APP/Contents/Resources/server"
           test -f "$APP/Contents/Resources/server/server.js"
           test -d "$APP/Contents/Resources/server/node_modules/next"
           codesign --verify --deep --strict "$APP"
