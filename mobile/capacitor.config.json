@@ -1,0 +1,15 @@
+{
+  "appId": "com.mstudiolab.app",
+  "appName": "m.studio.lab",
+  "webDir": "www",
+  "server": {
+    "url": "https://mstudiolab.vercel.app",
+    "errorPath": "offline.html"
+  },
+  "backgroundColor": "#ecebe8",
+  "ios": {
+    "contentInset": "never",
+    "scheme": "m.studio.lab",
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

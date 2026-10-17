@@ -1,3 +1,4 @@
 node_modules
 .next
 supabase/.temp
+mobile/ios

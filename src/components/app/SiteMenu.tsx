@@ -95,7 +95,8 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
           aria-modal="false"
           aria-label={t("nav.menu")}
           className={cn(
-            "absolute inset-x-0 top-0 z-50 isolate flex flex-col rounded-b-[18px] p-2 pb-6 shadow-lg",
+            // Up behind the status bar too, as the bar does.
+            "absolute inset-x-0 top-[calc(env(safe-area-inset-top)*-1)] z-50 isolate flex flex-col rounded-b-[18px] p-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-6 shadow-lg",
             // No fill: a transform held after the animation stops Chrome blurring.
             "origin-top animate-[pop-in_var(--duration-base)_var(--ease-out)]",
           )}

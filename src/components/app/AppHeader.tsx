@@ -23,14 +23,16 @@ const UNDER_MENU =
 export async function AppHeader({ viewer, actions }: { viewer: Viewer; actions?: ReactNode }) {
   const [imageUrl, { t }] = await Promise.all([getLatestCoverUrl(), getI18n()]);
   return (
-    <header className="group/header sticky top-0 z-40 px-3 sm:px-6">
+    // Below the status bar in the iOS app and full-screen web app (the inset
+    // is 0 in a browser); the glass reaches up behind it.
+    <header className="group/header sticky top-0 z-40 px-3 pt-[env(safe-area-inset-top)] sm:px-6">
       <div className="relative mx-auto max-w-[880px]">
         {/* Frosted like the open menu. A layer of its own (not an ancestor of
             the menu, whose glass it would flatten), hidden while the menu is open. */}
         <div
           aria-hidden="true"
           className={cn(
-            "absolute inset-0 rounded-b-[14px] bg-surface/60 shadow-sm backdrop-blur-2xl backdrop-saturate-150",
+            "absolute inset-x-0 -top-[env(safe-area-inset-top)] bottom-0 rounded-b-[14px] bg-surface/60 shadow-sm backdrop-blur-2xl backdrop-saturate-150",
             UNDER_MENU,
           )}
         />
