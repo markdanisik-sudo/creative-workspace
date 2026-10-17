@@ -182,27 +182,27 @@ function Readout({
 }) {
   return (
     <span className={cn("flex items-baseline gap-1 whitespace-nowrap", className)}>
-      <span className="text-white/60">{label}</span>
-      <span className="font-semibold text-white">{value}</span>
+      <span className="text-text-tertiary">{label}</span>
+      <span className="font-semibold text-text">{value}</span>
     </span>
   );
 }
 
 /**
  * The menu's picture: a camera monitor's readouts, pared down, laid straight
- * over the latest project cover on a see-through dark glass.
+ * over the latest project cover on glass clearer than the menu's own.
  */
 function MonitorView({ imageUrl, statement }: { imageUrl: string | null; statement: string }) {
   const timecode = useTimecode();
   return (
     <div
       aria-hidden="true"
-      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-[#1d1c1a]/45 text-[10px] tabular-nums md:block"
+      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-text/[0.04] text-[10px] ring-1 ring-text/5 ring-inset tabular-nums md:block"
     >
       {imageUrl ? (
         // Short-lived signed URL; next/image would cache it past expiry.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="absolute inset-0 size-full object-cover opacity-60" />
+        <img src={imageUrl} alt="" className="absolute inset-0 size-full object-cover opacity-25" />
       ) : null}
 
       <div className="absolute inset-x-3.5 top-3 flex items-center justify-between">
@@ -213,14 +213,14 @@ function MonitorView({ imageUrl, statement }: { imageUrl: string | null; stateme
       </div>
 
       {/* Centre cross. */}
-      <span className="absolute top-1/2 left-1/2 h-3.5 w-px -translate-1/2 bg-white/70" />
-      <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-white/70" />
+      <span className="absolute top-1/2 left-1/2 h-3.5 w-px -translate-1/2 bg-text/40" />
+      <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-text/40" />
 
       <div className="absolute inset-x-3.5 bottom-3 flex items-end justify-between gap-3">
-        <p className="text-title leading-tight font-medium text-white">{statement}</p>
+        <p className="text-title leading-tight font-medium text-text">{statement}</p>
         <span className="flex items-center gap-1.5 whitespace-nowrap">
           <span className="size-1.5 animate-pulse rounded-full bg-[#ff3b30]" />
-          <span className="font-semibold text-white">{timecode}</span>
+          <span className="font-semibold text-text">{timecode}</span>
         </span>
       </div>
     </div>
