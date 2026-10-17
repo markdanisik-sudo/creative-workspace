@@ -23,5 +23,7 @@ exports.default = async function afterPack(context) {
   fs.rmSync(target, { recursive: true, force: true });
   fs.cpSync(source, target, { recursive: true, verbatimSymlinks: true });
   execFileSync("codesign", ["--force", "--deep", "--sign", "-", app], { stdio: "inherit" });
-  execFileSync("codesign", ["--verify", "--deep", "--strict", "--verbose=2", app], { stdio: "inherit" });
+  execFileSync("codesign", ["--verify", "--deep", "--strict", "--verbose=2", app], {
+    stdio: "inherit",
+  });
 };

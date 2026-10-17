@@ -106,7 +106,7 @@ export function HubTabs({
 
       <nav
         aria-label={t("hub.tabs")}
-        className="fixed inset-x-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-40 rounded-[22px] bg-surface/85 shadow-md backdrop-blur-xl sm:hidden"
+        className="fixed inset-x-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-40 rounded-[22px] bg-surface/85 px-1 shadow-md backdrop-blur-xl sm:hidden"
       >
         <ul className="flex">
           {tabs.map((tab) => {
@@ -123,7 +123,7 @@ export function HubTabs({
                   )}
                 >
                   <Icon size={21} strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />
-                  <span className="max-w-full truncate px-0.5 text-[10px] font-semibold">
+                  <span className="max-w-full truncate text-[10px] font-semibold tracking-[-0.02em]">
                     {tab.short}
                   </span>
                   {tab.badge ? (

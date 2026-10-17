@@ -168,7 +168,7 @@ export function PhaseChecklist({
             aria-labelledby={`phase-${phase}`}
             className={cn("surface-invert rounded-[24px] bg-surface p-4 shadow-sm sm:p-6")}
           >
-            <header className="flex items-center gap-3 px-1 sm:px-0">
+            <header className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 sm:px-0">
               <span className="text-caption text-text-tertiary tabular-nums">
                 ({String(index + 1).padStart(2, "0")})
               </span>

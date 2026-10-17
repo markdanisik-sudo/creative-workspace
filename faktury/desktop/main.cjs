@@ -1,6 +1,15 @@
 // Faktury for Mac: runs the app's server in the background (data in
 // ~/Library/Application Support/Faktury) and shows it in a window.
-const { app, BrowserWindow, Menu, dialog, nativeTheme, session, shell, utilityProcess } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  dialog,
+  nativeTheme,
+  session,
+  shell,
+  utilityProcess,
+} = require("electron");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const net = require("node:net");
@@ -31,7 +40,10 @@ async function waitUntilReady(url, token, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(url, { headers: { cookie: `faktury_token=${token}` }, redirect: "manual" });
+      const response = await fetch(url, {
+        headers: { cookie: `faktury_token=${token}` },
+        redirect: "manual",
+      });
       if (response.status < 500) return;
     } catch {
       // Not listening yet.
@@ -117,7 +129,8 @@ function createWindow() {
 }
 
 function go(pathname) {
-  const window = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? createWindow();
+  const window =
+    BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? createWindow();
   void window.loadURL(`${origin}${pathname}`);
 }
 
@@ -133,7 +146,11 @@ function buildMenu() {
           { type: "separator" },
           { label: "Zálohovat…", click: () => go("/zaloha") },
           { type: "separator" },
-          { label: "Tisk / PDF…", accelerator: "CmdOrCtrl+P", click: () => BrowserWindow.getFocusedWindow()?.webContents.print() },
+          {
+            label: "Tisk / PDF…",
+            accelerator: "CmdOrCtrl+P",
+            click: () => BrowserWindow.getFocusedWindow()?.webContents.print(),
+          },
           { role: "close", label: "Zavřít okno" },
         ],
       },

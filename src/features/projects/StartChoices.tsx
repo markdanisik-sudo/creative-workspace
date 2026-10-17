@@ -63,7 +63,7 @@ export function StartChoices({
       <button
         type="button"
         onClick={() => setCreating(true)}
-        className="group flex min-h-[340px] flex-col justify-between gap-10 rounded-xl bg-[#0e0e0d] p-6 text-left text-[#f4f4f4] shadow-md transition-transform duration-300 ease-out active:scale-[0.99] sm:p-9"
+        className="group flex min-h-[340px] min-w-0 flex-col justify-between gap-10 rounded-xl bg-[#0e0e0d] p-6 text-left text-[#f4f4f4] shadow-md transition-transform duration-300 ease-out active:scale-[0.99] sm:p-9"
       >
         <Label text={t("dashboard.startProject")} index={firstIndex} dark />
         <div className="flex flex-col gap-4">
@@ -81,7 +81,7 @@ export function StartChoices({
       {/* Join */}
       <section
         aria-labelledby="join-title"
-        className="flex min-h-[340px] flex-col justify-between gap-8 rounded-xl bg-surface p-6 shadow-sm sm:p-9"
+        className="flex min-h-[340px] min-w-0 flex-col justify-between gap-8 rounded-xl bg-surface p-6 shadow-sm sm:p-9"
       >
         <Label text={t("dashboard.joinLabel")} index={firstIndex + 1} />
         <div className="flex flex-col gap-5">
