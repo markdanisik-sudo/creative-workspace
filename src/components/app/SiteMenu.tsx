@@ -3,7 +3,7 @@
 import { Plus, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type Ref } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { signOut } from "@/features/auth/actions";
 import { useI18n } from "@/lib/i18n/client";
@@ -229,7 +229,7 @@ const EDGE_BLURS = [
   { blur: "blur(12px)", from: 76 },
 ];
 
-/** Looking through a loupe: a clear centre, soft rim, domed glass and fringing. */
+/** Looking through a loupe: a clear centre, soft rim and domed glass. */
 function LensGlass() {
   return (
     <>
@@ -252,9 +252,74 @@ function LensGlass() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_farthest-corner_at_center,transparent_55%,rgb(0_0_0/0.12)_100%)]" />
       {/* The domed glass: a soft highlight up top, a bright refracting rim. */}
       <div className="absolute inset-0 rounded-xl bg-[radial-gradient(ellipse_60%_45%_at_35%_18%,rgb(255_255_255/0.22),transparent_70%)] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.35),inset_0_0_28px_rgb(255_255_255/0.18)]" />
-      {/* Lateral chromatic aberration: hairline fringes at the rim, red out, blue in. */}
-      <div className="absolute inset-0 rounded-xl shadow-[inset_1px_0_0_rgb(255_59_48/0.3),inset_-1px_0_0_rgb(10_132_255/0.3),inset_0_1px_0_rgb(255_59_48/0.18),inset_0_-1px_0_rgb(10_132_255/0.18)]" />
     </>
+  );
+}
+
+const BARREL_FILTER = "menu-lens-barrel";
+
+/**
+ * A displacement map for gentle barrel distortion: red and green carry how far
+ * to look in x and y, growing with the square of the distance from the centre.
+ */
+function barrelMap(): string {
+  const [w, h] = [480, 270];
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const context = canvas.getContext("2d");
+  if (!context) return "";
+  const image = context.createImageData(w, h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const u = (x / (w - 1)) * 2 - 1;
+      const v = (y / (h - 1)) * 2 - 1;
+      const r2 = (u * u + v * v) / 2;
+      // Sample further out the further out we are: the edges squeeze in and
+      // the middle bows out.
+      const index = (y * w + x) * 4;
+      image.data[index] = Math.round(255 * (0.5 + 0.5 * u * r2));
+      image.data[index + 1] = Math.round(255 * (0.5 + 0.5 * v * r2));
+      image.data[index + 2] = 128;
+      image.data[index + 3] = 255;
+    }
+  }
+  context.putImageData(image, 0, 0);
+  return canvas.toDataURL();
+}
+
+/** The SVG filter that bends what's drawn in the monitor like a lens. */
+function BarrelFilter() {
+  const map = useMemo(() => barrelMap(), []);
+  return (
+    <svg aria-hidden="true" className="absolute size-0">
+      <filter
+        id={BARREL_FILTER}
+        x="0"
+        y="0"
+        width="1"
+        height="1"
+        primitiveUnits="objectBoundingBox"
+        colorInterpolationFilters="sRGB"
+      >
+        <feImage
+          href={map}
+          x="0"
+          y="0"
+          width="1"
+          height="1"
+          preserveAspectRatio="none"
+          result="map"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="map"
+          scale="0.035"
+          xChannelSelector="R"
+          yChannelSelector="G"
+        />
+      </filter>
+    </svg>
   );
 }
 
@@ -297,29 +362,40 @@ function MonitorView({
       className="relative hidden aspect-[16/9] overflow-hidden rounded-xl text-[10px] ring-1 ring-text/10 ring-inset tabular-nums md:block"
     >
       <LensGlass />
-      {imageUrl ? (
-        // Short-lived signed URL; next/image would cache it past expiry.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="absolute inset-0 size-full object-cover opacity-25" />
-      ) : null}
+      <BarrelFilter />
+      {/* Everything drawn in the monitor bends a little, as through the lens. */}
+      <div className="absolute inset-0" style={{ filter: `url(#${BARREL_FILTER})` }}>
+        {imageUrl ? (
+          // Short-lived signed URL; next/image would cache it past expiry.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt=""
+            className="absolute inset-0 size-full object-cover opacity-25"
+          />
+        ) : null}
 
-      <div className="absolute inset-x-3.5 top-3 flex items-center justify-between">
-        <Readout label="Iris" value="T2.8" />
-        <Readout label="STR" value="180°" />
-        <Readout label="ISO" value="800" />
-        <Readout label="WB" value="5600K" />
-      </div>
+        {/* Frame guide: its straight lines show the bend. */}
+        <span className="absolute inset-x-[8%] inset-y-[16%] rounded-[3px] border border-text/15" />
 
-      {/* Centre cross. */}
-      <span className="absolute top-1/2 left-1/2 h-3.5 w-px -translate-1/2 bg-text/40" />
-      <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-text/40" />
+        <div className="absolute inset-x-3.5 top-3 flex items-center justify-between">
+          <Readout label="Iris" value="T2.8" />
+          <Readout label="STR" value="180°" />
+          <Readout label="ISO" value="800" />
+          <Readout label="WB" value="5600K" />
+        </div>
 
-      <div className="absolute inset-x-3.5 bottom-3 flex items-end justify-between gap-3">
-        <p className="text-title leading-tight font-medium text-text">{statement}</p>
-        <span className="flex items-center gap-1.5 whitespace-nowrap">
-          <span className="size-1.5 animate-pulse rounded-full bg-[#ff3b30]" />
-          <span className="font-semibold text-text">{timecode}</span>
-        </span>
+        {/* Centre cross. */}
+        <span className="absolute top-1/2 left-1/2 h-3.5 w-px -translate-1/2 bg-text/40" />
+        <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-text/40" />
+
+        <div className="absolute inset-x-3.5 bottom-3 flex items-end justify-between gap-3">
+          <p className="text-title leading-tight font-medium text-text">{statement}</p>
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
+            <span className="size-1.5 animate-pulse rounded-full bg-[#ff3b30]" />
+            <span className="font-semibold text-text">{timecode}</span>
+          </span>
+        </div>
       </div>
     </div>
   );
