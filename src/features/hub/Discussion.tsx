@@ -192,7 +192,7 @@ export function Discussion({
                       "rounded-[14px] rounded-tl-[4px] bg-surface px-4 py-3 text-callout whitespace-pre-line break-words shadow-sm",
                       comment.topic &&
                         !comment.resolvedAt &&
-                        "shadow-[0_0_0_1.5px_var(--attention)]",
+                        "attention",
                     )}
                   >
                     {comment.body}
