@@ -216,6 +216,42 @@ function useTimecode() {
     .join(":");
 }
 
+/** Layers that each blur a part of what's behind (siblings, so none blurs the others' view). */
+const LENS_LAYERS: { blur: string; mask: string }[] = [
+  // Split-field diopter: the left side focused near, so the far scene goes
+  // soft, with a gentle slanted seam.
+  { blur: "blur(7px)", mask: "linear-gradient(100deg, #000 28%, transparent 52%)" },
+  // Field curvature: the corners fall out of focus, as on fast glass.
+  {
+    blur: "blur(4px)",
+    mask: "radial-gradient(ellipse 75% 80% at 60% 50%, transparent 55%, #000 100%)",
+  },
+];
+
+/** Looking through a lens: diopter, soft corners, vignette, fringing and a glint. */
+function LensGlass() {
+  return (
+    <>
+      {LENS_LAYERS.map((layer) => (
+        <div
+          key={layer.mask}
+          className="absolute inset-0"
+          style={{
+            backdropFilter: layer.blur,
+            WebkitBackdropFilter: layer.blur,
+            maskImage: layer.mask,
+            WebkitMaskImage: layer.mask,
+          }}
+        />
+      ))}
+      {/* Barrel: the image bows out, darker and fringed toward the rim. */}
+      <div className="absolute inset-0 rounded-xl bg-[radial-gradient(ellipse_at_center,transparent_60%,rgb(0_0_0/0.14)_100%)] shadow-[inset_3px_0_10px_rgb(255_60_40/0.10),inset_-3px_0_10px_rgb(40_120_255/0.10),inset_0_0_24px_rgb(0_0_0/0.12)]" />
+      {/* A glint on the front element. */}
+      <div className="absolute inset-0 bg-[linear-gradient(125deg,rgb(255_255_255/0.18)_0%,transparent_28%,transparent_70%,rgb(255_255_255/0.06)_100%)]" />
+    </>
+  );
+}
+
 /** One readout on the monitor's bars: a dim label and its value. */
 function Readout({
   label,
@@ -252,8 +288,9 @@ function MonitorView({
     <div
       ref={ref}
       aria-hidden="true"
-      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-surface/10 text-[10px] ring-1 ring-text/10 backdrop-blur-[2px] ring-inset tabular-nums md:block"
+      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-surface/10 text-[10px] ring-1 ring-text/10 ring-inset tabular-nums md:block"
     >
+      <LensGlass />
       {imageUrl ? (
         // Short-lived signed URL; next/image would cache it past expiry.
         // eslint-disable-next-line @next/next/no-img-element
