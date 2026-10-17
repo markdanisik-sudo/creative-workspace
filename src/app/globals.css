@@ -118,17 +118,18 @@
 }
 
 :root[data-theme="dark"] .surface-invert {
+  /* A soft warm grey, not paper white: easier on the eyes on the black page. */
   color-scheme: light;
   --attention: #b82714;
-  --surface: #f2f1ee;
-  --surface-muted: #e6e5e1;
+  --surface: #cfcdc8;
+  --surface-muted: #c3c1bc;
   --surface-hover: rgba(0, 0, 0, 0.04);
   --surface-pressed: rgba(0, 0, 0, 0.07);
   --border: rgba(0, 0, 0, 0.1);
   --border-strong: rgba(0, 0, 0, 0.18);
   --text: #0b0b0b;
-  --text-secondary: #6f6e68;
-  --text-tertiary: #9c9b95;
+  --text-secondary: #4d4c47;
+  --text-tertiary: #5f5e59;
   --text-inverse: #ffffff;
   --ink: #0b0b0b;
   --ink-hover: #2a2a2a;
