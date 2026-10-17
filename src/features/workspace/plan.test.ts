@@ -105,3 +105,26 @@ describe("templates", () => {
     }
   });
 });
+
+describe("gear catalogue", () => {
+  it("uses the gear list's categories and has no duplicates", async () => {
+    const { GEAR_BRANDS, gearName } = await import("./gear-catalog");
+    const names = new Set<string>();
+    for (const brand of GEAR_BRANDS) {
+      expect(brand.items.length).toBeGreaterThan(3);
+      for (const item of brand.items) {
+        expect(OPTION_SETS.gearCategory as readonly string[]).toContain(item.category);
+        const name = gearName(brand, item.model);
+        expect(names.has(name), name).toBe(false);
+        names.add(name);
+      }
+    }
+    expect([...GEAR_BRANDS.map((brand) => brand.id)]).toEqual([
+      "arri",
+      "red",
+      "sony",
+      "canon",
+      "nikon",
+    ]);
+  });
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { BookOpen, Check, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
@@ -19,6 +19,7 @@ import {
   type PlanItem,
 } from "../plan";
 import { deletePlanItem, savePlanItem, setPlanItemDone } from "../plan-actions";
+import { GearCatalog } from "./GearCatalog";
 import { displayValue, fieldLabel, groupItems, itemTitle, optionLabel } from "../plan-format";
 
 const selectClass =
@@ -218,6 +219,7 @@ export function ListModule({
   const toast = useToast();
   const router = useRouter();
   const [editing, setEditing] = useState<PlanItem | "new" | null>(null);
+  const [browsing, setBrowsing] = useState(false);
   const [, startTransition] = useTransition();
   const [shown, setDone] = useOptimistic(items, (current, change: { id: string; done: boolean }) =>
     current.map((item) => (item.id === change.id ? { ...item, done: change.done } : item)),
@@ -241,10 +243,18 @@ export function ListModule({
             ? `${t(`boxes.doneLabel.${module}`)} ${t("boxes.doneCount", { done, total: shown.length })}`
             : t(`workspace.blurbs.${module}`)}
         </p>
-        <Button variant="primary" onClick={() => setEditing("new")}>
-          <Plus size={16} aria-hidden="true" />
-          {t("boxes.add")}
-        </Button>
+        <div className="flex gap-2">
+          {module === "gear" ? (
+            <Button variant="secondary" onClick={() => setBrowsing(true)}>
+              <BookOpen size={16} aria-hidden="true" />
+              {t("gearCatalog.open")}
+            </Button>
+          ) : null}
+          <Button variant="primary" onClick={() => setEditing("new")}>
+            <Plus size={16} aria-hidden="true" />
+            {t("boxes.add")}
+          </Button>
+        </div>
       </div>
 
       {shown.length === 0 ? (
@@ -280,7 +290,7 @@ export function ListModule({
                       key={item.id}
                       className={cn(
                         "flex items-start gap-3 rounded-[16px] bg-surface-muted p-3 sm:p-4",
-                        flagged.includes(`item:${item.id}`) && "shadow-[0_0_0_2px_var(--danger)]",
+                        flagged.includes(`item:${item.id}`) && "attention",
                       )}
                     >
                       <button
@@ -337,6 +347,14 @@ export function ListModule({
           ))}
         </div>
       )}
+
+      {browsing ? (
+        <GearCatalog
+          projectId={projectId}
+          existing={shown.map(itemTitle)}
+          onClose={() => setBrowsing(false)}
+        />
+      ) : null}
 
       {editing ? (
         <ItemDialog

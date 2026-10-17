@@ -197,7 +197,7 @@ export function Workspace({
               "surface-invert group relative flex min-h-[260px] flex-col overflow-hidden rounded-[24px] bg-surface text-left shadow-sm",
               "transition-[box-shadow,transform] duration-300 ease-out hover:shadow-md active:scale-[0.995]",
               "focus-visible:outline-offset-4 lg:min-h-0",
-              module.alerts ? "ring-[3px] ring-danger" : "",
+              module.alerts ? "attention" : "",
               module.className,
             )}
           >

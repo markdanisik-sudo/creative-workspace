@@ -927,6 +927,17 @@ export const en = {
       other: "Other looks",
     },
   },
+  gearCatalog: {
+    title: "Gear catalogue",
+    body: "Pick cameras, lenses and lights by brand. Search looks through every brand.",
+    search: "Search, e.g. FX6, Alexa, 24-70",
+    nothing: "Nothing found.",
+    onList: "On the list",
+    more: "More brands coming soon.",
+    add: "Add {count}",
+    added: "Added: {count}",
+    open: "From catalogue",
+  },
   steps: {
     briefApproved: "Brief approved",
     moodboardApproved: "Moodboard approved",

@@ -139,7 +139,7 @@ export function PaletteEditor({
     <section
       className={cn(
         "flex flex-col gap-4 rounded-[22px] bg-surface-muted p-4 sm:p-5",
-        flagged && "shadow-[0_0_0_2px_var(--danger)]",
+        flagged && "attention",
       )}
     >
       <div className="flex flex-wrap items-center justify-between gap-3">

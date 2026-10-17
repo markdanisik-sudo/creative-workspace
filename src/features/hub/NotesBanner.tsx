@@ -43,7 +43,7 @@ export function NotesBanner({
   return (
     <section
       aria-label={t("notes.title")}
-      className="mb-6 flex flex-col gap-3 rounded-[20px] p-4 shadow-[0_0_0_2px_var(--danger)] sm:p-5"
+      className="mb-6 flex flex-col gap-3 attention rounded-[20px] p-4 sm:p-5"
     >
       <h3 className="flex items-center gap-2 text-callout font-semibold text-danger">
         <span className="size-2 rounded-full bg-danger" aria-hidden="true" />

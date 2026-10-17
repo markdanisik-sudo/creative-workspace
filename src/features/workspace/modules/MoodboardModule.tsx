@@ -248,7 +248,7 @@ export function MoodboardModule({
                 key={image.id}
                 className={cn(
                   "group relative break-inside-avoid overflow-hidden rounded-[14px] bg-surface-muted",
-                  marked && "shadow-[0_0_0_3px_var(--danger)]",
+                  marked && "attention",
                 )}
               >
                 {marked ? (

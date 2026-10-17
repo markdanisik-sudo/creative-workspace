@@ -252,6 +252,15 @@
   }
 }
 
+/* Something waiting for attention (an open discussion note): a fine red
+ * outline that feathers out into a soft glow. */
+.attention {
+  box-shadow:
+    0 0 0 1.5px color-mix(in srgb, var(--danger) 85%, transparent),
+    0 0 14px 2px color-mix(in srgb, var(--danger) 55%, transparent),
+    0 0 40px 10px color-mix(in srgb, var(--danger) 22%, transparent) !important;
+}
+
 /* Feel like an app on phones. */
 @media (pointer: coarse) {
   /* iOS zooms into fields under 16px; keep the layout still. (Not the canvas,

@@ -101,9 +101,6 @@ export default async function PlanPage({
   const open = requests.filter((request) => request.status === "requested");
   const latest = comments[0];
 
-  // Notes from the other side (a client's for the studio, the studio's for a
-  // client) flag their box until someone marks them resolved.
-  const openNotes = notes.filter((note) => note.author.isStudio !== viewer.isStudio);
   const subjects: Subjects = {
     modules: workspace.modules,
     images: workspace.moodboard.map((image) => ({ id: image.id, url: image.url })),
@@ -113,7 +110,8 @@ export default async function PlanPage({
       title: itemTitle(item),
     })),
   };
-  const notesFor = (id: ModuleId) => openNotes.filter((note) => note.topic === id);
+  // Open notes flag their box for everyone until someone marks them resolved.
+  const notesFor = (id: ModuleId) => notes.filter((note) => note.topic === id);
   const flaggedIn = (id: ModuleId) =>
     notesFor(id).flatMap((note) => (note.target ? [note.target] : []));
 

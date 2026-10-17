@@ -166,3 +166,42 @@ export async function savePlanModules(projectId: string, modules: string[]): Pro
   refresh(projectId);
   return { ok: true, data: null };
 }
+
+/** Adds several rows to a list box at once (e.g. picked from the gear catalogue). */
+export async function addPlanItems(
+  projectId: string,
+  module: string,
+  inputs: unknown[],
+): Promise<ActionResult<{ added: number }>> {
+  const { t } = await getI18n();
+  if (!isListModuleId(module) || !Array.isArray(inputs) || inputs.length > 100) {
+    return { ok: false, error: t("errors.generic") };
+  }
+  const rows = inputs
+    .map((input) => cleanItemData(module, input))
+    .filter((data) => data[LIST_MODULES[module].title]);
+  if (rows.length === 0) return { ok: true, data: { added: 0 } };
+  const supabase = await createSupabaseServerClient();
+  const viewer = await requireViewer();
+  const { data: last } = await supabase
+    .from("plan_items")
+    .select("position")
+    .eq("project_id", projectId)
+    .eq("module", module)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const start = (last?.position ?? 0) + 1;
+  const { error } = await supabase.from("plan_items").insert(
+    rows.map((data, index) => ({
+      project_id: projectId,
+      module,
+      data,
+      position: start + index,
+      created_by: viewer.id,
+    })),
+  );
+  if (error) return fail("plan.addItems", error, { projectId });
+  refresh(projectId);
+  return { ok: true, data: { added: rows.length } };
+}

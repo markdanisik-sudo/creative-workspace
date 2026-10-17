@@ -961,6 +961,17 @@ export const cs: Dictionary = {
       other: "Další looky",
     },
   },
+  gearCatalog: {
+    title: "Katalog techniky",
+    body: "Vyberte kamery, objektivy a světla podle značky. Hledání prochází všechny značky.",
+    search: "Hledat, např. FX6, Alexa, 24-70",
+    nothing: "Nic nenalezeno.",
+    onList: "Už v seznamu",
+    more: "Další značky doplníme.",
+    add: "Přidat {count}",
+    added: "Přidáno: {count}",
+    open: "Z katalogu",
+  },
   steps: {
     briefApproved: "Brief potvrzen",
     moodboardApproved: "Moodboard schválen",
