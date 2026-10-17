@@ -96,7 +96,8 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
           aria-label={t("nav.menu")}
           className={cn(
             "absolute inset-x-0 top-0 z-50 isolate flex flex-col rounded-b-[18px] p-2 pb-6 shadow-lg",
-            "animate-pop-in origin-top",
+            // No fill: a transform held after the animation stops Chrome blurring.
+            "origin-top animate-[pop-in_var(--duration-base)_var(--ease-out)]",
           )}
         >
           {/* The frosted glass, its own layer so the monitor can be cut out of it. */}
@@ -175,8 +176,6 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
   );
 }
 
-const MONITOR_RADIUS = 12;
-
 /**
  * An SVG mask for the menu's glass with a hole where the monitor sits (a
  * backdrop blur can't be undone by a child, only cut away).
@@ -190,7 +189,11 @@ function glassMask(panel: HTMLElement, monitor: HTMLElement): string {
   const scale = outer.width / w || 1;
   const x = (box.left - outer.left) / scale;
   const y = (box.top - outer.top) / scale;
-  const [bw, bh, r] = [box.width / scale, box.height / scale, MONITOR_RADIUS];
+  const [bw, bh, r] = [
+    box.width / scale,
+    box.height / scale,
+    parseFloat(getComputedStyle(monitor).borderTopLeftRadius) || 0,
+  ];
   const hole = `M${x + r} ${y}H${x + bw - r}A${r} ${r} 0 0 1 ${x + bw} ${y + r}V${y + bh - r}A${r} ${r} 0 0 1 ${x + bw - r} ${y + bh}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + bh - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'><path fill-rule='evenodd' d='M0 0H${w}V${h}H0Z${hole}'/></svg>`;
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
@@ -216,26 +219,35 @@ function useTimecode() {
     .join(":");
 }
 
+/** Where the split diopter's edge crosses the frame, and its tilt. */
+const SEAM = { at: 46, angle: 100 };
+
 /** Layers that each blur a part of what's behind (siblings, so none blurs the others' view). */
 const LENS_LAYERS: { blur: string; mask: string }[] = [
-  // Split-field diopter: the left side focused near, so the far scene goes
-  // soft, with a gentle slanted seam.
-  { blur: "blur(7px)", mask: "linear-gradient(100deg, #000 28%, transparent 52%)" },
-  // Field curvature: the corners fall out of focus, as on fast glass.
+  // Split-field diopter: the half-lens focuses near, so the scene behind it
+  // drops out of focus, right up to the glass's edge.
   {
-    blur: "blur(4px)",
-    mask: "radial-gradient(ellipse 75% 80% at 60% 50%, transparent 55%, #000 100%)",
+    blur: "blur(6px)",
+    mask: `linear-gradient(${SEAM.angle}deg, #000 ${SEAM.at - 1.5}%, transparent ${SEAM.at}%)`,
+  },
+  // Field curvature: the far corners soften, as on fast glass wide open.
+  {
+    blur: "blur(2.5px)",
+    mask: "radial-gradient(ellipse 70% 75% at 62% 50%, transparent 62%, #000 100%)",
   },
 ];
 
-/** Looking through a lens: diopter, soft corners, vignette, fringing and a glint. */
+/** The edge of the diopter glass: a fine bright line with a shadow under it. */
+const SEAM_LINE = `linear-gradient(${SEAM.angle}deg, transparent calc(${SEAM.at}% - 1.5px), rgb(255 255 255 / 0.45) calc(${SEAM.at}% - 0.5px), rgb(0 0 0 / 0.14) calc(${SEAM.at}% + 0.5px), transparent calc(${SEAM.at}% + 2px))`;
+
+/** Looking through a lens: split diopter, soft corners, vignette, fringing and a glint. */
 function LensGlass() {
   return (
     <>
       {LENS_LAYERS.map((layer) => (
         <div
           key={layer.mask}
-          className="absolute inset-0"
+          className="absolute inset-0 rounded-xl"
           style={{
             backdropFilter: layer.blur,
             WebkitBackdropFilter: layer.blur,
@@ -244,10 +256,13 @@ function LensGlass() {
           }}
         />
       ))}
-      {/* Barrel: the image bows out, darker and fringed toward the rim. */}
-      <div className="absolute inset-0 rounded-xl bg-[radial-gradient(ellipse_at_center,transparent_60%,rgb(0_0_0/0.14)_100%)] shadow-[inset_3px_0_10px_rgb(255_60_40/0.10),inset_-3px_0_10px_rgb(40_120_255/0.10),inset_0_0_24px_rgb(0_0_0/0.12)]" />
+      <div className="absolute inset-0" style={{ backgroundImage: SEAM_LINE }} />
+      {/* Optical vignette: light falls off toward the corners. */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_farthest-side_at_center,transparent_70%,rgb(0_0_0/0.10)_100%)]" />
+      {/* Lateral chromatic aberration: hairline fringes at the rim, red out, blue in. */}
+      <div className="absolute inset-0 rounded-xl shadow-[inset_1px_0_0_rgb(255_59_48/0.35),inset_-1px_0_0_rgb(10_132_255/0.35),inset_0_1px_0_rgb(255_59_48/0.2),inset_0_-1px_0_rgb(10_132_255/0.2),inset_0_0_14px_rgb(0_0_0/0.06)]" />
       {/* A glint on the front element. */}
-      <div className="absolute inset-0 bg-[linear-gradient(125deg,rgb(255_255_255/0.18)_0%,transparent_28%,transparent_70%,rgb(255_255_255/0.06)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(125deg,rgb(255_255_255/0.14)_0%,transparent_22%,transparent_80%,rgb(255_255_255/0.05)_100%)]" />
     </>
   );
 }
