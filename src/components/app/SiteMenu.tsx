@@ -333,7 +333,7 @@ function Readout({
 }) {
   return (
     <span className={cn("flex items-baseline gap-1 whitespace-nowrap", className)}>
-      <span className="text-monitor-ink/55">{label}</span>
+      <span className="text-monitor-ink/75">{label}</span>
       <span className="font-semibold text-monitor-ink">{value}</span>
     </span>
   );
@@ -357,7 +357,7 @@ function MonitorView({
     <div
       ref={ref}
       aria-hidden="true"
-      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl text-[10px] ring-1 ring-text/10 ring-inset tabular-nums md:block"
+      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl text-[10px] ring-1 ring-text/10 [text-shadow:0_1px_3px_rgb(0_0_0/0.3)] ring-inset tabular-nums md:block"
     >
       <LensGlass />
       <BarrelFilter />
@@ -374,7 +374,7 @@ function MonitorView({
         ) : null}
 
         {/* Frame guide: its straight lines show the bend. */}
-        <span className="absolute inset-x-[8%] inset-y-[16%] rounded-[3px] border border-monitor-ink/15" />
+        <span className="absolute inset-x-[8%] inset-y-[16%] rounded-[3px] border border-monitor-ink/40" />
 
         <div className="absolute inset-x-3.5 top-3 flex items-center justify-between">
           <Readout label="Iris" value="T2.8" />
@@ -384,8 +384,8 @@ function MonitorView({
         </div>
 
         {/* Centre cross. */}
-        <span className="absolute top-1/2 left-1/2 h-3.5 w-px -translate-1/2 bg-monitor-ink/40" />
-        <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-monitor-ink/40" />
+        <span className="absolute top-1/2 left-1/2 h-3.5 w-px -translate-1/2 bg-monitor-ink/80" />
+        <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-monitor-ink/80" />
 
         <div className="absolute inset-x-3.5 bottom-3 flex items-end justify-between gap-3">
           <p className="text-callout leading-tight font-medium text-monitor-ink">{statement}</p>
