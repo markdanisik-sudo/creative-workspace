@@ -77,11 +77,10 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
           aria-label={t("nav.menu")}
           className={cn(
             "absolute inset-x-0 top-0 z-50 flex flex-col rounded-b-[18px] p-2 pb-6 shadow-lg",
-            "bg-surface/75 backdrop-blur-2xl backdrop-saturate-150 animate-pop-in origin-top",
+            "bg-surface/60 backdrop-blur-2xl backdrop-saturate-150 animate-pop-in origin-top",
           )}
         >
-          {/* Opaque, so the bar's own links don't show through the frosted glass. */}
-          <div className="-mx-2 -mt-2 flex h-12 items-center justify-between gap-3 bg-surface pr-1.5 pl-4">
+          <div className="-mx-2 -mt-2 flex h-12 items-center justify-between gap-3 pr-1.5 pl-4">
             <div className="flex items-baseline gap-3">
               <Wordmark />
               <LiveDateTime className="hidden text-caption text-text-secondary tabular-nums sm:inline" />
