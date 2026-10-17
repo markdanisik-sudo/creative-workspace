@@ -260,10 +260,18 @@ export function TasksPreview({
           const ratio = column.length
             ? column.filter((task) => task.done).length / column.length
             : 0;
+          // A phase with all its tasks done turns green.
+          const finished = ratio === 1;
           return (
             <div key={phase} className="flex flex-col gap-1.5">
               <div className="h-1 overflow-hidden rounded-full bg-border-strong">
-                <div className="h-full rounded-full bg-text" style={{ width: `${ratio * 100}%` }} />
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-colors duration-500",
+                    finished ? "bg-success" : "bg-text",
+                  )}
+                  style={{ width: `${ratio * 100}%` }}
+                />
               </div>
               <span
                 className={cn(
