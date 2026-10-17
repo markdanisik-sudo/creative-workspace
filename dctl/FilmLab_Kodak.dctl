@@ -30,6 +30,8 @@ DEFINE_UI_PARAMS(p_PrintG, Printer Light Green, DCTLUI_SLIDER_FLOAT, 0.0, -12.0,
 DEFINE_UI_PARAMS(p_PrintB, Printer Light Blue, DCTLUI_SLIDER_FLOAT, 0.0, -12.0, 12.0, 0.5)
 DEFINE_UI_PARAMS(p_PrintContrast, Print Contrast, DCTLUI_SLIDER_FLOAT, 1.0, 0.6, 1.4, 0.01)
 DEFINE_UI_PARAMS(p_Flare, Projection Flare, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_FlareHue, Flare Tint Hue, DCTLUI_SLIDER_FLOAT, 30.0, 0.0, 360.0, 1.0)
+DEFINE_UI_PARAMS(p_FlareTint, Flare Tint Amount, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.01)
 
 DEFINE_UI_PARAMS(p_HalAmount, Halation Amount, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 4.0, 0.01)
 DEFINE_UI_PARAMS(p_HalRadius, Halation Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.2, 4.0, 0.01)
@@ -55,6 +57,7 @@ DEFINE_UI_PARAMS(p_Quality, Quality, DCTLUI_COMBO_BOX, 1, { Q_LOW, Q_MED, Q_HIGH
 #define GOLDEN    2.39996322973f
 #define GREY      0.18f
 #define PT        0.025f    // one printer point in log exposure
+#define FIREFLY   16.0f     // soft limit on blur sources (linear), keeps tiny hot lights from speckling
 
 // -----------------------------------------------------------------------------
 //  Small helpers
@@ -479,18 +482,19 @@ __DEVICE__ float print_toe(float target, float kt, float sc, float us, float ema
 // -----------------------------------------------------------------------------
 
 __DEVICE__ float3 bloom_blur(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, float cx, float cy, int w, int h, int input,
-                             float sigma, float thr, float gain, int n, float rot)
+                             float sigma, float thr, float gain, int n, float rot, float rj)
 {
     float3 acc = make_float3(0.0f, 0.0f, 0.0f);
     float wsum = 0.0f;
     for (int i = 0; i < n; i++) {
-        float r = _sqrtf(((float)i + 0.5f) / (float)n) * 2.6f;
+        float r = _sqrtf(((float)i + rj) / (float)n) * 2.6f;
         float a = (float)i * GOLDEN + rot;
-        int sx = (int)(cx + _cosf(a) * r * sigma + 0.5f);
-        int sy = (int)(cy + _sinf(a) * r * sigma + 0.5f);
-        float3 c = scale3(fetch(tR, tG, tB, sx, sy, w, h, input), gain);
+        float3 c = scale3(fetch(tR, tG, tB, (int)(cx + _cosf(a) * r * sigma + 0.5f), (int)(cy + _sinf(a) * r * sigma + 0.5f), w, h, input), gain);
         float wt = _expf(-0.5f * r * r);
-        acc = add3(acc, scale3(highlights(c, thr, luma2020(c)), wt));
+        float3 hl = highlights(c, thr, luma2020(c));
+        float hy = luma2020(hl);
+        hl = scale3(hl, 1.0f / (1.0f + hy / FIREFLY));   // tame tiny, very hot sources
+        acc = add3(acc, scale3(hl, wt));
         wsum += wt;
     }
     return scale3(acc, 1.0f / wsum);
@@ -499,22 +503,20 @@ __DEVICE__ float3 bloom_blur(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, flo
 // halation: light reflected from the film base back into the red (and some
 // green) layer.  Exponential profile, driven mostly by red-band exposure.
 __DEVICE__ float halation_blur(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, float cx, float cy, int w, int h, int input,
-                               float sigma, float thr, float gain, int n, float rot)
+                               float sigma, float thr, float gain, int n, float rot, float rj)
 {
     float acc = 0.0f, wsum = 0.0f;
     for (int i = 0; i < n; i++) {
-        float r = _sqrtf(((float)i + 0.5f) / (float)n) * 4.0f;
+        float r = _sqrtf(((float)i + rj) / (float)n) * 4.0f;
         float a = (float)i * GOLDEN + rot;
-        int sx = (int)(cx + _cosf(a) * r * sigma + 0.5f);
-        int sy = (int)(cy + _sinf(a) * r * sigma + 0.5f);
-        float3 c = scale3(fetch(tR, tG, tB, sx, sy, w, h, input), gain);
+        float3 c = scale3(fetch(tR, tG, tB, (int)(cx + _cosf(a) * r * sigma + 0.5f), (int)(cy + _sinf(a) * r * sigma + 0.5f), w, h, input), gain);
         float src = _fmaxf(0.75f * c.x + 0.25f * c.y, 0.0f);
         float k = 0.5f * thr, e;
         if (src <= thr - k) e = 0.0f;
         else if (src < thr + k) e = (src - thr + k) * (src - thr + k) / (4.0f * k);
         else e = src - thr;
         float wt = _expf(-r);
-        acc += e * wt;
+        acc += e / (1.0f + e / FIREFLY) * wt;
         wsum += wt;
     }
     return acc / wsum;
@@ -555,9 +557,9 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
     else if (p_Format == FMT_S8) frameMM = 5.79f;
     float pxPerMM = W / frameMM;
 
-    int nSamples = 48;
-    if (p_Quality == Q_LOW) nSamples = 24;
-    else if (p_Quality == Q_HIGH) nSamples = 96;
+    int nSamples = 64;
+    if (p_Quality == Q_LOW) nSamples = 32;
+    else if (p_Quality == Q_HIGH) nSamples = 128;
 
     NegStock ns = neg_stock(p_Stock);
     float expGain = _exp2f(p_Exposure);
@@ -575,13 +577,15 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
     E = scale3(E, expGain);
 
     float rot = (float)(hash3u(p_X, p_Y, 0x5bd1e995U) & 0xFFFFU) * (6.2831853f / 65535.0f);
+    float rj = 0.15f + 0.7f * (float)(hash3u(p_X, p_Y, 0x8da6b343U) & 0xFFFFU) / 65535.0f;
 
     // ---- bloom / diffusion: redistributes highlight energy (energy conserving)
     if (p_BloomAmount > 0.0f) {
         float thr = GREY * _exp2f(p_BloomThreshold);
         float sigma = _fmaxf(p_BloomRadius * 0.01f * W, 0.5f);
-        float3 b = bloom_blur(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, p_Input, sigma, thr, expGain, nSamples, rot);
+        float3 b = bloom_blur(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, p_Input, sigma, thr, expGain, nSamples, rot, rj);
         float3 hl = highlights(E, thr, luma2020(E));
+        hl = scale3(hl, 1.0f / (1.0f + luma2020(hl) / FIREFLY));
         E = add3(E, scale3(add3(b, scale3(hl, -1.0f)), p_BloomAmount));
     }
 
@@ -589,7 +593,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
     if (p_HalAmount > 0.0f) {
         float thr = GREY * _exp2f(p_HalThreshold);
         float sigma = _fmaxf(0.09f * p_HalRadius * ns.hrad * pxPerMM, 0.5f);
-        float hv = halation_blur(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, p_Input, sigma, thr, expGain, nSamples, rot + 1.7f);
+        float hv = halation_blur(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, p_Input, sigma, thr, expGain, nSamples, rot + 1.7f, 1.0f - rj);
         hv *= 0.30f * p_HalAmount * ns.hal;
         E.x += hv;
         E.y += hv * 0.30f * p_HalWarmth;
@@ -709,9 +713,21 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
     float Pb = ps.n2.x * Dr + ps.n2.y * Dg + ps.n2.z * Db;
 
     // projected light, white = clear print (Dmin)
-    float flare = p_Flare * 0.002f;
     float3 L = make_float3(exp10_f(-Pr), exp10_f(-Pg), exp10_f(-Pb));
-    L = make_float3((L.x + flare) / (1.0f + flare), (L.y + flare) / (1.0f + flare), (L.z + flare) / (1.0f + flare));
+
+    // projection flare lifts the blacks, optionally tinted (white stays white)
+    if (p_Flare > 0.0f) {
+        float h = p_FlareHue / 360.0f;
+        float3 hc = make_float3(clampf(_fabs(h * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f),
+                                clampf(2.0f - _fabs(h * 6.0f - 2.0f), 0.0f, 1.0f),
+                                clampf(2.0f - _fabs(h * 6.0f - 4.0f), 0.0f, 1.0f));
+        hc = scale3(hc, 1.0f / _fmaxf(luma2020(hc), 1e-3f));
+        float fl = p_Flare * 0.002f;
+        float fr = fl * (1.0f + p_FlareTint * (hc.x - 1.0f));
+        float fg = fl * (1.0f + p_FlareTint * (hc.y - 1.0f));
+        float fb = fl * (1.0f + p_FlareTint * (hc.z - 1.0f));
+        L = make_float3((L.x + fr) / (1.0f + fr), (L.y + fg) / (1.0f + fg), (L.z + fb) / (1.0f + fb));
+    }
 
     // =========================================================================
     //  OUTPUT

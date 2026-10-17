@@ -40,7 +40,8 @@ Při timeline v ACES nebo DWG s automatickou správou barev nastav v Resolve vý
 | **Print Exposure** | Světlost kopie v printer points (12 bodů = 1 clona expozice printu, na obrazovce je 1 bod ≈ 0,2 EV). + = světlejší. |
 | **Printer Light R/G/B** | Barevné korekce laboratoře v printer points. + = víc dané barvy. Nejpřirozenější způsob, jak „otočit“ celkovou barvu. |
 | **Print Contrast** | Násobič gammy printu. |
-| **Projection Flare** | Lehce zvedne černé jako rozptyl světla v kině. |
+| **Projection Flare** | Zvedne černé jako rozptyl světla v kině (měkký, „vzdušný“ obraz). |
+| **Flare Tint Hue / Amount** | Barva zvednutých černých: odstín 0–360° (35 = zlatá, 195 = azurová) a síla. Bílá zůstává bílá. |
 | **Halation Amount / Radius / Threshold / Warmth** | Červenooranžová záře kolem světel. Threshold je ve stopách nad 18% šedí. Warmth přidává zelenou složku (červená → oranžová). |
 | **Bloom Amount / Radius / Threshold** | Rozptyl světla (difuzní filtr / Pro-Mist). Zachovává energii: světla se rozlijí, nic se „nepřisvětlí“ navíc. Nízký threshold (např. −4) = difuze celého obrazu. |
 | **Grain Amount / Size / Color** | Zrno v denzitě negativu, takže je přirozeně nejvíc vidět ve středních tónech. Color 0 = monochromatické, 1 = plně barevné po vrstvách. |
@@ -48,9 +49,26 @@ Při timeline v ACES nebo DWG s automatickou správou barev nastav v Resolve vý
 | **Film Breath** | Jemné kolísání expozice a barev mezi snímky. |
 | **Gate Weave** | Mikropohyb obrazu v okénku kamery/projektoru. |
 | **Vignette** | Pokles světla do rohů (ve stopách). |
-| **Quality** | Počet vzorků pro halaci a bloom (Low = rychlé při gradingu, High = finální render). |
+| **Quality** | Počet vzorků pro halaci a bloom (Low = rychlé při gradingu, High = finální render). Při velkém Bloom Radius a malých jasných světlech může na Low/Medium zůstat jemný „prach“, na High zmizí. |
 
 Velikosti halace, bloomu a zrna se počítají relativně k šířce obrazu, takže look vypadá stejně v HD i 4K.
+
+## Hotové looky (složka `looks/`)
+
+Každý look je samostatný DCTL soubor. Má nastavení looku zapsané jako výchozí hodnoty posuvníků, takže ho po výběru **vidíš a můžeš hned ladit**. **Reset** tě vrátí na look.
+
+| Soubor | Look |
+|---|---|
+| `FilmLab_Lindon.dctl` | zlatý podzimní les, teplé zvednuté černé, jemná difuze |
+| `FilmLab_Valinor.dctl` | prosluněný opar, smetanová světla, silný bloom |
+| `FilmLab_KhazadDum.dctl` | chladná azurově modrá jeskyně, teplá světla pochodní |
+| `FilmLab_Numenor.dctl` | čisté denní světlo, teplý kámen, chladné nebe |
+
+Instalace: zkopíruj celou složku `looks` do složky LUT (vedle `FilmLab_Kodak.dctl`). V Resolve se objeví v DCTL List jako `looks/FilmLab_…`.
+
+**Vlastní look:** nastav posuvníky v Resolve a ulož node jako **PowerGrade** (Gallery → pravé tlačítko → Grab Still, nebo do PowerGrade alba). Hodnoty se uloží s ním. Pokud chceš look jako soubor, přidej ho do slovníku `LOOKS` v `make_looks.py` a spusť `python3 make_looks.py`. Vygeneruje soubory znovu z hlavního pluginu, takže looky mají vždy jeho nejnovější verzi.
+
+Looky jsou laděné na Rings of Power, ale je to moje interpretace. Velkou část toho vzhledu tvoří atmosféra na place (opar, kouř), světlo a VFX, ty plugin nenahradí.
 
 ## Recepty pro looky
 
