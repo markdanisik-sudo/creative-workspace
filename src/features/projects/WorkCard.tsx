@@ -21,7 +21,7 @@ export function WorkCard({
   // No picture yet: a compact box like the Plan's, not an empty frame.
   if (!project.coverUrl) {
     return (
-      <article className="surface-invert group relative flex min-h-[176px] flex-col justify-between gap-6 rounded-[24px] bg-surface p-5 shadow-sm transition-[box-shadow,transform] duration-300 ease-out hover:shadow-md active:scale-[0.995] sm:p-6">
+      <article className="surface-invert group relative flex min-h-[132px] flex-col justify-between gap-4 rounded-[24px] bg-surface p-5 shadow-sm transition-[box-shadow,transform] duration-300 ease-out hover:shadow-md active:scale-[0.995] sm:p-6">
         <div className="flex items-center justify-between gap-3 text-caption">
           <span className="min-w-0 truncate font-medium">
             <span aria-hidden="true">/</span>
