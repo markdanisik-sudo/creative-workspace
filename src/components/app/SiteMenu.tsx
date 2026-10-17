@@ -219,50 +219,39 @@ function useTimecode() {
     .join(":");
 }
 
-/** Where the split diopter's edge crosses the frame, and its tilt. */
-const SEAM = { at: 46, angle: 100 };
-
-/** Layers that each blur a part of what's behind (siblings, so none blurs the others' view). */
-const LENS_LAYERS: { blur: string; mask: string }[] = [
-  // Split-field diopter: the half-lens focuses near, so the scene behind it
-  // drops out of focus, right up to the glass's edge.
-  {
-    blur: "blur(6px)",
-    mask: `linear-gradient(${SEAM.angle}deg, #000 ${SEAM.at - 1.5}%, transparent ${SEAM.at}%)`,
-  },
-  // Field curvature: the far corners soften, as on fast glass wide open.
-  {
-    blur: "blur(2.5px)",
-    mask: "radial-gradient(ellipse 70% 75% at 62% 50%, transparent 62%, #000 100%)",
-  },
+/**
+ * Soft edges, as through a lens wide open: sharp in the middle, falling out
+ * of focus toward the rim in a few steps (siblings, so none blurs another's view).
+ */
+const EDGE_BLURS = [
+  { blur: "blur(1.5px)", from: 55 },
+  { blur: "blur(4px)", from: 72 },
+  { blur: "blur(8px)", from: 88 },
 ];
 
-/** The edge of the diopter glass: a fine bright line with a shadow under it. */
-const SEAM_LINE = `linear-gradient(${SEAM.angle}deg, transparent calc(${SEAM.at}% - 1.5px), rgb(255 255 255 / 0.45) calc(${SEAM.at}% - 0.5px), rgb(0 0 0 / 0.14) calc(${SEAM.at}% + 0.5px), transparent calc(${SEAM.at}% + 2px))`;
-
-/** Looking through a lens: split diopter, soft corners, vignette, fringing and a glint. */
+/** Looking through a lens: clear glass, soft edges, a faint vignette and fringing. */
 function LensGlass() {
   return (
     <>
-      {LENS_LAYERS.map((layer) => (
-        <div
-          key={layer.mask}
-          className="absolute inset-0 rounded-xl"
-          style={{
-            backdropFilter: layer.blur,
-            WebkitBackdropFilter: layer.blur,
-            maskImage: layer.mask,
-            WebkitMaskImage: layer.mask,
-          }}
-        />
-      ))}
-      <div className="absolute inset-0" style={{ backgroundImage: SEAM_LINE }} />
+      {EDGE_BLURS.map(({ blur, from }) => {
+        const mask = `radial-gradient(ellipse farthest-corner at center, transparent ${from}%, #000 ${from + 25}%)`;
+        return (
+          <div
+            key={blur}
+            className="absolute inset-0 rounded-xl"
+            style={{
+              backdropFilter: blur,
+              WebkitBackdropFilter: blur,
+              maskImage: mask,
+              WebkitMaskImage: mask,
+            }}
+          />
+        );
+      })}
       {/* Optical vignette: light falls off toward the corners. */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_farthest-side_at_center,transparent_70%,rgb(0_0_0/0.10)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_farthest-corner_at_center,transparent_65%,rgb(0_0_0/0.07)_100%)]" />
       {/* Lateral chromatic aberration: hairline fringes at the rim, red out, blue in. */}
-      <div className="absolute inset-0 rounded-xl shadow-[inset_1px_0_0_rgb(255_59_48/0.35),inset_-1px_0_0_rgb(10_132_255/0.35),inset_0_1px_0_rgb(255_59_48/0.2),inset_0_-1px_0_rgb(10_132_255/0.2),inset_0_0_14px_rgb(0_0_0/0.06)]" />
-      {/* A glint on the front element. */}
-      <div className="absolute inset-0 bg-[linear-gradient(125deg,rgb(255_255_255/0.14)_0%,transparent_22%,transparent_80%,rgb(255_255_255/0.05)_100%)]" />
+      <div className="absolute inset-0 rounded-xl shadow-[inset_1px_0_0_rgb(255_59_48/0.3),inset_-1px_0_0_rgb(10_132_255/0.3),inset_0_1px_0_rgb(255_59_48/0.18),inset_0_-1px_0_rgb(10_132_255/0.18)]" />
     </>
   );
 }
@@ -303,7 +292,7 @@ function MonitorView({
     <div
       ref={ref}
       aria-hidden="true"
-      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-surface/10 text-[10px] ring-1 ring-text/10 ring-inset tabular-nums md:block"
+      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl text-[10px] ring-1 ring-text/10 ring-inset tabular-nums md:block"
     >
       <LensGlass />
       {imageUrl ? (
