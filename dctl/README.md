@@ -1,6 +1,6 @@
 # Film Lab: Kodak Vision DCTL pro DaVinci Resolve
 
-Emulace filmového negativu Kodak Vision (Vision, Vision2, Vision3) a kopírovacího materiálu (Kodak 2383 / 2393). Součástí je halace, bloom, filmové zrno, „breath“, gate weave a vinětace, a to všechno v jednom DCTL souboru s ovládacími prvky přímo v Resolve.
+Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN II) a kopírovacího materiálu (Kodak 2383 / 2393). Součástí je halace, bloom, filmové zrno, „breath“, gate weave a vinětace, a to všechno v jednom DCTL souboru s ovládacími prvky přímo v Resolve.
 
 > Vyžaduje **DaVinci Resolve Studio** (DCTL s UI a čtením sousedních pixelů).
 
@@ -31,7 +31,7 @@ Při timeline v ACES nebo DWG s automatickou správou barev nastav v Resolve vý
 | Parametr | Co dělá |
 |---|---|
 | **Input** | Vstupní barevný prostor a gamma (DWG/DI, LogC3, LogC4, S-Log3, V-Log, Log3G10, Rec.709). |
-| **Negative Stock** | 16 negativů: Vision3 5203 / 5207 / 5213 / 5219 (+ 5219 bez rem-jetu ve stylu CineStill), Vision2 5201 / 5205 / 5212 / 5217 / 5218 / 5229 Expression, Vision 5246 / 5274 / 5277 / 5279 / 5289. |
+| **Negative Stock** | 23 negativů: Vision3 5203 / 5207 / 5213 / 5219 (+ 5219 bez rem-jetu ve stylu CineStill), Vision2 5201 / 5205 / 5212 / 5217 / 5218 / 5229 Expression, Vision 5246 / 5274 / 5277 / 5279 / 5289, Eastman ECN II 5247, Eastman 5294, Eastman EXR 5245 / 5248 / 5293 / 5296 / 5298. |
 | **Print Stock** | Kodak Vision 2383 (klasický distribuční print), Vision Premier 2393 (kontrastnější, hlubší černé, sytější), nebo None. |
 | **Output** | Rec.709 Gamma 2.4 (TV/grading), sRGB 2.2 (web), P3-D65 2.6 (kino/HDR mastering). |
 | **Film Format** | 65 mm / 35 mm / Super 16 / Super 8. Mění velikost a viditelnost zrna a velikost halace. |
@@ -74,7 +74,7 @@ Jsou to výchozí body, které jsem odvodil z toho, jak tyto snímky vypadají. 
 - Print Contrast 0.95, Projection Flare 0.5
 
 ### Stranger Things (80. léta, teplé interiéry, viditelné zrno)
-- Negative: **Vision 5279 500T** nebo **Vision2 5218 500T** · Print: **2383**
+- Negative: **Eastman 5294 400T** (noc, interiéry) / **Eastman ECN II 5247** (den), tedy stocky, které se v 80. letech opravdu používaly · Print: **2383**
 - Color Density 1.05 · Grain 1.4, Color 0.7 · Halation 1.3, Threshold 1.0
 - Bloom 0.25 · Film Breath 0.3 · Gate Weave 0.2 · Vignette 0.4
 - Noční scény: Printer Light B +2, G +1 (azurová noc), Negative Exposure −0.5
@@ -82,6 +82,20 @@ Jsou to výchozí body, které jsem odvodil z toho, jak tyto snímky vypadají. 
 ### Noční město / CineStill
 - Negative: **Vision3 500T 5219 no rem-jet** · Print: **2383**
 - Halation 1.0–2.0, Threshold 1.0 · Grain 1.2
+
+## Eastman vs. Kodak a staré stocky
+
+Kodak prodává kinematografické negativy pod značkou **Eastman** (na okraji filmu je natištěno „EASTMAN“). Číslo určuje formát: **52xx** = 35 mm (a 65 mm), **72xx** = 16 mm. Jde o stejné emulze, takže *Kodak Vision3 7219* dostaneš jako 5219 + **Film Format → Super 16**.
+
+Stocky z doby před řadou Vision (seřazené od nejstarších):
+
+| Stock | Éra | Charakter |
+|---|---|---|
+| ECN II 5247 (100T) | 70.–80. léta | krátký rozsah ve světlech, hutné teplé barvy, výraznější halace |
+| 5294 (400T) | 80. léta | rychlý, zrnitý, měkčí barvy |
+| EXR 5245 / 5248 / 5293 | konec 80. a 90. léta | jemnější zrno, pořád kratší rozsah než Vision |
+| EXR 5296 (500T) | konec 80. a 90. léta | noční stock své doby |
+| EXR 5298 (500T) | 90. léta | kontrastnější a „punchovější“ než 5296 |
 
 ## Jak to funguje
 

@@ -5,7 +5,7 @@
 //  Pipeline (per pixel):
 //    camera log  -> scene linear (Rec.2020 primaries)
 //    -> gate weave, vignette, bloom (diffusion), halation   [scene light]
-//    -> negative: H&D curve per layer, interimage colour, grain
+//    -> negative (Vision3/2/1, Eastman EXR / ECN II): H&D curve per layer, interimage colour, grain
 //    -> print: printer lights, print stock H&D curve, dye crosstalk
 //    -> display encoding (Rec.709 / sRGB / P3-D65)
 //
@@ -17,7 +17,7 @@
 // =============================================================================
 
 DEFINE_UI_PARAMS(p_Input, Input, DCTLUI_COMBO_BOX, 0, { IN_DWG, IN_LOGC3, IN_LOGC4, IN_SLOG3, IN_VLOG, IN_LOG3G10, IN_R709 }, { "DaVinci WG / Intermediate", "ARRI LogC3 / AWG3", "ARRI LogC4 / AWG4", "Sony S-Log3 / S-Gamut3.Cine", "Panasonic V-Log / V-Gamut", "RED Log3G10 / RWG", "Rec.709 Gamma 2.4" })
-DEFINE_UI_PARAMS(p_Stock, Negative Stock, DCTLUI_COMBO_BOX, 3, { V3_5203, V3_5207, V3_5213, V3_5219, V3_5219NR, V2_5201, V2_5205, V2_5212, V2_5217, V2_5218, V2_5229, V1_5246, V1_5274, V1_5277, V1_5279, V1_5289 }, { "Vision3 50D 5203", "Vision3 250D 5207", "Vision3 200T 5213", "Vision3 500T 5219", "Vision3 500T 5219 no rem-jet", "Vision2 50D 5201", "Vision2 250D 5205", "Vision2 100T 5212", "Vision2 200T 5217", "Vision2 500T 5218", "Vision2 Expression 500T 5229", "Vision 250D 5246", "Vision 200T 5274", "Vision 320T 5277", "Vision 500T 5279", "Vision 800T 5289" })
+DEFINE_UI_PARAMS(p_Stock, Negative Stock, DCTLUI_COMBO_BOX, 3, { V3_5203, V3_5207, V3_5213, V3_5219, V3_5219NR, V2_5201, V2_5205, V2_5212, V2_5217, V2_5218, V2_5229, V1_5246, V1_5274, V1_5277, V1_5279, V1_5289, E_5247, E_5294, EXR_5245, EXR_5248, EXR_5293, EXR_5296, EXR_5298 }, { "Vision3 50D 5203", "Vision3 250D 5207", "Vision3 200T 5213", "Vision3 500T 5219", "Vision3 500T 5219 no rem-jet", "Vision2 50D 5201", "Vision2 250D 5205", "Vision2 100T 5212", "Vision2 200T 5217", "Vision2 500T 5218", "Vision2 Expression 500T 5229", "Vision 250D 5246", "Vision 200T 5274", "Vision 320T 5277", "Vision 500T 5279", "Vision 800T 5289", "Eastman ECN II 100T 5247", "Eastman 400T 5294", "Eastman EXR 50D 5245", "Eastman EXR 100T 5248", "Eastman EXR 200T 5293", "Eastman EXR 500T 5296", "Eastman EXR 500T 5298" })
 DEFINE_UI_PARAMS(p_Print, Print Stock, DCTLUI_COMBO_BOX, 0, { PR_2383, PR_2393, PR_NONE }, { "Kodak Vision 2383", "Kodak Vision Premier 2393", "None - negative only to DWG/DI" })
 DEFINE_UI_PARAMS(p_Output, Output, DCTLUI_COMBO_BOX, 0, { OUT_709, OUT_SRGB, OUT_P3 }, { "Rec.709 Gamma 2.4", "sRGB / Rec.709 Gamma 2.2", "P3-D65 Gamma 2.6" })
 DEFINE_UI_PARAMS(p_Format, Film Format, DCTLUI_COMBO_BOX, 1, { FMT_65, FMT_35, FMT_S16, FMT_S8 }, { "65 mm", "35 mm", "Super 16", "Super 8" })
@@ -373,6 +373,41 @@ __DEVICE__ NegStock neg_stock(int id)
         s.xt = -1.10f; s.kt = 0.28f; s.emax = 2.70f; s.ks = 0.26f;
         s.sat = 0.20f; s.tgb = 0.03f; s.tbg = 0.03f;
         s.grain = 0.0250f; s.gsize = 1.45f; s.hal = 1.3f;
+    } else if (id == E_5247) {    // ECN II 100T (70s-80s): short scale, punchy warm colour
+        s.gr = 0.66f; s.gg = 0.65f; s.gb = 0.62f;
+        s.xt = -1.02f; s.kt = 0.20f; s.emax = 2.40f; s.ks = 0.24f;
+        s.sat = 0.34f; s.trg = 0.04f; s.tgr = 0.02f; s.tbg = 0.02f;
+        s.grain = 0.0150f; s.gsize = 1.15f; s.hal = 1.3f;
+    } else if (id == E_5294) {    // 400T (80s): fast, grainy, softer colour
+        s.gr = 0.64f; s.gg = 0.63f; s.gb = 0.59f;
+        s.xt = -1.05f; s.kt = 0.24f; s.emax = 2.40f; s.ks = 0.24f;
+        s.sat = 0.24f; s.trg = 0.03f; s.tgb = 0.02f; s.tbg = 0.03f;
+        s.grain = 0.0240f; s.gsize = 1.45f; s.hal = 1.35f;
+    } else if (id == EXR_5245) {  // EXR (late 80s-90s): finer grain, still shorter scale than Vision
+        s.gr = 0.65f; s.gg = 0.64f; s.gb = 0.63f;
+        s.xt = -1.06f; s.kt = 0.20f; s.emax = 2.60f; s.ks = 0.25f;
+        s.sat = 0.31f; s.trg = 0.03f; s.tbg = 0.02f;
+        s.grain = 0.0090f; s.gsize = 0.90f; s.hal = 1.1f;
+    } else if (id == EXR_5248) {
+        s.gr = 0.65f; s.gg = 0.64f; s.gb = 0.62f;
+        s.xt = -1.06f; s.kt = 0.21f; s.emax = 2.60f; s.ks = 0.25f;
+        s.sat = 0.30f; s.trg = 0.03f; s.tgr = 0.015f;
+        s.grain = 0.0120f; s.gsize = 1.05f; s.hal = 1.15f;
+    } else if (id == EXR_5293) {
+        s.gr = 0.65f; s.gg = 0.65f; s.gb = 0.62f;
+        s.xt = -1.07f; s.kt = 0.21f; s.emax = 2.60f; s.ks = 0.25f;
+        s.sat = 0.29f; s.trg = 0.03f; s.tbr = -0.01f;
+        s.grain = 0.0150f; s.gsize = 1.15f; s.hal = 1.2f;
+    } else if (id == EXR_5296) {  // 500T: the late-80s / 90s night stock
+        s.gr = 0.64f; s.gg = 0.63f; s.gb = 0.59f;
+        s.xt = -1.10f; s.kt = 0.25f; s.emax = 2.50f; s.ks = 0.25f;
+        s.sat = 0.25f; s.tgb = 0.02f; s.tbg = 0.03f;
+        s.grain = 0.0210f; s.gsize = 1.35f; s.hal = 1.3f;
+    } else if (id == EXR_5298) {  // 500T: higher contrast, punchier than 5296
+        s.gr = 0.67f; s.gg = 0.66f; s.gb = 0.63f;
+        s.xt = -1.06f; s.kt = 0.23f; s.emax = 2.50f; s.ks = 0.25f;
+        s.sat = 0.29f; s.trg = 0.02f; s.tgb = 0.02f; s.tbg = 0.02f;
+        s.grain = 0.0200f; s.gsize = 1.35f; s.hal = 1.3f;
     }
     return s;
 }
