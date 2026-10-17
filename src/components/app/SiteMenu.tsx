@@ -229,7 +229,7 @@ const EDGE_BLURS = [
   { blur: "blur(12px)", from: 76 },
 ];
 
-/** Looking through a loupe: a clear centre, soft rim and domed glass. */
+/** Looking through a loupe: a clear centre, a soft rim and a faint vignette. */
 function LensGlass() {
   return (
     <>
@@ -250,8 +250,6 @@ function LensGlass() {
       })}
       {/* Optical vignette: light falls off toward the corners. */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_farthest-corner_at_center,transparent_55%,rgb(0_0_0/0.12)_100%)]" />
-      {/* The domed glass: a soft highlight up top, a bright refracting rim. */}
-      <div className="absolute inset-0 rounded-xl bg-[radial-gradient(ellipse_60%_45%_at_35%_18%,rgb(255_255_255/0.22),transparent_70%)] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.35),inset_0_0_28px_rgb(255_255_255/0.18)]" />
     </>
   );
 }
