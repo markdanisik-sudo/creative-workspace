@@ -31,7 +31,8 @@ export function Wordmark({
   className,
 }: {
   href?: string;
-  size?: "sm" | "lg";
+  /** xs sits beside caption text (the bar's clock). */
+  size?: "xs" | "sm" | "lg";
   className?: string;
 }) {
   return (
@@ -40,7 +41,11 @@ export function Wordmark({
       aria-label={`${APP_NAME} home`}
       className={cn("inline-flex items-center rounded-sm text-text", className)}
     >
-      <LogoSvg className={size === "sm" ? "w-[132px]" : "w-[clamp(280px,64vw,860px)]"} />
+      <LogoSvg
+        className={
+          size === "xs" ? "w-[96px]" : size === "sm" ? "w-[132px]" : "w-[clamp(280px,64vw,860px)]"
+        }
+      />
     </Link>
   );
 }

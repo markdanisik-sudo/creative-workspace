@@ -82,7 +82,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
         >
           <div className="-mx-2 -mt-2 flex h-12 items-center justify-between gap-3 pr-1.5 pl-4">
             <div className="flex items-baseline gap-3">
-              <Wordmark />
+              <Wordmark size="xs" />
               <LiveDateTime className="hidden text-caption text-text-secondary tabular-nums sm:inline" />
             </div>
             <div className="flex items-center gap-2">

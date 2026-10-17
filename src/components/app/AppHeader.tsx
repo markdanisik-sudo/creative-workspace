@@ -36,7 +36,7 @@ export async function AppHeader({ viewer, actions }: { viewer: Viewer; actions?:
         />
         <div className="relative flex h-12 items-center justify-between gap-3 pr-1.5 pl-4">
           <div className={cn("flex min-w-0 items-baseline gap-2.5", UNDER_MENU)}>
-            <Wordmark />
+            <Wordmark size="xs" />
             <LiveDateTime className="hidden text-caption text-text-secondary tabular-nums md:inline" />
           </div>
           <div className="flex items-center gap-1.5">
