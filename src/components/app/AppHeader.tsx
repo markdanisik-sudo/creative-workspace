@@ -30,9 +30,6 @@ export async function AppHeader({ viewer, actions }: { viewer: Viewer; actions?:
               <Link href="/projects" className="transition-opacity hover:opacity-60">
                 {t("nav.projects")}
               </Link>
-              <Link href="/settings" className="transition-opacity hover:opacity-60">
-                {t("nav.settings")}
-              </Link>
             </nav>
             <Suspense>
               <CompactSearch />
