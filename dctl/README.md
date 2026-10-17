@@ -53,26 +53,9 @@ Při timeline v ACES nebo DWG s automatickou správou barev nastav v Resolve vý
 
 Velikosti halace, bloomu a zrna se počítají relativně k šířce obrazu, takže look vypadá stejně v HD i 4K.
 
-## Hotové looky (složka `looks/`)
-
-Každý look je samostatný DCTL soubor. Má nastavení looku zapsané jako výchozí hodnoty posuvníků, takže ho po výběru **vidíš a můžeš hned ladit**. **Reset** tě vrátí na look.
-
-| Soubor | Look |
-|---|---|
-| `FilmLab_Lindon.dctl` | zlatý podzimní les, teplé zvednuté černé, jemná difuze |
-| `FilmLab_Valinor.dctl` | prosluněný opar, smetanová světla, silný bloom |
-| `FilmLab_KhazadDum.dctl` | chladná azurově modrá jeskyně, teplá světla pochodní |
-| `FilmLab_Numenor.dctl` | čisté denní světlo, teplý kámen, chladné nebe |
-
-Instalace: zkopíruj celou složku `looks` do složky LUT (vedle `FilmLab_Kodak.dctl`). V Resolve se objeví v DCTL List jako `looks/FilmLab_…`.
-
-**Vlastní look:** nastav posuvníky v Resolve a ulož node jako **PowerGrade** (Gallery → pravé tlačítko → Grab Still, nebo do PowerGrade alba). Hodnoty se uloží s ním. Pokud chceš look jako soubor, přidej ho do slovníku `LOOKS` v `make_looks.py` a spusť `python3 make_looks.py`. Vygeneruje soubory znovu z hlavního pluginu, takže looky mají vždy jeho nejnovější verzi.
-
-Looky jsou laděné na Rings of Power, ale je to moje interpretace. Velkou část toho vzhledu tvoří atmosféra na place (opar, kouř), světlo a VFX, ty plugin nenahradí.
-
 ## Recepty pro looky
 
-Jsou to výchozí body, které jsem odvodil z toho, jak tyto snímky vypadají. Nejde o oficiální nastavení z produkce. **Pán prstenů** (2001–2003) se točil na 35mm film Kodak. **Hobit**, **Rings of Power** a **Stranger Things** se točily digitálně a filmový look dostaly až v gradingu, což je přesně případ, na který je tenhle nástroj určený.
+Jsou to výchozí body, které jsem odvodil z toho, jak tyto snímky vypadají. Nejde o oficiální nastavení z produkce. **Pán prstenů** (2001–2003) se točil na 35mm film Kodak. **Hobit** a **Stranger Things** se točily digitálně a filmový look dostaly až v gradingu, což je přesně případ, na který je tenhle nástroj určený.
 
 ### Pán prstenů: Kraj / Lothlórien (teplé, zlaté)
 - Negative: **Vision 5246 250D** (exteriéry) / **Vision 5279 500T** (noc, interiéry)
@@ -84,12 +67,6 @@ Jsou to výchozí body, které jsem odvodil z toho, jak tyto snímky vypadají. 
 - Negative: **Vision3 5203 50D** · Print: **2393**
 - Color Density 1.2 · Grain 0.4 · Halation 0.5 · Bloom 0.15
 - Printer Light R +1, B −1
-
-### Rings of Power (měkká světla, bohaté barvy, jemná difuze)
-- Negative: **Vision3 5207 250D** · Print: **2383**
-- Color Density 1.15 · Grain 0.35 · Halation 0.6, Radius 1.3
-- Bloom 0.3, Radius 2.0, Threshold −1 (jemná difuze celého obrazu)
-- Print Contrast 0.95, Projection Flare 0.5
 
 ### Stranger Things (80. léta, teplé interiéry, viditelné zrno)
 - Negative: **Eastman 5294 400T** (noc, interiéry) / **Eastman ECN II 5247** (den), tedy stocky, které se v 80. letech opravdu používaly · Print: **2383**
