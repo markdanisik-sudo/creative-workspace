@@ -125,6 +125,7 @@ export const en = {
   dashboard: {
     joinBodyCode: "Paste the invitation link or code the studio sent you.",
     joinLabel: "Join",
+    projectLabel: "Project",
     startTitle: "Start a new project",
     startBody: "Brief, moodboard, shot list and locations — everything for the shoot in one place.",
     startCta: "Create project",
