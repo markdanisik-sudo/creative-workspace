@@ -1,3 +1,4 @@
+import type { Palette } from "./palettes";
 import type { Medium, PlanItem, PlanModuleId } from "./plan";
 
 export { isPlanModuleId as isModuleId, type PlanModuleId as ModuleId } from "./plan";
@@ -67,6 +68,8 @@ export interface WorkspaceData {
   modules: PlanModuleId[];
   /** Rows of the list boxes (interview, people, deliverables…). */
   items: PlanItem[];
+  /** The moodboard's colour palette. */
+  palette: Palette;
   brief: Brief;
   shotDefaults: ShotSpecs;
   moodboard: WorkspaceImage[];

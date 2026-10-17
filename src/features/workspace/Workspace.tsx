@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowUpRight, ChevronLeft } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, MessageSquare } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useI18n } from "@/lib/i18n/client";
@@ -19,6 +20,12 @@ export interface WorkspaceModule {
   className: string;
   /** Previews that fill the box edge to edge (e.g. image collages). */
   bleed?: boolean;
+  /** Open notes from the other side: the box gets a red outline. */
+  alerts?: number;
+  /** Shown above the tool when the box is open (e.g. those notes). */
+  banner?: ReactNode;
+  /** "Comment on this" — the discussion with this box selected. */
+  commentHref?: string;
 }
 
 const QUERY_KEY = "m";
@@ -152,7 +159,16 @@ export function Workspace({
             <ChevronLeft size={16} aria-hidden="true" />
             {t("workspace.backToOverview")}
           </button>
-          <div className="flex items-baseline gap-3 text-caption text-text-secondary">
+          <div className="flex items-center gap-3 text-caption text-text-secondary">
+            {active.commentHref ? (
+              <Link
+                href={active.commentHref}
+                className="inline-flex h-8 items-center gap-1.5 rounded-full bg-surface-muted px-3 font-medium text-text transition-colors hover:bg-surface-pressed"
+              >
+                <MessageSquare size={13} aria-hidden="true" />
+                <span className="max-sm:sr-only">{t("notes.comment")}</span>
+              </Link>
+            ) : null}
             <span className="font-medium text-text">
               <span aria-hidden="true">/</span>
               {active.title}
@@ -160,6 +176,7 @@ export function Workspace({
             <Index value={activeIndex} />
           </div>
         </header>
+        {active.banner}
         <div className="flex-1">{active.content}</div>
       </section>
     );
@@ -180,9 +197,16 @@ export function Workspace({
               "surface-invert group relative flex min-h-[260px] flex-col overflow-hidden rounded-[24px] bg-surface text-left shadow-sm",
               "transition-[box-shadow,transform] duration-300 ease-out hover:shadow-md active:scale-[0.995]",
               "focus-visible:outline-offset-4 lg:min-h-0",
+              module.alerts ? "ring-[3px] ring-danger" : "",
               module.className,
             )}
           >
+            {module.alerts ? (
+              <span className="absolute right-4 bottom-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-danger px-2.5 py-1 text-[11px] font-semibold text-white shadow-md">
+                <span className="size-1.5 rounded-full bg-white" aria-hidden="true" />
+                {t("notes.count", { count: module.alerts })}
+              </span>
+            ) : null}
             <div
               className={cn(
                 "relative z-10 flex items-baseline justify-between p-5 pb-0 text-caption sm:p-6 sm:pb-0",

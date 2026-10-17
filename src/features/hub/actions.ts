@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { isPhase, type Phase } from "@/features/projects/types";
+import { isPlanModuleId } from "@/features/workspace/plan";
 import { logError, type ActionResult } from "@/lib/errors";
 import { getI18n } from "@/lib/i18n/server";
 import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
@@ -240,12 +241,39 @@ export async function deleteEvent(projectId: string, eventId: string): Promise<A
 /* Discussion                                                                 */
 /* -------------------------------------------------------------------------- */
 
-export async function postComment(projectId: string, rawBody: string): Promise<ActionResult> {
+const TARGET =
+  /^(palette|(image|item):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+
+export async function postComment(
+  projectId: string,
+  rawBody: string,
+  about?: { topic: string | null; target: string | null },
+): Promise<ActionResult> {
   const body = clean(rawBody, LIMITS.body);
   if (!body) return fail("hub.postComment", "empty");
+  const topic = about?.topic && isPlanModuleId(about.topic) ? about.topic : null;
+  const target = topic && about?.target && TARGET.test(about.target) ? about.target : null;
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.from("comments").insert({ project_id: projectId, body });
+  const { error } = await supabase
+    .from("comments")
+    .insert({ project_id: projectId, body, topic, target });
   if (error) return fail("hub.postComment", error, { projectId });
+  refresh(projectId);
+  return { ok: true, data: null };
+}
+
+/** Marks a message about a box as dealt with (the studio or its author). */
+export async function setCommentResolved(
+  projectId: string,
+  commentId: string,
+  resolved: boolean,
+): Promise<ActionResult> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.rpc("set_comment_resolved", {
+    comment_id: commentId,
+    resolved,
+  });
+  if (error) return fail("hub.resolveComment", error, { commentId });
   refresh(projectId);
   return { ok: true, data: null };
 }

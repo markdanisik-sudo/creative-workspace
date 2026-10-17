@@ -101,18 +101,18 @@ export async function listEvents(projectId: string): Promise<ProjectEvent[]> {
   }));
 }
 
-export async function listComments(projectId: string, limit?: number): Promise<Comment[]> {
-  const supabase = await createSupabaseServerClient();
-  let query = supabase
-    .from("comments")
-    .select("id, body, author_id, created_at, updated_at")
-    .eq("project_id", projectId)
-    .is("board_id", null)
-    .order("created_at", { ascending: false });
-  if (limit) query = query.limit(limit);
-  const { data, error } = await query;
-  if (error) logError("hub.comments", error, { projectId });
-  const rows = (data ?? []).reverse();
+type CommentRow = {
+  id: string;
+  body: string;
+  author_id: string;
+  created_at: string;
+  updated_at: string;
+  topic: string | null;
+  target: string | null;
+  resolved_at: string | null;
+};
+
+async function toComments(rows: CommentRow[]): Promise<Comment[]> {
   const people = await peopleFor(rows.map((row) => row.author_id));
   return rows.map((row) => ({
     id: row.id,
@@ -120,7 +120,40 @@ export async function listComments(projectId: string, limit?: number): Promise<C
     author: people.get(row.author_id)!,
     createdAt: row.created_at,
     edited: new Date(row.updated_at).getTime() - new Date(row.created_at).getTime() > 1000,
+    topic: row.topic,
+    target: row.target,
+    resolvedAt: row.resolved_at,
   }));
+}
+
+const COMMENT_COLUMNS = "id, body, author_id, created_at, updated_at, topic, target, resolved_at";
+
+export async function listComments(projectId: string, limit?: number): Promise<Comment[]> {
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("comments")
+    .select(COMMENT_COLUMNS)
+    .eq("project_id", projectId)
+    .is("board_id", null)
+    .order("created_at", { ascending: false });
+  if (limit) query = query.limit(limit);
+  const { data, error } = await query;
+  if (error) logError("hub.comments", error, { projectId });
+  return toComments((data ?? []).reverse());
+}
+
+/** Unresolved messages about a Plan box, oldest first. */
+export async function listOpenNotes(projectId: string): Promise<Comment[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("comments")
+    .select(COMMENT_COLUMNS)
+    .eq("project_id", projectId)
+    .not("topic", "is", null)
+    .is("resolved_at", null)
+    .order("created_at");
+  if (error) logError("hub.openNotes", error, { projectId });
+  return toComments(data ?? []);
 }
 
 export async function listServices({ activeOnly }: { activeOnly: boolean }): Promise<Service[]> {

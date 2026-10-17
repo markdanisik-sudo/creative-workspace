@@ -290,6 +290,10 @@ export type Database = {
           created_at: string;
           id: string;
           project_id: string;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          target: string | null;
+          topic: string | null;
           updated_at: string;
         };
         Insert: {
@@ -299,6 +303,10 @@ export type Database = {
           created_at?: string;
           id?: string;
           project_id: string;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          target?: string | null;
+          topic?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -308,6 +316,10 @@ export type Database = {
           created_at?: string;
           id?: string;
           project_id?: string;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          target?: string | null;
+          topic?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -1050,6 +1062,7 @@ export type Database = {
           brief: NonNullable<Json>;
           medium: string;
           modules: string[] | null;
+          palette: NonNullable<Json>;
           project_id: string;
           shot_defaults: NonNullable<Json>;
           template: string | null;
@@ -1060,6 +1073,7 @@ export type Database = {
           brief?: NonNullable<Json>;
           medium?: string;
           modules?: string[] | null;
+          palette?: NonNullable<Json>;
           project_id: string;
           shot_defaults?: NonNullable<Json>;
           template?: string | null;
@@ -1070,6 +1084,7 @@ export type Database = {
           brief?: NonNullable<Json>;
           medium?: string;
           modules?: string[] | null;
+          palette?: NonNullable<Json>;
           project_id?: string;
           shot_defaults?: NonNullable<Json>;
           template?: string | null;
@@ -1393,6 +1408,7 @@ export type Database = {
           project_name: string;
         }[];
       };
+      set_comment_resolved: { Args: { comment_id: string; resolved: boolean }; Returns: undefined };
       studio_is_set_up: { Args: Record<PropertyKey, never>; Returns: boolean };
     };
     Enums: {

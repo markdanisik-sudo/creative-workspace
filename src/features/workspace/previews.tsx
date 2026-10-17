@@ -5,6 +5,7 @@ import type { Task } from "@/features/hub/types";
 import type { Translator } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/cn";
+import type { Palette, PaletteColor } from "./palettes";
 import { LIST_MODULES, type ListModuleId, type PlanItem } from "./plan";
 import { displayValue, itemTitle } from "./plan-format";
 import { DEFAULT_GROUPS, specGroup } from "./shot-options";
@@ -62,9 +63,46 @@ const COLLAGE: Record<number, string[]> = {
   5: ["col-span-2 row-span-2", "", "", "", ""],
 };
 
-export function MoodboardPreview({ images, t }: { images: WorkspaceImage[]; t: T }) {
+function PaletteStrip({ colors }: { colors: PaletteColor[] }) {
+  if (colors.length === 0) return null;
+  return (
+    <div className="absolute inset-x-3 bottom-3 z-10 flex h-7 overflow-hidden rounded-[9px] shadow-md ring-1 ring-black/10">
+      {colors.map((color, index) => (
+        <span
+          key={`${color.hex}-${index}`}
+          className="flex-1"
+          style={{ backgroundColor: color.hex }}
+        />
+      ))}
+    </div>
+  );
+}
+
+export function MoodboardPreview({
+  images,
+  palette,
+  t,
+}: {
+  images: WorkspaceImage[];
+  palette?: Palette;
+  t: T;
+}) {
   const all = images.filter((image) => image.url);
   const shown = all.slice(0, 5);
+  const colors = palette?.colors ?? [];
+  if (shown.length === 0 && colors.length > 0) {
+    return (
+      <div className="mt-auto flex h-24 overflow-hidden rounded-[14px]">
+        {colors.map((color, index) => (
+          <span
+            key={`${color.hex}-${index}`}
+            className="flex-1"
+            style={{ backgroundColor: color.hex }}
+          />
+        ))}
+      </div>
+    );
+  }
   if (shown.length === 0) {
     return (
       <div className="m-5 mt-14 flex flex-1 flex-col items-center justify-center gap-3 rounded-[18px] border border-dashed border-border-strong text-text-tertiary sm:m-6 sm:mt-14">
@@ -89,6 +127,7 @@ export function MoodboardPreview({ images, t }: { images: WorkspaceImage[]; t: T
         </div>
       ))}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/35 to-transparent" />
+      <PaletteStrip colors={colors} />
     </div>
   );
 }

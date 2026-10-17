@@ -3,6 +3,7 @@ import { cache } from "react";
 import { logError } from "@/lib/errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signStoragePaths } from "@/lib/supabase/storage";
+import { cleanPalette } from "./palettes";
 import { isListModuleId, isMedium, resolveModules, type ItemData, type PlanItem } from "./plan";
 import {
   BRIEF_FIELDS,
@@ -35,7 +36,7 @@ export async function getWorkspace(projectId: string): Promise<WorkspaceData> {
   const [workspace, images, locations, shots, items] = await Promise.all([
     supabase
       .from("project_workspaces")
-      .select("brief, shot_defaults, medium, template, modules")
+      .select("brief, shot_defaults, medium, template, modules, palette")
       .eq("project_id", projectId)
       .maybeSingle(),
     supabase
@@ -113,6 +114,7 @@ export async function getWorkspace(projectId: string): Promise<WorkspaceData> {
           ]
         : [],
     ),
+    palette: cleanPalette(workspace.data?.palette),
     brief,
     shotDefaults: asRecord(workspace.data?.shot_defaults) as ShotSpecs,
     moodboard: imageRows.filter((row) => row.collection === "moodboard").map(toImage),

@@ -9,8 +9,12 @@ import {
   listComments,
   listEvents,
   listRequests,
+  listOpenNotes,
   listTasks,
 } from "@/features/hub/queries";
+import { NotesBanner } from "@/features/hub/NotesBanner";
+import type { Subjects } from "@/features/hub/subjects";
+import { itemTitle } from "@/features/workspace/plan-format";
 import { getProject } from "@/features/projects/queries";
 import { BriefModule } from "@/features/workspace/modules/BriefModule";
 import { LocationsModule } from "@/features/workspace/modules/LocationsModule";
@@ -73,7 +77,7 @@ export default async function PlanPage({
 }: PageProps<"/projects/[projectId]/plan">) {
   const { projectId } = await params;
   const { m } = await searchParams;
-  const [viewer, i18n, events, requests, comments, summary, workspace, tasks, details] =
+  const [viewer, i18n, events, requests, comments, summary, workspace, tasks, details, notes] =
     await Promise.all([
       requireViewer(),
       getI18n(),
@@ -84,6 +88,7 @@ export default async function PlanPage({
       getWorkspace(projectId),
       listTasks(projectId),
       getProjectDetails(projectId),
+      listOpenNotes(projectId),
     ]);
   const { t, tp, locale } = i18n;
   const base = `/projects/${projectId}`;
@@ -95,6 +100,22 @@ export default async function PlanPage({
   );
   const open = requests.filter((request) => request.status === "requested");
   const latest = comments[0];
+
+  // Notes from the other side (a client's for the studio, the studio's for a
+  // client) flag their box until someone marks them resolved.
+  const openNotes = notes.filter((note) => note.author.isStudio !== viewer.isStudio);
+  const subjects: Subjects = {
+    modules: workspace.modules,
+    images: workspace.moodboard.map((image) => ({ id: image.id, url: image.url })),
+    items: workspace.items.map((item) => ({
+      id: item.id,
+      module: item.module,
+      title: itemTitle(item),
+    })),
+  };
+  const notesFor = (id: ModuleId) => openNotes.filter((note) => note.topic === id);
+  const flaggedIn = (id: ModuleId) =>
+    notesFor(id).flatMap((note) => (note.target ? [note.target] : []));
 
   const boxes: Record<ModuleId, Omit<WorkspaceModule, "className">> = {
     brief: {
@@ -109,13 +130,15 @@ export default async function PlanPage({
       title: t("workspace.modules.moodboard"),
       blurb: t("workspace.blurbs.moodboard"),
       bleed: workspace.moodboard.length > 0,
-      preview: <MoodboardPreview images={workspace.moodboard} t={t} />,
+      preview: <MoodboardPreview images={workspace.moodboard} palette={workspace.palette} t={t} />,
       content: (
         <MoodboardModule
           projectId={projectId}
           images={workspace.moodboard}
           viewerId={viewer.id}
           isStudio={viewer.isStudio}
+          palette={workspace.palette}
+          flagged={flaggedIn("moodboard")}
         />
       ),
     },
@@ -174,6 +197,7 @@ export default async function PlanPage({
                 items={items}
                 viewerId={viewer.id}
                 isStudio={viewer.isStudio}
+                flagged={flaggedIn(id)}
               />
             ),
           },
@@ -195,7 +219,24 @@ export default async function PlanPage({
         : "lg:col-span-7";
     // Tasks on a row of their own only need the phase bars: keep it short.
     const rows = alone && id === "tasks" ? "lg:row-span-1" : "lg:row-span-2";
-    return { ...boxes[id], className: `${span} ${rows}` };
+    const boxNotes = notesFor(id);
+    return {
+      ...boxes[id],
+      className: `${span} ${rows}`,
+      alerts: boxNotes.length,
+      commentHref: `${base}/discussion?o=${id}`,
+      banner:
+        boxNotes.length > 0 ? (
+          <NotesBanner
+            key={`notes-${id}`}
+            projectId={projectId}
+            notes={boxNotes}
+            subjects={subjects}
+            viewerId={viewer.id}
+            isStudio={viewer.isStudio}
+          />
+        ) : null,
+    };
   });
   // The studio, or the client who started the project, shapes the plan.
   const canEditPlan = viewer.isStudio || summary?.ownerId === viewer.id;

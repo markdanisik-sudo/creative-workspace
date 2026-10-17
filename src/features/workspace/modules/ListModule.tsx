@@ -204,12 +204,15 @@ export function ListModule({
   items,
   viewerId,
   isStudio,
+  flagged = [],
 }: {
   projectId: string;
   module: ListModuleId;
   items: PlanItem[];
   viewerId: string;
   isStudio: boolean;
+  /** Rows with open discussion notes: "item:<id>". */
+  flagged?: string[];
 }) {
   const { t, locale } = useI18n();
   const toast = useToast();
@@ -275,7 +278,10 @@ export function ListModule({
                   return (
                     <li
                       key={item.id}
-                      className="flex items-start gap-3 rounded-[16px] bg-surface-muted p-3 sm:p-4"
+                      className={cn(
+                        "flex items-start gap-3 rounded-[16px] bg-surface-muted p-3 sm:p-4",
+                        flagged.includes(`item:${item.id}`) && "shadow-[0_0_0_2px_var(--danger)]",
+                      )}
                     >
                       <button
                         type="button"

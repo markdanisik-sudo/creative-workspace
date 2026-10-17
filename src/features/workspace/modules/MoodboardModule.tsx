@@ -10,7 +10,9 @@ import { useToast } from "@/components/ui/Toast";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
 import { deleteImage } from "../actions";
+import type { Palette } from "../palettes";
 import type { WorkspaceImage } from "../types";
+import { PaletteEditor } from "./PaletteEditor";
 import { isUploadableImage, uploadImages } from "../upload";
 
 function Lightbox({
@@ -106,11 +108,16 @@ export function MoodboardModule({
   images,
   viewerId,
   isStudio,
+  palette,
+  flagged = [],
 }: {
   projectId: string;
   images: WorkspaceImage[];
   viewerId: string;
   isStudio: boolean;
+  palette: Palette;
+  /** Parts with open discussion notes: "palette", "image:<id>". */
+  flagged?: string[];
 }) {
   const { t } = useI18n();
   const toast = useToast();
@@ -196,6 +203,13 @@ export function MoodboardModule({
       onDrop={onDrop}
       className="relative flex min-h-[50vh] flex-col gap-5"
     >
+      <PaletteEditor
+        projectId={projectId}
+        palette={palette}
+        images={visible}
+        flagged={flagged.includes("palette")}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-body text-text-secondary">{t("moodboard.hint")}</p>
         <Button variant="primary" onClick={() => input.current?.click()}>
@@ -228,11 +242,20 @@ export function MoodboardModule({
         <div className="columns-2 gap-2 sm:columns-3 lg:columns-4 [&>*]:mb-2">
           {visible.map((image, index) => {
             const canRemove = isStudio || image.uploadedBy === viewerId;
+            const marked = flagged.includes(`image:${image.id}`);
             return (
               <figure
                 key={image.id}
-                className="group relative break-inside-avoid overflow-hidden rounded-[14px] bg-surface-muted"
+                className={cn(
+                  "group relative break-inside-avoid overflow-hidden rounded-[14px] bg-surface-muted",
+                  marked && "shadow-[0_0_0_3px_var(--danger)]",
+                )}
               >
+                {marked ? (
+                  <span className="pointer-events-none absolute top-2 left-2 z-10 rounded-full bg-danger px-2 py-0.5 text-[11px] font-semibold text-white">
+                    {t("notes.changeRequested")}
+                  </span>
+                ) : null}
                 <button type="button" onClick={() => setViewing(index)} className="block w-full">
                   {/* eslint-disable-next-line @next/next/no-img-element -- signed storage URLs */}
                   <img

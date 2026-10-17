@@ -532,14 +532,12 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
         .from("plan_items")
         .insert({ project_id: projectId, module: "nonsense", data: {} });
       expect(unknown.error).not.toBeNull();
-      const spoof = await client.client
-        .from("plan_items")
-        .insert({
-          project_id: projectId,
-          module: "gear",
-          data: { item: "x" },
-          created_by: studio.id,
-        });
+      const spoof = await client.client.from("plan_items").insert({
+        project_id: projectId,
+        module: "gear",
+        data: { item: "x" },
+        created_by: studio.id,
+      });
       expect(spoof.error).not.toBeNull();
 
       const outside = await outsider.client
@@ -551,6 +549,77 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
         .from("plan_items")
         .insert({ project_id: projectId, module: "gear", data: { item: "x" } });
       expect(intrude.error).not.toBeNull();
+    });
+
+    it("lets messages be about a box; the studio or the author resolves them", async () => {
+      const note = await client.client
+        .from("comments")
+        .insert({
+          project_id: projectId,
+          body: "Warmer palette please",
+          topic: "moodboard",
+          target: "palette",
+        })
+        .select("id")
+        .single();
+      expect(note.error).toBeNull();
+      const badTarget = await client.client.from("comments").insert({
+        project_id: projectId,
+        body: "x",
+        topic: "moodboard",
+        target: "javascript:alert(1)",
+      });
+      expect(badTarget.error).not.toBeNull();
+
+      // Nobody else can resolve it, nor edit the client's text.
+      const stranger = await outsider.client.rpc("set_comment_resolved", {
+        comment_id: note.data!.id,
+        resolved: true,
+      });
+      expect(stranger.error).not.toBeNull();
+      const rewrite = await studio.client
+        .from("comments")
+        .update({ body: "changed" })
+        .eq("id", note.data!.id)
+        .select("id");
+      expect(rewrite.data).toEqual([]);
+
+      const resolved = await studio.client.rpc("set_comment_resolved", {
+        comment_id: note.data!.id,
+        resolved: true,
+      });
+      expect(resolved.error).toBeNull();
+      const row = await client.client
+        .from("comments")
+        .select("resolved_at, resolved_by, body, created_at, updated_at")
+        .eq("id", note.data!.id)
+        .single();
+      // Resolving isn't editing: the message doesn't show as "edited".
+      expect(row.data?.updated_at).toBe(row.data?.created_at);
+      expect(row.data?.resolved_at).not.toBeNull();
+      expect(row.data?.resolved_by).toBe(studio.id);
+      expect(row.data?.body).toBe("Warmer palette please");
+
+      const reopen = await client.client.rpc("set_comment_resolved", {
+        comment_id: note.data!.id,
+        resolved: false,
+      });
+      expect(reopen.error).toBeNull();
+    });
+
+    it("saves the moodboard palette for members only", async () => {
+      const palette = { colors: [{ hex: "#0b1214" }], preset: "kodak-2383" };
+      const save = await client.client
+        .from("project_workspaces")
+        .update({ palette })
+        .eq("project_id", projectId)
+        .select("palette");
+      expect(save.data?.[0]?.palette).toEqual(palette);
+      const peek = await outsider.client
+        .from("project_workspaces")
+        .select("palette")
+        .eq("project_id", projectId);
+      expect(peek.data).toEqual([]);
     });
 
     it("keeps outsiders out of the workspace", async () => {

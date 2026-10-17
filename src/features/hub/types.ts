@@ -51,6 +51,11 @@ export interface Comment {
   author: Person;
   createdAt: string;
   edited: boolean;
+  /** The Plan box the message is about, if any. */
+  topic: string | null;
+  /** What in that box: "palette", "image:<id>", "item:<id>". */
+  target: string | null;
+  resolvedAt: string | null;
 }
 
 export interface Service {

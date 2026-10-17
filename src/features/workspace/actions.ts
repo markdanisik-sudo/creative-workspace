@@ -6,6 +6,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { STORAGE_BUCKET } from "@/lib/supabase/env";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { TablesUpdate } from "@/lib/supabase/database.types";
+import { cleanPalette } from "./palettes";
 import {
   BRIEF_FIELDS,
   DAY_NIGHT,
@@ -66,6 +67,19 @@ export async function saveBrief(projectId: string, brief: Brief): Promise<Action
     .from("project_workspaces")
     .upsert({ project_id: projectId, brief: content }, { onConflict: "project_id" });
   if (error) return fail("workspace.saveBrief", error, { projectId });
+  refresh(projectId);
+  return { ok: true, data: null };
+}
+
+export async function savePalette(projectId: string, palette: unknown): Promise<ActionResult> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("project_workspaces")
+    .upsert(
+      { project_id: projectId, palette: cleanPalette(palette) as never },
+      { onConflict: "project_id" },
+    );
+  if (error) return fail("workspace.savePalette", error, { projectId });
   refresh(projectId);
   return { ok: true, data: null };
 }
