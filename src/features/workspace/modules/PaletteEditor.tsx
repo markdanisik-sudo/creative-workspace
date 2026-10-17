@@ -42,35 +42,19 @@ async function samplePixels(url: string): Promise<[number, number, number][]> {
   return pixels;
 }
 
-function Swatch({
-  color,
-  onClick,
-  large = false,
-}: {
-  color: PaletteColor;
-  onClick?: () => void;
-  large?: boolean;
-}) {
-  const ink = inkOn(color.hex);
+function Swatch({ color, onClick }: { color: PaletteColor; onClick?: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
       title={color.name ? `${color.name} ${color.hex}` : color.hex}
-      style={{ backgroundColor: color.hex, color: ink }}
-      className={cn(
-        "flex min-w-0 flex-1 flex-col justify-end text-left transition-transform hover:-translate-y-0.5",
-        large ? "h-28 rounded-[14px] p-2.5 sm:h-36" : "h-10 rounded-[8px]",
-      )}
+      style={{ backgroundColor: color.hex, color: inkOn(color.hex) }}
+      className="flex h-20 min-w-0 flex-1 flex-col justify-end overflow-hidden rounded-[14px] p-2.5 text-left transition-transform hover:-translate-y-0.5 sm:h-36"
     >
-      {large ? (
-        <>
-          {color.name ? (
-            <span className="truncate text-caption font-semibold">{color.name}</span>
-          ) : null}
-          <span className="font-mono text-[11px] uppercase opacity-80">{color.hex}</span>
-        </>
+      {color.name ? (
+        <span className="truncate text-caption font-semibold">{color.name}</span>
       ) : null}
+      <span className="truncate font-mono text-[11px] uppercase opacity-80">{color.hex}</span>
     </button>
   );
 }
@@ -187,14 +171,10 @@ export function PaletteEditor({
           {t("palette.empty")}
         </button>
       ) : (
-        <div className="flex gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5 sm:flex">
+          {/* Phones: rows of three, so every code fits. Wider screens: one strip. */}
           {current.colors.map((color, index) => (
-            <Swatch
-              key={`${color.hex}-${index}`}
-              color={color}
-              large
-              onClick={() => setEditing(index)}
-            />
+            <Swatch key={`${color.hex}-${index}`} color={color} onClick={() => setEditing(index)} />
           ))}
         </div>
       )}
