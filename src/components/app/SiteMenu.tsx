@@ -124,11 +124,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
               </ul>
             </nav>
 
-            <FilmFrame
-              imageUrl={imageUrl}
-              statement={t("nav.menuStatement")}
-              sub={t("nav.menuStatementSub")}
-            />
+            <MonitorView imageUrl={imageUrl} statement={t("nav.menuStatement")} />
           </div>
 
           <div className="mt-10 flex flex-col gap-4 px-3 sm:flex-row sm:items-end sm:justify-between">
@@ -154,57 +150,80 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
   );
 }
 
-/** Sprocket holes along one edge of the frame. */
-function Perforations({ className }: { className?: string }) {
-  return (
-    <div aria-hidden="true" className={cn("absolute inset-x-3 flex justify-between", className)}>
-      {Array.from({ length: 18 }, (_, index) => (
-        <span key={index} className="h-2 w-3 rounded-[2px] bg-[#ecebe8]/85" />
-      ))}
-    </div>
-  );
+/** Timecode from the wall clock, HH:MM:SS:FF at 25 fps. */
+function useTimecode() {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 40);
+    return () => window.clearInterval(tick);
+  }, []);
+  if (now === null) return "00:00:00:00";
+  const date = new Date(now);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return [
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds(),
+    Math.floor(date.getMilliseconds() / 40),
+  ]
+    .map(pad)
+    .join(":");
+}
+
+/** Frame-line corner. */
+function Corner({ className }: { className: string }) {
+  return <span aria-hidden="true" className={cn("absolute size-4 border-white/70", className)} />;
 }
 
 /**
- * The menu's picture: the latest project cover as a frame of film, edge
- * print and all (a lab, after all: this is where stories develop).
+ * The menu's picture: the latest project cover as seen on a camera monitor,
+ * with the camera's on-screen display over it.
  */
-function FilmFrame({
-  imageUrl,
-  statement,
-  sub,
-}: {
-  imageUrl: string | null;
-  statement: string;
-  sub: string;
-}) {
+function MonitorView({ imageUrl, statement }: { imageUrl: string | null; statement: string }) {
+  const timecode = useTimecode();
   return (
-    <div className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-[#161513] md:block">
-      <Perforations className="top-2.5" />
-      <Perforations className="bottom-2.5" />
-      <div className="absolute inset-x-0 inset-y-8 overflow-hidden bg-[#1d1c1a]">
-        {imageUrl ? (
-          // Short-lived signed URL; next/image would cache it past expiry.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt=""
-            className="absolute inset-0 size-full object-cover opacity-70 saturate-[0.85]"
-          />
-        ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
-        <div className="absolute inset-0 flex flex-col justify-end gap-1 p-4 text-white">
-          <p className="text-title leading-tight font-medium text-balance">{statement}</p>
-          <p className="text-caption text-white/70">{sub}</p>
+    <div className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-[#1d1c1a] font-mono text-[10px] tracking-wide text-white/85 uppercase tabular-nums md:block">
+      {imageUrl ? (
+        // Short-lived signed URL; next/image would cache it past expiry.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imageUrl} alt="" className="absolute inset-0 size-full object-cover" />
+      ) : null}
+      <div className="absolute inset-0 bg-black/30" />
+
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-3 top-2.5 flex items-center justify-between"
+      >
+        <span className="flex items-center gap-1.5">
+          <span className="size-1.5 animate-pulse rounded-full bg-[#ff3b30]" />
+          REC
+        </span>
+        <span>{timecode}</span>
+        <span>4K · 25p</span>
+      </div>
+
+      <div className="absolute inset-x-8 inset-y-8">
+        <Corner className="top-0 left-0 border-t border-l" />
+        <Corner className="top-0 right-0 border-t border-r" />
+        <Corner className="bottom-0 left-0 border-b border-l" />
+        <Corner className="right-0 bottom-0 border-r border-b" />
+        <div className="flex size-full items-center justify-center">
+          <p className="font-sans text-title font-medium tracking-normal text-white normal-case">
+            {statement}
+          </p>
         </div>
       </div>
-      {/* Edge print, in the amber of the real thing. */}
-      <p
+
+      <div
         aria-hidden="true"
-        className="absolute top-[22px] left-4 font-mono text-[8px] tracking-[0.2em] text-[#e39b3a] uppercase opacity-80"
+        className="absolute inset-x-3 bottom-2.5 flex items-center justify-between"
       >
-        ▸ 24 &nbsp; m.studio.lab 500T &nbsp; ▸ 24A
-      </p>
+        <span>ISO 800</span>
+        <span>180°</span>
+        <span>5600K</span>
+        <span>T2.8</span>
+        <span>ND 0.6</span>
+      </div>
     </div>
   );
 }

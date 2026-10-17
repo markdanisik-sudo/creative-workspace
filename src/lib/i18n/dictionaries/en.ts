@@ -120,8 +120,7 @@ export const en = {
     lightMode: "Light mode",
     switchToDark: "Switch to dark mode",
     switchToLight: "Switch to light mode",
-    menuStatement: "Where stories develop.",
-    menuStatementSub: "Photo · Film · Post-production",
+    menuStatement: "We feel your story.",
   },
   dashboard: {
     joinBodyCode: "Paste the invitation link or code the studio sent you.",
