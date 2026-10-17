@@ -224,12 +224,12 @@ function useTimecode() {
  * of focus toward the rim in a few steps (siblings, so none blurs another's view).
  */
 const EDGE_BLURS = [
-  { blur: "blur(1.5px)", from: 55 },
-  { blur: "blur(4px)", from: 72 },
-  { blur: "blur(8px)", from: 88 },
+  { blur: "blur(2px)", from: 40 },
+  { blur: "blur(6px)", from: 58 },
+  { blur: "blur(12px)", from: 76 },
 ];
 
-/** Looking through a lens: clear glass, soft edges, a faint vignette and fringing. */
+/** Looking through a loupe: a clear centre, soft rim, domed glass and fringing. */
 function LensGlass() {
   return (
     <>
@@ -249,7 +249,9 @@ function LensGlass() {
         );
       })}
       {/* Optical vignette: light falls off toward the corners. */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_farthest-corner_at_center,transparent_65%,rgb(0_0_0/0.07)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_farthest-corner_at_center,transparent_55%,rgb(0_0_0/0.12)_100%)]" />
+      {/* The domed glass: a soft highlight up top, a bright refracting rim. */}
+      <div className="absolute inset-0 rounded-xl bg-[radial-gradient(ellipse_60%_45%_at_35%_18%,rgb(255_255_255/0.22),transparent_70%)] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.35),inset_0_0_28px_rgb(255_255_255/0.18)]" />
       {/* Lateral chromatic aberration: hairline fringes at the rim, red out, blue in. */}
       <div className="absolute inset-0 rounded-xl shadow-[inset_1px_0_0_rgb(255_59_48/0.3),inset_-1px_0_0_rgb(10_132_255/0.3),inset_0_1px_0_rgb(255_59_48/0.18),inset_0_-1px_0_rgb(10_132_255/0.18)]" />
     </>
