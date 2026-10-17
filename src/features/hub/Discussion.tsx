@@ -190,9 +190,7 @@ export function Discussion({
                   <p
                     className={cn(
                       "rounded-[14px] rounded-tl-[4px] bg-surface px-4 py-3 text-callout whitespace-pre-line break-words shadow-sm",
-                      comment.topic &&
-                        !comment.resolvedAt &&
-                        "attention",
+                      comment.topic && !comment.resolvedAt && "attention",
                     )}
                   >
                     {comment.body}

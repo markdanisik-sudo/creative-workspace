@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/app/AppHeader";
 import { requireViewer } from "@/features/auth/session";
 import { HubTabs } from "@/features/hub/HubTabs";
-import { PhaseStepper, type PhaseProgress } from "@/features/hub/PhaseStepper";
+import { isProjectFinished, PhaseStepper, type PhaseProgress } from "@/features/hub/PhaseStepper";
+import { cn } from "@/lib/cn";
 import { ProjectDetailsButton } from "@/features/hub/ProjectDetailsButton";
 import { getProjectDetails, listTasks } from "@/features/hub/queries";
 import { listShotChecks, type ShotCheck } from "@/features/workspace/queries";
@@ -45,6 +46,9 @@ export default async function ProjectHubLayout({
   ]);
   if (!project || !summary) notFound();
   const { t, tp, locale } = i18n;
+  const progress = phaseProgress(tasks, shots);
+  // Everything ticked off: the status box turns green.
+  const finished = isProjectFinished(progress);
 
   return (
     <div className="min-h-dvh">
@@ -85,8 +89,15 @@ export default async function ProjectHubLayout({
           </p>
         ) : null}
 
-        <div className="mb-10 rounded-xl bg-surface px-5 py-4 shadow-sm">
-          <PhaseStepper phase={project.phase} progress={phaseProgress(tasks, shots)} t={t} />
+        <div
+          className={cn(
+            "mb-10 rounded-xl px-5 py-4 shadow-sm transition-colors",
+            finished
+              ? "bg-success-surface outline-[1.5px] -outline-offset-1 outline-success outline-solid"
+              : "bg-surface",
+          )}
+        >
+          <PhaseStepper phase={project.phase} progress={progress} t={t} />
         </div>
 
         <div className="sm:mb-10">

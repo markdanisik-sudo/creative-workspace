@@ -971,6 +971,7 @@ export const en = {
     retouch: "Retouching",
   },
   overview: {
+    projectComplete: "Project complete",
     progress: "{done} of {total} done",
     phaseDone: "Done",
     phaseActive: "In progress",

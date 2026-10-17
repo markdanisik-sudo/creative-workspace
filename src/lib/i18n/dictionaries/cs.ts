@@ -1005,6 +1005,7 @@ export const cs: Dictionary = {
     retouch: "Retuš",
   },
   overview: {
+    projectComplete: "Projekt dokončen",
     progress: "Hotovo {done} z {total}",
     phaseDone: "Hotovo",
     phaseActive: "Probíhá",

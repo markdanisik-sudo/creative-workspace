@@ -29,6 +29,7 @@
   --danger: #d70015;
   --danger-surface: rgba(215, 0, 21, 0.08);
   --success: #248a3d;
+  --success-surface: rgba(36, 138, 61, 0.08);
   /* Open notes: the warm brick red of a Kodak Vision3 film can. */
   --attention: #b82714;
 
@@ -83,6 +84,8 @@
   --focus-ring: rgba(64, 156, 255, 0.45);
   --danger: #ff453a;
   --danger-surface: rgba(255, 69, 58, 0.12);
+  --success: #30d158;
+  --success-surface: rgba(48, 209, 88, 0.1);
   --attention: #d7331d;
 
   --overlay: rgba(0, 0, 0, 0.5);
@@ -151,6 +154,8 @@
   --color-danger: var(--danger);
   --color-danger-surface: var(--danger-surface);
   --color-attention: var(--attention);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
   --color-overlay: var(--overlay);
 
   --radius-sm: var(--radius-sm);
