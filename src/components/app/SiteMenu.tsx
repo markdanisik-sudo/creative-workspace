@@ -3,7 +3,7 @@
 import { Plus, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Ref } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { signOut } from "@/features/auth/actions";
 import { useI18n } from "@/lib/i18n/client";
@@ -29,6 +29,8 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const glassRef = useRef<HTMLDivElement>(null);
+  const monitorRef = useRef<HTMLDivElement>(null);
 
   const links = [
     { href: "/projects", label: t("nav.projects") },
@@ -47,9 +49,26 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
     const onPointerDown = (event: PointerEvent) => {
       if (!panelRef.current?.contains(event.target as Node)) setOpen(false);
     };
+    // The monitor is a window in the menu's frosted glass: cut it out.
+    const panel = panelRef.current;
+    const cut = () => {
+      const glass = glassRef.current;
+      const monitor = monitorRef.current;
+      if (!panel || !glass) return;
+      const mask = monitor ? glassMask(panel, monitor) : "none";
+      glass.style.maskImage = mask;
+      glass.style.setProperty("-webkit-mask-image", mask);
+    };
+    cut();
+    const observer = new ResizeObserver(cut);
+    if (panel) observer.observe(panel);
+    panel?.addEventListener("animationend", cut);
+
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDown);
     return () => {
+      observer.disconnect();
+      panel?.removeEventListener("animationend", cut);
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown);
     };
@@ -76,10 +95,16 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
           aria-modal="false"
           aria-label={t("nav.menu")}
           className={cn(
-            "absolute inset-x-0 top-0 z-50 flex flex-col rounded-b-[18px] p-2 pb-6 shadow-lg",
-            "bg-surface/60 backdrop-blur-2xl backdrop-saturate-150 animate-pop-in origin-top",
+            "absolute inset-x-0 top-0 z-50 isolate flex flex-col rounded-b-[18px] p-2 pb-6 shadow-lg",
+            "animate-pop-in origin-top",
           )}
         >
+          {/* The frosted glass, its own layer so the monitor can be cut out of it. */}
+          <div
+            ref={glassRef}
+            aria-hidden="true"
+            className="absolute inset-0 -z-10 rounded-b-[18px] bg-surface/60 backdrop-blur-2xl backdrop-saturate-150 [mask-size:100%_100%]"
+          />
           <div className="-mx-2 -mt-2 flex h-12 items-center justify-between gap-3 pr-1.5 pl-4">
             <div className="flex items-baseline gap-3">
               <Wordmark size="xs" />
@@ -124,7 +149,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
               </ul>
             </nav>
 
-            <MonitorView imageUrl={imageUrl} statement={t("nav.menuStatement")} />
+            <MonitorView ref={monitorRef} imageUrl={imageUrl} statement={t("nav.menuStatement")} />
           </div>
 
           <div className="mt-10 flex flex-col gap-4 px-3 sm:flex-row sm:items-end sm:justify-between">
@@ -148,6 +173,27 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
       ) : null}
     </>
   );
+}
+
+const MONITOR_RADIUS = 12;
+
+/**
+ * An SVG mask for the menu's glass with a hole where the monitor sits (a
+ * backdrop blur can't be undone by a child, only cut away).
+ */
+function glassMask(panel: HTMLElement, monitor: HTMLElement): string {
+  const box = monitor.getBoundingClientRect();
+  if (box.width === 0) return "none";
+  const outer = panel.getBoundingClientRect();
+  const [w, h] = [panel.offsetWidth, panel.offsetHeight];
+  // Undo the pop-in scale, if the panel is still animating.
+  const scale = outer.width / w || 1;
+  const x = (box.left - outer.left) / scale;
+  const y = (box.top - outer.top) / scale;
+  const [bw, bh, r] = [box.width / scale, box.height / scale, MONITOR_RADIUS];
+  const hole = `M${x + r} ${y}H${x + bw - r}A${r} ${r} 0 0 1 ${x + bw} ${y + r}V${y + bh - r}A${r} ${r} 0 0 1 ${x + bw - r} ${y + bh}H${x + r}A${r} ${r} 0 0 1 ${x} ${y + bh - r}V${y + r}A${r} ${r} 0 0 1 ${x + r} ${y}Z`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='${w}' height='${h}'><path fill-rule='evenodd' d='M0 0H${w}V${h}H0Z${hole}'/></svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
 /** Timecode from the wall clock, HH:MM:SS:FF at 25 fps. */
@@ -190,14 +236,23 @@ function Readout({
 
 /**
  * The menu's picture: a camera monitor's readouts, pared down, laid straight
- * over the latest project cover on glass clearer than the menu's own.
+ * over the latest project cover on a window cut in the menu's frosted glass.
  */
-function MonitorView({ imageUrl, statement }: { imageUrl: string | null; statement: string }) {
+function MonitorView({
+  ref,
+  imageUrl,
+  statement,
+}: {
+  ref: Ref<HTMLDivElement>;
+  imageUrl: string | null;
+  statement: string;
+}) {
   const timecode = useTimecode();
   return (
     <div
+      ref={ref}
       aria-hidden="true"
-      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-text/[0.04] text-[10px] ring-1 ring-text/5 ring-inset tabular-nums md:block"
+      className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-surface/10 text-[10px] ring-1 ring-text/10 backdrop-blur-[2px] ring-inset tabular-nums md:block"
     >
       {imageUrl ? (
         // Short-lived signed URL; next/image would cache it past expiry.
