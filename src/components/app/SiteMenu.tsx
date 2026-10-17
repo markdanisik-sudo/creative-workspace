@@ -124,16 +124,11 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
               </ul>
             </nav>
 
-            <div className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-[#1d1c1a] md:block">
-              {imageUrl ? (
-                // Short-lived signed URL; next/image would cache it past expiry.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageUrl} alt="" className="absolute inset-0 size-full object-cover" />
-              ) : null}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/25">
-                <p className="text-title font-medium text-white">{t("nav.menuStatement")}</p>
-              </div>
-            </div>
+            <FilmFrame
+              imageUrl={imageUrl}
+              statement={t("nav.menuStatement")}
+              sub={t("nav.menuStatementSub")}
+            />
           </div>
 
           <div className="mt-10 flex flex-col gap-4 px-3 sm:flex-row sm:items-end sm:justify-between">
@@ -156,5 +151,60 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
         </div>
       ) : null}
     </>
+  );
+}
+
+/** Sprocket holes along one edge of the frame. */
+function Perforations({ className }: { className?: string }) {
+  return (
+    <div aria-hidden="true" className={cn("absolute inset-x-3 flex justify-between", className)}>
+      {Array.from({ length: 18 }, (_, index) => (
+        <span key={index} className="h-2 w-3 rounded-[2px] bg-[#ecebe8]/85" />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The menu's picture: the latest project cover as a frame of film, edge
+ * print and all (a lab, after all: this is where stories develop).
+ */
+function FilmFrame({
+  imageUrl,
+  statement,
+  sub,
+}: {
+  imageUrl: string | null;
+  statement: string;
+  sub: string;
+}) {
+  return (
+    <div className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-[#161513] md:block">
+      <Perforations className="top-2.5" />
+      <Perforations className="bottom-2.5" />
+      <div className="absolute inset-x-0 inset-y-8 overflow-hidden bg-[#1d1c1a]">
+        {imageUrl ? (
+          // Short-lived signed URL; next/image would cache it past expiry.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt=""
+            className="absolute inset-0 size-full object-cover opacity-70 saturate-[0.85]"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
+        <div className="absolute inset-0 flex flex-col justify-end gap-1 p-4 text-white">
+          <p className="text-title leading-tight font-medium text-balance">{statement}</p>
+          <p className="text-caption text-white/70">{sub}</p>
+        </div>
+      </div>
+      {/* Edge print, in the amber of the real thing. */}
+      <p
+        aria-hidden="true"
+        className="absolute top-[22px] left-4 font-mono text-[8px] tracking-[0.2em] text-[#e39b3a] uppercase opacity-80"
+      >
+        ▸ 24 &nbsp; m.studio.lab 500T &nbsp; ▸ 24A
+      </p>
+    </div>
   );
 }

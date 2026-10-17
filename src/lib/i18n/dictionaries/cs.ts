@@ -152,7 +152,8 @@ export const cs: Dictionary = {
     lightMode: "Světlý režim",
     switchToDark: "Přepnout na tmavý režim",
     switchToLight: "Přepnout na světlý režim",
-    menuStatement: "Cítíme váš příběh.",
+    menuStatement: "Tady se příběhy vyvolávají.",
+    menuStatementSub: "Foto · Film · Postprodukce",
   },
   dashboard: {
     joinBodyCode: "Vložte odkaz nebo kód z pozvánky, kterou vám poslalo studio.",
