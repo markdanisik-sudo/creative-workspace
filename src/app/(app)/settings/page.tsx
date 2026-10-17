@@ -98,6 +98,17 @@ export default async function SettingsPage() {
 
         <section className="mb-14 flex flex-col gap-4">
           <SectionLabel label={t("security.title")} index={++index} />
+          <Row label={t("security.changePassword")}>
+            <div className="flex flex-col items-start gap-3">
+              <p className="text-body text-text-secondary">{t("security.changePasswordBody")}</p>
+              <Link
+                href="/reset-password"
+                className="inline-flex h-9 items-center rounded-full bg-surface-muted px-4 text-body font-medium transition-colors hover:bg-surface-pressed"
+              >
+                {t("security.changePassword")}
+              </Link>
+            </div>
+          </Row>
           <Row label={t("security.twoFactor")}>
             <TwoFactorSettings enabledFactorId={verifiedFactorId} />
           </Row>

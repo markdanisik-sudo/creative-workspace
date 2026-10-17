@@ -147,3 +147,62 @@ export async function signOutEverywhere() {
   await supabase.auth.signOut({ scope: "global" });
   redirect("/sign-in");
 }
+
+export interface PasswordFormState {
+  error?: string;
+  sentTo?: string;
+  email?: string;
+}
+
+/**
+ * Emails a link to set a new password. Says the same whether or not the
+ * address has an account, so the form can't be used to find out who does.
+ */
+export async function requestPasswordReset(
+  _prev: PasswordFormState,
+  formData: FormData,
+): Promise<PasswordFormState> {
+  const { t } = await getI18n();
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  if (!EMAIL_PATTERN.test(email)) return { email, error: t("auth.invalidEmail") };
+
+  const supabase = await createSupabaseServerClient();
+  const origin = await siteOrigin();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=${encodeURIComponent("/reset-password")}`,
+  });
+  if (error && error.code !== "user_not_found") {
+    logError("auth.requestPasswordReset", error);
+    if (error.status === 429) return { email, error: t("errors.generic") };
+  }
+  return { sentTo: email };
+}
+
+/** Sets a new password for the signed-in account (after the email link, or from Settings). */
+export async function updatePassword(
+  _prev: PasswordFormState,
+  formData: FormData,
+): Promise<PasswordFormState> {
+  const { t } = await getI18n();
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { error: t("auth.passwordLength", { min: MIN_PASSWORD_LENGTH }) };
+  }
+  if (password !== confirm) return { error: t("auth.passwordsDiffer") };
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    if (error.code === "same_password") return { error: t("auth.samePassword") };
+    if (error.code === "weak_password") return { error: t("auth.weakPassword") };
+    if (error.code === "session_not_found" || error.status === 401) {
+      redirect("/sign-in?link-expired=1");
+    }
+    logError("auth.updatePassword", error);
+    return { error: t("errors.generic") };
+  }
+  redirect("/projects");
+}

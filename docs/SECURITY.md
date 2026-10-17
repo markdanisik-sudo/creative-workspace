@@ -29,6 +29,9 @@ against a real database (studio, invited client, outsider, password-only session
 - Two-factor authentication with an authenticator app (Settings → Security). With
   it on, every new session asks for the 6-digit code before anything loads.
 - "Sign out on all devices" revokes every session.
+- "Forgot your password?" emails a one-time link that opens "Set a new password"
+  (the reply is the same whether or not the address has an account). Signed-in
+  users change their password in Settings → Security.
 - Invitation links carry a 256-bit random token; only its SHA-256 hash is stored,
   it works once, for the invited email address, and expires after 30 days.
 - Joining from the list of invitations (by email address) stays off until
@@ -58,6 +61,9 @@ Frankfurt).
 
 Supabase (Dashboard):
 
+0. **Authentication → URL Configuration**: Site URL `https://mstudiolab.vercel.app` and
+   Redirect URL `https://mstudiolab.vercel.app/**` — otherwise links in emails (password
+   reset, invitations) point at localhost.
 1. **Authentication → Multi-Factor**: authenticator app (TOTP) enabled (default).
 2. **Authentication → Sign In / Providers → Email**: set a minimum password length
    of 10 and require letters and digits.

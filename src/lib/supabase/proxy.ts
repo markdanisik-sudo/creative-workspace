@@ -4,7 +4,7 @@ import type { Database } from "./database.types";
 import { devAutoSignInEnabled, devSignIn } from "./dev-sign-in";
 import { supabaseKey, supabaseUrl } from "./env";
 
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/auth", "/invite"];
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/forgot-password", "/auth", "/invite"];
 
 function isPublicPath(pathname: string) {
   return PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
@@ -34,6 +34,17 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   let isSignedIn = Boolean(data?.claims?.sub);
   const { pathname } = request.nextUrl;
+
+  // An email link (password reset, confirmation) that Supabase sent to the
+  // site's main address instead of /auth/callback — when the callback URL
+  // isn't on its list of allowed redirects. Finish it there all the same.
+  const code = request.nextUrl.searchParams.get("code");
+  if (code && !pathname.startsWith("/auth/") && !pathname.startsWith("/api/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    url.search = `?code=${encodeURIComponent(code)}`;
+    return redirectWithCookies(url, response);
+  }
 
   // Local development without a password (see dev-sign-in.ts). The invite
   // page is left alone so the client flow can still be tried out.

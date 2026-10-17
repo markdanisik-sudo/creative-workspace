@@ -111,6 +111,14 @@ export function AuthForm({ mode, next, defaultEmail, notice, invite, hideSwitch 
           minLength={isSignUp ? 8 : undefined}
           error={state.fieldErrors?.password}
         />
+        {!isSignUp ? (
+          <Link
+            href="/forgot-password"
+            className="-mt-1 self-end text-caption text-text-secondary underline-offset-4 hover:text-text hover:underline"
+          >
+            {t("auth.forgotLink")}
+          </Link>
+        ) : null}
 
         {state.error ? (
           <p role="alert" className="text-body text-danger">
