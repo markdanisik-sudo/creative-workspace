@@ -261,8 +261,8 @@
 /* Something waiting for attention (an open discussion note): a clean
  * outline, set a little off the edge so it reads on dark boxes too. */
 .attention {
-  outline: 1.5px solid var(--attention) !important;
-  outline-offset: 3px;
+  outline: 2.5px solid var(--attention) !important;
+  outline-offset: 2px;
 }
 
 /* Feel like an app on phones. */
