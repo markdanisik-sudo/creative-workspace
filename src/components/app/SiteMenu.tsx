@@ -333,8 +333,8 @@ function Readout({
 }) {
   return (
     <span className={cn("flex items-baseline gap-1 whitespace-nowrap", className)}>
-      <span className="text-text-tertiary">{label}</span>
-      <span className="font-semibold text-text">{value}</span>
+      <span className="text-monitor-ink/55">{label}</span>
+      <span className="font-semibold text-monitor-ink">{value}</span>
     </span>
   );
 }
@@ -374,7 +374,7 @@ function MonitorView({
         ) : null}
 
         {/* Frame guide: its straight lines show the bend. */}
-        <span className="absolute inset-x-[8%] inset-y-[16%] rounded-[3px] border border-text/15" />
+        <span className="absolute inset-x-[8%] inset-y-[16%] rounded-[3px] border border-monitor-ink/15" />
 
         <div className="absolute inset-x-3.5 top-3 flex items-center justify-between">
           <Readout label="Iris" value="T2.8" />
@@ -384,14 +384,14 @@ function MonitorView({
         </div>
 
         {/* Centre cross. */}
-        <span className="absolute top-1/2 left-1/2 h-3.5 w-px -translate-1/2 bg-text/40" />
-        <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-text/40" />
+        <span className="absolute top-1/2 left-1/2 h-3.5 w-px -translate-1/2 bg-monitor-ink/40" />
+        <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-monitor-ink/40" />
 
         <div className="absolute inset-x-3.5 bottom-3 flex items-end justify-between gap-3">
-          <p className="text-callout leading-tight font-medium text-text">{statement}</p>
+          <p className="text-callout leading-tight font-medium text-monitor-ink">{statement}</p>
           <span className="flex items-center gap-1.5 whitespace-nowrap">
             <span className="size-1.5 animate-pulse rounded-full bg-[#ff3b30]" />
-            <span className="font-semibold text-text">{timecode}</span>
+            <span className="font-semibold text-monitor-ink">{timecode}</span>
           </span>
         </div>
       </div>
