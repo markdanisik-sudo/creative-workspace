@@ -192,7 +192,7 @@ export function Discussion({
                       "rounded-[14px] rounded-tl-[4px] bg-surface px-4 py-3 text-callout whitespace-pre-line break-words shadow-sm",
                       comment.topic &&
                         !comment.resolvedAt &&
-                        "shadow-[0_0_0_1.5px_var(--danger),0_1px_2px_rgba(0,0,0,0.04)]",
+                        "shadow-[0_0_0_1.5px_var(--attention)]",
                     )}
                   >
                     {comment.body}
@@ -205,8 +205,8 @@ export function Discussion({
                           {t("discussion.resolved")}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 font-semibold text-danger">
-                          <span className="size-1.5 rounded-full bg-danger" aria-hidden="true" />
+                        <span className="inline-flex items-center gap-1.5 font-semibold text-attention">
+                          <span className="size-1.5 rounded-full bg-attention" aria-hidden="true" />
                           {t("discussion.open")}
                         </span>
                       )}

@@ -147,7 +147,7 @@ export function PaletteEditor({
           <h3 className="flex items-center gap-2 text-callout font-semibold">
             {t("palette.title")}
             {flagged ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-danger px-2 py-0.5 text-[11px] font-semibold text-white">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-attention px-2 py-0.5 text-[11px] font-semibold text-white">
                 {t("notes.changeRequested")}
               </span>
             ) : null}

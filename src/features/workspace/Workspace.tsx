@@ -202,7 +202,7 @@ export function Workspace({
             )}
           >
             {module.alerts ? (
-              <span className="absolute right-4 bottom-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-danger px-2.5 py-1 text-[11px] font-semibold text-white shadow-md">
+              <span className="absolute right-4 bottom-4 z-20 inline-flex items-center gap-1.5 rounded-full bg-attention px-2.5 py-1 text-[11px] font-semibold text-white shadow-md">
                 <span className="size-1.5 rounded-full bg-white" aria-hidden="true" />
                 {t("notes.count", { count: module.alerts })}
               </span>

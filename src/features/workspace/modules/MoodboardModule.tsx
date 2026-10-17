@@ -252,7 +252,7 @@ export function MoodboardModule({
                 )}
               >
                 {marked ? (
-                  <span className="pointer-events-none absolute top-2 left-2 z-10 rounded-full bg-danger px-2 py-0.5 text-[11px] font-semibold text-white">
+                  <span className="pointer-events-none absolute top-2 left-2 z-10 rounded-full bg-attention px-2 py-0.5 text-[11px] font-semibold text-white">
                     {t("notes.changeRequested")}
                   </span>
                 ) : null}

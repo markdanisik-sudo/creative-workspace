@@ -45,8 +45,8 @@ export function NotesBanner({
       aria-label={t("notes.title")}
       className="mb-6 flex flex-col gap-3 attention rounded-[20px] p-4 sm:p-5"
     >
-      <h3 className="flex items-center gap-2 text-callout font-semibold text-danger">
-        <span className="size-2 rounded-full bg-danger" aria-hidden="true" />
+      <h3 className="flex items-center gap-2 text-callout font-semibold text-attention">
+        <span className="size-2 rounded-full bg-attention" aria-hidden="true" />
         {t("notes.title")} ({notes.length})
       </h3>
       <ul className="flex flex-col gap-3">
@@ -60,7 +60,7 @@ export function NotesBanner({
                 <span className="font-semibold text-text">{note.author.name}</span>
                 <span>{formatEdited(note.createdAt, locale)}</span>
                 {label.part ? (
-                  <span className="font-medium text-danger">· {label.part}</span>
+                  <span className="font-medium text-attention">· {label.part}</span>
                 ) : null}
               </div>
               <p className="text-body whitespace-pre-line">{note.body}</p>
