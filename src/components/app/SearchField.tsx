@@ -24,7 +24,16 @@ function useShortcutHint(): string | null {
 }
 
 /** Search projects and boards. ⌘K / Ctrl+K focuses it from anywhere on the page. */
-export function SearchField({ className }: { className?: string }) {
+export function SearchField({
+  className,
+  autoFocus,
+  onDone,
+}: {
+  className?: string;
+  autoFocus?: boolean;
+  /** Called when the field is cleared and left (for the compact search to fold up). */
+  onDone?: () => void;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -72,11 +81,16 @@ export function SearchField({ className }: { className?: string }) {
         placeholder={t("nav.search")}
         value={value}
         onChange={(event) => setValue(event.target.value)}
+        autoFocus={autoFocus}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             setValue("");
             inputRef.current?.blur();
+            onDone?.();
           }
+        }}
+        onBlur={() => {
+          if (!value.trim()) onDone?.();
         }}
         className={cn(
           "h-9 w-full rounded-full bg-surface-muted pr-14 pl-9 text-body text-text outline-none",
@@ -103,5 +117,48 @@ export function SearchField({ className }: { className?: string }) {
         </kbd>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Search as a small round button, as on the studio site; it opens into the
+ * field on click or ⌘K / Ctrl+K, and stays open while there's a query.
+ */
+export function CompactSearch() {
+  const params = useSearchParams();
+  const { t } = useI18n();
+  const [open, setOpen] = useState(Boolean(params.get("q")));
+
+  useEffect(() => {
+    if (open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setOpen(true);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  if (open) {
+    return (
+      <SearchField
+        className="w-44 animate-fade-in sm:w-52"
+        autoFocus
+        onDone={() => setOpen(false)}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => setOpen(true)}
+      aria-label={t("nav.searchLabel")}
+      title={t("nav.searchLabel")}
+      className="flex size-8 shrink-0 items-center justify-center rounded-full text-text transition-[background-color,transform] duration-150 hover:bg-surface-muted active:scale-95"
+    >
+      <Search size={16} strokeWidth={1.9} />
+    </button>
   );
 }

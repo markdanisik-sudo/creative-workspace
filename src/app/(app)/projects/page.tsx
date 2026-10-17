@@ -232,7 +232,7 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
     <div className="min-h-dvh">
       <AppHeader
         viewer={viewer}
-        actions={<NewProjectButton compact askClient={viewer.isStudio} />}
+        actions={<NewProjectButton compact size="sm" askClient={viewer.isStudio} />}
       />
       <main className="mx-auto max-w-[1272px] px-4 pb-32 sm:px-8">
         {query ? (

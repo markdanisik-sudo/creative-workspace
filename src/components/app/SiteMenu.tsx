@@ -64,7 +64,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen(true)}
-        className="flex size-9 shrink-0 items-center justify-center rounded-full text-text transition-[background-color,transform] duration-150 hover:bg-surface-muted active:scale-95"
+        className="flex size-8 shrink-0 items-center justify-center rounded-full text-text transition-[background-color,transform] duration-150 hover:bg-surface-muted active:scale-95"
       >
         <Plus size={20} strokeWidth={1.75} />
       </button>
@@ -76,17 +76,18 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
           aria-modal="false"
           aria-label={t("nav.menu")}
           className={cn(
-            "absolute inset-x-0 top-0 z-50 flex flex-col rounded-[18px] p-2 pb-6 shadow-lg",
+            "absolute inset-x-0 top-0 z-50 flex flex-col rounded-b-[18px] p-2 pb-6 shadow-lg",
             "bg-surface/75 backdrop-blur-2xl backdrop-saturate-150 animate-pop-in origin-top",
           )}
         >
-          <div className="flex h-12 items-center justify-between gap-3 pr-0 pl-3">
+          {/* Opaque, so the bar's own links don't show through the frosted glass. */}
+          <div className="-mx-2 -mt-2 flex h-12 items-center justify-between gap-3 bg-surface pr-1.5 pl-4">
             <div className="flex items-baseline gap-3">
               <Wordmark />
               <LiveDateTime className="hidden text-caption text-text-secondary tabular-nums sm:inline" />
             </div>
             <div className="flex items-center gap-2">
-              <ThemeToggle />
+              <ThemeToggle className="size-8" />
               <button
                 type="button"
                 aria-label={t("nav.closeMenu")}
@@ -94,7 +95,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
                   setOpen(false);
                   triggerRef.current?.focus();
                 }}
-                className="flex size-9 items-center justify-center rounded-full bg-surface text-text shadow-sm transition-transform active:scale-95"
+                className="flex size-8 items-center justify-center rounded-full bg-surface text-text shadow-sm transition-transform active:scale-95"
               >
                 <X size={18} strokeWidth={1.75} />
               </button>
@@ -112,7 +113,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
                       aria-current={pathname.startsWith(link.href) ? "page" : undefined}
                       className="group flex items-baseline justify-between gap-4 rounded-sm py-3"
                     >
-                      <span className="text-headline font-medium transition-transform duration-300 group-hover:translate-x-1.5 sm:text-display">
+                      <span className="text-headline font-medium transition-transform duration-300 group-hover:translate-x-1.5">
                         {link.label}
                       </span>
                       <span className="text-body text-text-secondary tabular-nums">

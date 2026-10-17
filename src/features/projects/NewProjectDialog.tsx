@@ -196,8 +196,10 @@ export function NewProjectButton({
   label,
   compact = false,
   askClient = true,
+  size = "md",
 }: {
   variant?: "primary" | "secondary";
+  size?: "sm" | "md";
   label?: string;
   /** Icon-only on small screens. */
   compact?: boolean;
@@ -210,10 +212,17 @@ export function NewProjectButton({
   return (
     <>
       <Button
+        size={size}
         variant={variant}
         onClick={() => setOpen(true)}
         aria-label={text}
-        className={compact ? "max-sm:w-9 max-sm:px-0" : undefined}
+        className={
+          compact
+            ? size === "sm"
+              ? "max-sm:w-8 max-sm:px-0"
+              : "max-sm:w-9 max-sm:px-0"
+            : undefined
+        }
       >
         <Plus size={16} strokeWidth={2.25} aria-hidden="true" />
         <span className={compact ? "max-sm:sr-only" : undefined}>{text}</span>
