@@ -7,7 +7,16 @@ import { STORAGE_BUCKET } from "@/lib/supabase/env";
 import { logError, type ActionResult } from "@/lib/errors";
 import { isBoardTemplateId, templateBoardName, templateName } from "@/features/boards/templates";
 import { requireViewer } from "@/features/auth/session";
-import { DEFAULT_STEPS } from "@/features/hub/default-steps";
+import {
+  customDefaults,
+  findTemplate,
+  isMedium,
+  isPlanModuleId,
+  LIST_MODULE_IDS,
+  localizeSeed,
+  stepsFor,
+  type PlanModuleId,
+} from "@/features/workspace/plan";
 import { getI18n } from "@/lib/i18n/server";
 
 const MAX_NAME_LENGTH = 120;
@@ -33,7 +42,7 @@ export async function createProject(
   _prev: CreateProjectState,
   formData: FormData,
 ): Promise<CreateProjectState> {
-  const { t } = await getI18n();
+  const { t, locale } = await getI18n();
   const supabase = await createSupabaseServerClient();
   const template = formData.get("template");
   const useTemplate = isBoardTemplateId(template) && template !== "blank";
@@ -57,9 +66,43 @@ export async function createProject(
     return { error: t("errors.generic") };
   }
 
-  // Every project starts with the studio's standard checklist.
+  // The Plan: photo / video / both, from a template or a custom pick of boxes.
+  const planTemplate = findTemplate(formData.get("planTemplate"));
+  const mediumValue = formData.get("medium");
+  const medium = planTemplate?.medium ?? (isMedium(mediumValue) ? mediumValue : "video");
+  const picked = formData.getAll("modules").filter(isPlanModuleId) as PlanModuleId[];
+  const modules = planTemplate?.modules ?? (picked.length > 0 ? picked : customDefaults(medium));
+  const workspace = await supabase.from("project_workspaces").upsert(
+    {
+      project_id: project.data.id,
+      medium,
+      template: planTemplate?.id ?? "custom",
+      modules,
+    },
+    { onConflict: "project_id" },
+  );
+  if (workspace.error) logError("projects.createWorkspace", workspace.error);
+
+  // Starter rows the template brings (interview questions, deliverables…).
+  if (planTemplate) {
+    const rows = LIST_MODULE_IDS.flatMap((module) =>
+      (planTemplate.seeds[module] ?? []).map((seed, index) => ({
+        project_id: project.data.id,
+        module,
+        position: index + 1,
+        data: localizeSeed(seed, locale),
+        created_by: viewer.id,
+      })),
+    );
+    if (rows.length > 0) {
+      const seeded = await supabase.from("plan_items").insert(rows);
+      if (seeded.error) logError("projects.seedPlan", seeded.error);
+    }
+  }
+
+  // The checklist on the Overview, suited to the kind of work.
   const steps = await supabase.from("project_tasks").insert(
-    DEFAULT_STEPS.map((step, index) => ({
+    stepsFor(medium, planTemplate).map((step, index) => ({
       project_id: project.data.id,
       phase: step.phase,
       title: t(step.key),

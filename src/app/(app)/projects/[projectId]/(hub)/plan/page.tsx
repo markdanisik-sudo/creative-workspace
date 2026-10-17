@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { requireViewer } from "@/features/auth/session";
-import { BoardGrid } from "@/features/boards/BoardGrid";
 import { EventDate } from "@/features/hub/EventDate";
 import { PlanBoard } from "@/features/hub/PlanBoard";
 import {
@@ -12,21 +11,24 @@ import {
   listRequests,
   listTasks,
 } from "@/features/hub/queries";
-import { getProject, listBoards } from "@/features/projects/queries";
+import { getProject } from "@/features/projects/queries";
 import { BriefModule } from "@/features/workspace/modules/BriefModule";
 import { LocationsModule } from "@/features/workspace/modules/LocationsModule";
 import { MoodboardModule } from "@/features/workspace/modules/MoodboardModule";
 import { ShotListModule } from "@/features/workspace/modules/ShotListModule";
 import {
   BriefPreview,
-  CanvasPreview,
+  ListPreview,
   LocationsPreview,
   MoodboardPreview,
   ShotsPreview,
   TasksPreview,
 } from "@/features/workspace/previews";
 import { getWorkspace } from "@/features/workspace/queries";
-import { isModuleId } from "@/features/workspace/types";
+import { ListModule } from "@/features/workspace/modules/ListModule";
+import { LIST_MODULE_IDS, type ListModuleId } from "@/features/workspace/plan";
+import { PlanEditor } from "@/features/workspace/PlanEditor";
+import { isModuleId, type ModuleId } from "@/features/workspace/types";
 import { Workspace, type WorkspaceModule } from "@/features/workspace/Workspace";
 import { getI18n } from "@/lib/i18n/server";
 import { formatEdited } from "@/lib/format";
@@ -71,11 +73,10 @@ export default async function PlanPage({
 }: PageProps<"/projects/[projectId]/plan">) {
   const { projectId } = await params;
   const { m } = await searchParams;
-  const [viewer, i18n, boards, events, requests, comments, summary, workspace, tasks, details] =
+  const [viewer, i18n, events, requests, comments, summary, workspace, tasks, details] =
     await Promise.all([
       requireViewer(),
       getI18n(),
-      listBoards(projectId),
       listEvents(projectId),
       listRequests(projectId),
       listComments(projectId, 1),
@@ -86,8 +87,6 @@ export default async function PlanPage({
     ]);
   const { t, tp, locale } = i18n;
   const base = `/projects/${projectId}`;
-  // The studio, or the client who started this project, manages its boards.
-  const canManageBoards = viewer.isStudio || summary?.ownerId === viewer.id;
   const currentPhase = details?.phase ?? "brief";
 
   const startOfToday = new Date(new Date().toDateString()).getTime();
@@ -97,20 +96,18 @@ export default async function PlanPage({
   const open = requests.filter((request) => request.status === "requested");
   const latest = comments[0];
 
-  const modules: WorkspaceModule[] = [
-    {
+  const boxes: Record<ModuleId, Omit<WorkspaceModule, "className">> = {
+    brief: {
       id: "brief",
       title: t("workspace.modules.brief"),
       blurb: t("workspace.blurbs.brief"),
-      className: "lg:col-span-5 lg:row-span-2",
       preview: <BriefPreview brief={workspace.brief} t={t} />,
       content: <BriefModule projectId={projectId} brief={workspace.brief} />,
     },
-    {
+    moodboard: {
       id: "moodboard",
       title: t("workspace.modules.moodboard"),
       blurb: t("workspace.blurbs.moodboard"),
-      className: "lg:col-span-7 lg:row-span-2",
       bleed: workspace.moodboard.length > 0,
       preview: <MoodboardPreview images={workspace.moodboard} t={t} />,
       content: (
@@ -122,11 +119,10 @@ export default async function PlanPage({
         />
       ),
     },
-    {
+    shots: {
       id: "shots",
       title: t("workspace.modules.shots"),
       blurb: t("workspace.blurbs.shots"),
-      className: "lg:col-span-7 lg:row-span-2",
       preview: (
         <ShotsPreview shots={workspace.shots} defaults={workspace.shotDefaults} t={t} tp={tp} />
       ),
@@ -139,11 +135,10 @@ export default async function PlanPage({
         />
       ),
     },
-    {
+    locations: {
       id: "locations",
       title: t("workspace.modules.locations"),
       blurb: t("workspace.blurbs.locations"),
-      className: "lg:col-span-5 lg:row-span-2",
       preview: <LocationsPreview locations={workspace.locations} t={t} />,
       content: (
         <LocationsModule
@@ -155,28 +150,65 @@ export default async function PlanPage({
         />
       ),
     },
-    {
+    tasks: {
       id: "tasks",
       title: t("workspace.modules.tasks"),
       blurb: t("workspace.blurbs.tasks"),
-      className: "lg:col-span-6",
       preview: <TasksPreview tasks={tasks} currentPhase={currentPhase} t={t} />,
       content: <PlanBoard projectId={projectId} tasks={tasks} currentPhase={currentPhase} />,
     },
-    {
-      id: "canvas",
-      title: t("workspace.modules.canvas"),
-      blurb: t("workspace.blurbs.canvas"),
-      className: "lg:col-span-6",
-      preview: <CanvasPreview boards={boards} t={t} tp={tp} />,
-      content: <BoardGrid projectId={projectId} boards={boards} canManage={canManageBoards} />,
-    },
-  ];
+    ...(Object.fromEntries(
+      LIST_MODULE_IDS.map((id) => {
+        const items = workspace.items.filter((item) => item.module === id);
+        return [
+          id,
+          {
+            id,
+            title: t(`workspace.modules.${id}`),
+            blurb: t(`workspace.blurbs.${id}`),
+            preview: <ListPreview module={id} items={items} t={t} locale={locale} />,
+            content: (
+              <ListModule
+                projectId={projectId}
+                module={id}
+                items={items}
+                viewerId={viewer.id}
+                isStudio={viewer.isStudio}
+              />
+            ),
+          },
+        ];
+      }),
+    ) as Record<ListModuleId, Omit<WorkspaceModule, "className">>),
+  };
+
+  // Bento rows of two, alternating wide and narrow; an odd last box spans the row.
+  const chosen = workspace.modules;
+  const modules: WorkspaceModule[] = chosen.map((id, index) => {
+    const pair = Math.floor(index / 2);
+    const alone = index === chosen.length - 1 && index % 2 === 0;
+    const first = index % 2 === 0;
+    const span = alone
+      ? "lg:col-span-12"
+      : (pair % 2 === 0) === first
+        ? "lg:col-span-5"
+        : "lg:col-span-7";
+    // Tasks on a row of their own only need the phase bars: keep it short.
+    const rows = alone && id === "tasks" ? "lg:row-span-1" : "lg:row-span-2";
+    return { ...boxes[id], className: `${span} ${rows}` };
+  });
+  // The studio, or the client who started the project, shapes the plan.
+  const canEditPlan = viewer.isStudio || summary?.ownerId === viewer.id;
 
   return (
     <Workspace
       modules={modules}
-      initialOpen={isModuleId(m) ? m : null}
+      initialOpen={isModuleId(m) && chosen.includes(m) ? m : null}
+      toolbar={
+        canEditPlan ? (
+          <PlanEditor projectId={projectId} medium={workspace.medium} modules={chosen} />
+        ) : null
+      }
       extras={
         <>
           <LinkBox title={t("hub.nextUp")} href={`${base}/schedule`} linkLabel={t("hub.seeAll")}>

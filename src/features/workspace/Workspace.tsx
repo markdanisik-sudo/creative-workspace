@@ -56,9 +56,12 @@ function Index({ value }: { value: number }) {
 export function Workspace({
   modules,
   extras,
+  toolbar,
   initialOpen,
 }: {
   modules: WorkspaceModule[];
+  /** Shown above the boxes on the overview (e.g. "Edit plan"). */
+  toolbar?: ReactNode;
   /** Small link boxes after the modules (dates, add-ons, discussion). */
   extras?: ReactNode;
   initialOpen: ModuleId | null;
@@ -163,51 +166,54 @@ export function Workspace({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:auto-rows-[188px] lg:grid-cols-12">
-      {modules.map((module, index) => (
-        <button
-          key={module.id}
-          type="button"
-          onClick={() => zoomIn(module.id)}
-          aria-label={t("workspace.open", { name: module.title })}
-          style={{ viewTransitionName: `ws-${module.id}` }}
-          className={cn(
-            "surface-invert group relative flex min-h-[260px] flex-col overflow-hidden rounded-[24px] bg-surface text-left shadow-sm",
-            "transition-[box-shadow,transform] duration-300 ease-out hover:shadow-md active:scale-[0.995]",
-            "focus-visible:outline-offset-4 lg:min-h-0",
-            module.className,
-          )}
-        >
-          <div
+    <div className="flex flex-col gap-3">
+      {toolbar ? <div className="flex justify-end">{toolbar}</div> : null}
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:auto-rows-[188px] lg:grid-cols-12">
+        {modules.map((module, index) => (
+          <button
+            key={module.id}
+            type="button"
+            onClick={() => zoomIn(module.id)}
+            aria-label={t("workspace.open", { name: module.title })}
+            style={{ viewTransitionName: `ws-${module.id}` }}
             className={cn(
-              "relative z-10 flex items-baseline justify-between p-5 pb-0 text-caption sm:p-6 sm:pb-0",
-              module.bleed && "text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.35)]",
+              "surface-invert group relative flex min-h-[260px] flex-col overflow-hidden rounded-[24px] bg-surface text-left shadow-sm",
+              "transition-[box-shadow,transform] duration-300 ease-out hover:shadow-md active:scale-[0.995]",
+              "focus-visible:outline-offset-4 lg:min-h-0",
+              module.className,
             )}
           >
-            <span className="font-medium">
-              <span aria-hidden="true">/</span>
-              {module.title}
-            </span>
-            <span className="flex items-center gap-2 opacity-60">
-              <ArrowUpRight
-                size={14}
-                aria-hidden="true"
-                className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
-              />
-              <Index value={index + 1} />
-            </span>
-          </div>
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col",
-              module.bleed ? "absolute inset-0" : "p-5 pt-4 sm:p-6 sm:pt-4",
-            )}
-          >
-            {module.preview}
-          </div>
-        </button>
-      ))}
-      {extras}
+            <div
+              className={cn(
+                "relative z-10 flex items-baseline justify-between p-5 pb-0 text-caption sm:p-6 sm:pb-0",
+                module.bleed && "text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.35)]",
+              )}
+            >
+              <span className="font-medium">
+                <span aria-hidden="true">/</span>
+                {module.title}
+              </span>
+              <span className="flex items-center gap-2 opacity-60">
+                <ArrowUpRight
+                  size={14}
+                  aria-hidden="true"
+                  className="opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                />
+                <Index value={index + 1} />
+              </span>
+            </div>
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col",
+                module.bleed ? "absolute inset-0" : "p-5 pt-4 sm:p-6 sm:pt-4",
+              )}
+            >
+              {module.preview}
+            </div>
+          </button>
+        ))}
+        {extras}
+      </div>
     </div>
   );
 }

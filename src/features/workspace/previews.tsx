@@ -1,9 +1,12 @@
 import { ImagePlus, MapPin } from "lucide-react";
-import type { BoardSummary, Phase } from "@/features/projects/types";
+import type { Phase } from "@/features/projects/types";
 import { PHASES } from "@/features/projects/types";
 import type { Task } from "@/features/hub/types";
 import type { Translator } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n/config";
 import { cn } from "@/lib/cn";
+import { LIST_MODULES, type ListModuleId, type PlanItem } from "./plan";
+import { displayValue, itemTitle } from "./plan-format";
 import { DEFAULT_GROUPS, specGroup } from "./shot-options";
 import {
   BRIEF_FIELDS,
@@ -242,27 +245,47 @@ export function TasksPreview({
   );
 }
 
-export function CanvasPreview({
-  boards,
+/** A list box on the overview: progress and the first rows. */
+export function ListPreview({
+  module,
+  items,
   t,
-  tp,
+  locale,
 }: {
-  boards: BoardSummary[];
+  module: ListModuleId;
+  items: PlanItem[];
   t: T;
-  tp: Translator["tp"];
+  locale: Locale;
 }) {
-  if (boards.length === 0) return <Empty>{t("workspace.empty.canvas")}</Empty>;
+  if (items.length === 0) return <Empty>{t(`workspace.empty.${module}`)}</Empty>;
+  const done = items.filter((item) => item.done).length;
+  // The first fact a row has filled in (lens, platform, role…).
+  const firstMeta = (item: PlanItem) =>
+    LIST_MODULES[module].meta
+      .map((key) => displayValue(t, locale, module, key, item.data[key]))
+      .find(Boolean) ?? "";
   return (
-    <div className="mt-auto flex flex-col gap-1">
-      <p className="truncate text-title font-medium">
-        {boards.map((board) => board.name).join(" · ")}
-      </p>
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <ul className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-border-strong">
+        {items.slice(0, 5).map((item) => (
+          <li
+            key={item.id}
+            className="flex items-baseline gap-3 border-b border-border-strong py-2 text-body"
+          >
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate",
+                item.done && "text-text-tertiary line-through",
+              )}
+            >
+              {itemTitle(item)}
+            </span>
+            <span className="shrink-0 text-caption text-text-secondary">{firstMeta(item)}</span>
+          </li>
+        ))}
+      </ul>
       <p className="text-caption text-text-secondary">
-        {tp("plural.board", boards.length)} ·{" "}
-        {tp(
-          "plural.item",
-          boards.reduce((sum, b) => sum + b.itemCount, 0),
-        )}
+        {t(`boxes.doneLabel.${module}`)} {t("boxes.doneCount", { done, total: items.length })}
       </p>
     </div>
   );

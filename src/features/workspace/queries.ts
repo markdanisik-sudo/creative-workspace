@@ -3,6 +3,7 @@ import { cache } from "react";
 import { logError } from "@/lib/errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { signStoragePaths } from "@/lib/supabase/storage";
+import { isListModuleId, isMedium, resolveModules, type ItemData, type PlanItem } from "./plan";
 import {
   BRIEF_FIELDS,
   DAY_NIGHT,
@@ -31,10 +32,10 @@ function oneOf<T extends string>(list: readonly T[], value: unknown): T | null {
 /** Everything the project's workspace shows: brief, images, locations, shots. */
 export async function getWorkspace(projectId: string): Promise<WorkspaceData> {
   const supabase = await createSupabaseServerClient();
-  const [workspace, images, locations, shots] = await Promise.all([
+  const [workspace, images, locations, shots, items] = await Promise.all([
     supabase
       .from("project_workspaces")
-      .select("brief, shot_defaults")
+      .select("brief, shot_defaults, medium, template, modules")
       .eq("project_id", projectId)
       .maybeSingle(),
     supabase
@@ -59,8 +60,14 @@ export async function getWorkspace(projectId: string): Promise<WorkspaceData> {
       .eq("project_id", projectId)
       .order("position")
       .order("created_at"),
+    supabase
+      .from("plan_items")
+      .select("id, module, position, data, done, created_by")
+      .eq("project_id", projectId)
+      .order("position")
+      .order("created_at"),
   ]);
-  for (const [name, result] of Object.entries({ workspace, images, locations, shots })) {
+  for (const [name, result] of Object.entries({ workspace, images, locations, shots, items })) {
     if (result.error) logError(`workspace.${name}`, result.error, { projectId });
   }
 
@@ -85,7 +92,27 @@ export async function getWorkspace(projectId: string): Promise<WorkspaceData> {
     BRIEF_FIELDS.flatMap((field) => (rawBrief[field] ? [[field, rawBrief[field]]] : [])),
   );
 
+  const medium = workspace.data?.medium;
   return {
+    medium: isMedium(medium) ? medium : "video",
+    template: workspace.data?.template ?? null,
+    modules: resolveModules(workspace.data?.modules),
+    items: (items.data ?? []).flatMap((row): PlanItem[] =>
+      isListModuleId(row.module)
+        ? [
+            {
+              id: row.id,
+              module: row.module,
+              position: row.position,
+              data: (row.data && typeof row.data === "object" && !Array.isArray(row.data)
+                ? row.data
+                : {}) as ItemData,
+              done: row.done,
+              createdBy: row.created_by,
+            },
+          ]
+        : [],
+    ),
     brief,
     shotDefaults: asRecord(workspace.data?.shot_defaults) as ShotSpecs,
     moodboard: imageRows.filter((row) => row.collection === "moodboard").map(toImage),

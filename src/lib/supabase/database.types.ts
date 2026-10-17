@@ -476,6 +476,57 @@ export type Database = {
           },
         ];
       };
+      plan_items: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          data: NonNullable<Json>;
+          done: boolean;
+          id: string;
+          module: string;
+          position: number;
+          project_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          data?: NonNullable<Json>;
+          done?: boolean;
+          id?: string;
+          module: string;
+          position?: number;
+          project_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          data?: NonNullable<Json>;
+          done?: boolean;
+          id?: string;
+          module?: string;
+          position?: number;
+          project_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "plan_items_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "plan_items_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -997,22 +1048,31 @@ export type Database = {
       project_workspaces: {
         Row: {
           brief: NonNullable<Json>;
+          medium: string;
+          modules: string[] | null;
           project_id: string;
           shot_defaults: NonNullable<Json>;
+          template: string | null;
           updated_at: string;
           updated_by: string | null;
         };
         Insert: {
           brief?: NonNullable<Json>;
+          medium?: string;
+          modules?: string[] | null;
           project_id: string;
           shot_defaults?: NonNullable<Json>;
+          template?: string | null;
           updated_at?: string;
           updated_by?: string | null;
         };
         Update: {
           brief?: NonNullable<Json>;
+          medium?: string;
+          modules?: string[] | null;
           project_id?: string;
           shot_defaults?: NonNullable<Json>;
+          template?: string | null;
           updated_at?: string;
           updated_by?: string | null;
         };

@@ -487,6 +487,72 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
       expect(done.data).toEqual([{ done: true }]);
     });
 
+    it("shares plan boxes with members; only authors and the studio delete rows", async () => {
+      const setup = await studio.client
+        .from("project_workspaces")
+        .update({ medium: "both", template: "documentary", modules: ["brief", "interview"] })
+        .eq("project_id", projectId)
+        .select("modules");
+      expect(setup.data?.[0]?.modules).toEqual(["brief", "interview"]);
+
+      const question = await studio.client
+        .from("plan_items")
+        .insert({ project_id: projectId, module: "interview", data: { question: "Why?" } })
+        .select("id")
+        .single();
+      expect(question.error).toBeNull();
+      const own = await client.client
+        .from("plan_items")
+        .insert({ project_id: projectId, module: "gear", data: { item: "Tripod" } })
+        .select("id")
+        .single();
+      expect(own.error).toBeNull();
+
+      // The client ticks the studio's question off but can't delete it.
+      const tick = await client.client
+        .from("plan_items")
+        .update({ done: true })
+        .eq("id", question.data!.id)
+        .select("done");
+      expect(tick.data).toEqual([{ done: true }]);
+      const steal = await client.client
+        .from("plan_items")
+        .delete()
+        .eq("id", question.data!.id)
+        .select("id");
+      expect(steal.data).toEqual([]);
+      const mine = await client.client
+        .from("plan_items")
+        .delete()
+        .eq("id", own.data!.id)
+        .select("id");
+      expect(mine.data).toHaveLength(1);
+
+      const unknown = await studio.client
+        .from("plan_items")
+        .insert({ project_id: projectId, module: "nonsense", data: {} });
+      expect(unknown.error).not.toBeNull();
+      const spoof = await client.client
+        .from("plan_items")
+        .insert({
+          project_id: projectId,
+          module: "gear",
+          data: { item: "x" },
+          created_by: studio.id,
+        });
+      expect(spoof.error).not.toBeNull();
+
+      const outside = await outsider.client
+        .from("plan_items")
+        .select("id")
+        .eq("project_id", projectId);
+      expect(outside.data).toEqual([]);
+      const intrude = await outsider.client
+        .from("plan_items")
+        .insert({ project_id: projectId, module: "gear", data: { item: "x" } });
+      expect(intrude.error).not.toBeNull();
+    });
+
     it("keeps outsiders out of the workspace", async () => {
       const brief = await outsider.client
         .from("project_workspaces")

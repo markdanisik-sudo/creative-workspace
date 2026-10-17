@@ -1,9 +1,6 @@
-export const MODULE_IDS = ["brief", "moodboard", "shots", "locations", "tasks", "canvas"] as const;
-export type ModuleId = (typeof MODULE_IDS)[number];
+import type { Medium, PlanItem, PlanModuleId } from "./plan";
 
-export function isModuleId(value: unknown): value is ModuleId {
-  return MODULE_IDS.some((id) => id === value);
-}
+export { isPlanModuleId as isModuleId, type PlanModuleId as ModuleId } from "./plan";
 
 export const BRIEF_FIELDS = [
   "goal",
@@ -64,6 +61,12 @@ export interface Shot {
 }
 
 export interface WorkspaceData {
+  medium: Medium;
+  template: string | null;
+  /** The Plan's boxes, in order. */
+  modules: PlanModuleId[];
+  /** Rows of the list boxes (interview, people, deliverables…). */
+  items: PlanItem[];
   brief: Brief;
   shotDefaults: ShotSpecs;
   moodboard: WorkspaceImage[];
