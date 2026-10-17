@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { Menu, Play, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -170,59 +170,81 @@ function useTimecode() {
     .join(":");
 }
 
-/** Frame-line corner. */
-function Corner({ className }: { className: string }) {
-  return <span aria-hidden="true" className={cn("absolute size-4 border-white/70", className)} />;
+/** One readout on the monitor's bars: a dim label and its value. */
+function Readout({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <span className={cn("flex items-baseline gap-1 whitespace-nowrap", className)}>
+      <span className="text-white/45">{label}</span>
+      <span className="font-semibold text-white">{value}</span>
+    </span>
+  );
 }
 
 /**
- * The menu's picture: the latest project cover as seen on a camera monitor,
- * with the camera's on-screen display over it.
+ * The menu's picture: the latest project cover as seen on a cinema camera's
+ * monitor, its readouts in black bars above and below.
  */
 function MonitorView({ imageUrl, statement }: { imageUrl: string | null; statement: string }) {
   const timecode = useTimecode();
   return (
-    <div className="relative hidden aspect-[16/9] overflow-hidden rounded-xl bg-[#1d1c1a] font-mono text-[10px] tracking-wide text-white/85 uppercase tabular-nums md:block">
-      {imageUrl ? (
-        // Short-lived signed URL; next/image would cache it past expiry.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt="" className="absolute inset-0 size-full object-cover" />
-      ) : null}
-      <div className="absolute inset-0 bg-black/30" />
-
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-3 top-2.5 flex items-center justify-between"
-      >
+    <div
+      aria-hidden="true"
+      className="relative hidden aspect-[16/9] flex-col overflow-hidden rounded-xl bg-black text-[10px] tabular-nums md:flex"
+    >
+      <div className="flex h-7 shrink-0 items-center justify-between gap-2 px-3">
+        <Menu size={12} className="text-white/70" />
+        <Readout label="Iris" value="T2.8" />
+        <Readout label="STR" value="180°" />
+        <Readout label="ISO" value="800" />
+        <Readout label="WB" value="5600 +0" />
         <span className="flex items-center gap-1.5">
-          <span className="size-1.5 animate-pulse rounded-full bg-[#ff3b30]" />
-          REC
+          <span className="font-semibold text-[#30d158]">T/E</span>
+          <span className="relative h-2 w-4 rounded-[2px] border border-[#30d158] p-px">
+            <span className="block h-full w-full rounded-[1px] bg-[#30d158]" />
+          </span>
         </span>
-        <span>{timecode}</span>
-        <span>4K · 25p</span>
       </div>
 
-      <div className="absolute inset-x-8 inset-y-8">
-        <Corner className="top-0 left-0 border-t border-l" />
-        <Corner className="top-0 right-0 border-t border-r" />
-        <Corner className="bottom-0 left-0 border-b border-l" />
-        <Corner className="right-0 bottom-0 border-r border-b" />
-        <div className="flex size-full items-center justify-center">
-          <p className="font-sans text-title font-medium tracking-normal text-white normal-case">
-            {statement}
-          </p>
-        </div>
+      <div className="relative min-h-0 flex-1 bg-[#1d1c1a]">
+        {imageUrl ? (
+          // Short-lived signed URL; next/image would cache it past expiry.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt="" className="absolute inset-0 size-full object-cover" />
+        ) : null}
+        <div className="absolute inset-0 bg-black/20" />
+        {/* Centre cross. */}
+        <span className="absolute top-1/2 left-1/2 h-4 w-px -translate-1/2 bg-white/80" />
+        <span className="absolute top-1/2 left-1/2 h-px w-4 -translate-1/2 bg-white/80" />
+        <p className="absolute bottom-2.5 left-3 text-title font-medium text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.4)]">
+          {statement}
+        </p>
       </div>
 
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-3 bottom-2.5 flex items-center justify-between"
-      >
-        <span>ISO 800</span>
-        <span>180°</span>
-        <span>5600K</span>
-        <span>T2.8</span>
-        <span>ND 0.6</span>
+      <div className="flex h-8 shrink-0 items-center justify-between gap-2 px-3">
+        <span className="flex items-center gap-2">
+          <Play size={11} className="fill-white text-white" />
+          <span className="flex flex-col leading-none">
+            <span className="text-white/80">{timecode.slice(0, 8)}</span>
+            <span className="text-[8px] text-white/45">A001_C023</span>
+          </span>
+        </span>
+        <Readout label="FPS" value="25" />
+        <Readout label="Format" value="8K / R3D" />
+        <span className="flex items-center gap-1.5">
+          <span className="text-white/45">TC</span>
+          <span className="font-semibold text-white">{timecode}</span>
+          <span className="flex size-3 items-center justify-center rounded-full border border-[#ff3b30]">
+            <span className="size-1.5 animate-pulse rounded-full bg-[#ff3b30]" />
+          </span>
+        </span>
       </div>
     </div>
   );
