@@ -30,7 +30,7 @@
   --danger-surface: rgba(215, 0, 21, 0.08);
   --success: #248a3d;
   /* Open notes: the warm brick red of a Kodak Vision3 film can. */
-  --attention: #9c2616;
+  --attention: #b82714;
 
   --overlay: rgba(20, 20, 22, 0.28);
 
@@ -83,7 +83,7 @@
   --focus-ring: rgba(64, 156, 255, 0.45);
   --danger: #ff453a;
   --danger-surface: rgba(255, 69, 58, 0.12);
-  --attention: #bf3422;
+  --attention: #d7331d;
 
   --overlay: rgba(0, 0, 0, 0.5);
 
@@ -96,7 +96,7 @@
  * page, light boxes on the dark page. Everything inside uses these tokens. */
 .surface-invert {
   color-scheme: dark;
-  --attention: #bf3422;
+  --attention: #d7331d;
   --surface: #121211;
   --surface-muted: #1f1f1d;
   --surface-hover: rgba(255, 255, 255, 0.06);
@@ -116,7 +116,7 @@
 
 :root[data-theme="dark"] .surface-invert {
   color-scheme: light;
-  --attention: #9c2616;
+  --attention: #b82714;
   --surface: #f2f1ee;
   --surface-muted: #e6e5e1;
   --surface-hover: rgba(0, 0, 0, 0.04);
@@ -248,7 +248,7 @@
 
   :focus-visible {
     outline: 2px solid var(--focus);
-    outline-offset: 2px;
+    outline-offset: -1px;
   }
 
   button,
@@ -258,11 +258,11 @@
   }
 }
 
-/* Something waiting for attention (an open discussion note): a clean
- * outline, set a little off the edge so it reads on dark boxes too. */
+/* Something waiting for attention (an open discussion note): a bold
+ * outline right on the edge. */
 .attention {
-  outline: 2.5px solid var(--attention) !important;
-  outline-offset: 2px;
+  outline: 3px solid var(--attention) !important;
+  outline-offset: -1px;
 }
 
 /* Feel like an app on phones. */
