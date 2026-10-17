@@ -388,7 +388,7 @@ function MonitorView({
         <span className="absolute top-1/2 left-1/2 h-px w-3.5 -translate-1/2 bg-text/40" />
 
         <div className="absolute inset-x-3.5 bottom-3 flex items-end justify-between gap-3">
-          <p className="text-title leading-tight font-medium text-text">{statement}</p>
+          <p className="text-callout leading-tight font-medium text-text">{statement}</p>
           <span className="flex items-center gap-1.5 whitespace-nowrap">
             <span className="size-1.5 animate-pulse rounded-full bg-[#ff3b30]" />
             <span className="font-semibold text-text">{timecode}</span>
