@@ -1,0 +1,372 @@
+// =============================================================================
+//  FILM LAB TEXTURE  |  film MTF, halation, bloom, grain and motion
+//  v2.0
+//
+//  Goes on the node after FilmLab_Color and works on its SDR output
+//  (Rec.709 / sRGB / P3, display light decoded with gamma 2.4).
+//
+//    MTF (softness, acutance, red layer) -> halation -> bloom -> vignette
+//    -> film breath -> grain
+//
+//  Requires DaVinci Resolve Studio (DCTL with UI controls + texture access).
+// =============================================================================
+
+DEFINE_UI_PARAMS(p_Strength, Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_MtfSoft, MTF Softness, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_Acutance, Acutance, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_AcuRadius, Acutance Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.3, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_RedSoft, Red Layer Softness, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+
+DEFINE_UI_PARAMS(p_HalAmount, Halation Amount, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 4.0, 0.01)
+DEFINE_UI_PARAMS(p_HalRadius, Halation Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.2, 4.0, 0.01)
+DEFINE_UI_PARAMS(p_HalThreshold, Halation Threshold, DCTLUI_SLIDER_FLOAT, 0.8, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_HalWarmth, Halation Warmth, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_BloomAmount, Bloom Amount, DCTLUI_SLIDER_FLOAT, 0.15, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_BloomRadius, Bloom Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.1, 6.0, 0.01)
+DEFINE_UI_PARAMS(p_BloomThreshold, Bloom Threshold, DCTLUI_SLIDER_FLOAT, 0.6, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_GrainStock, Grain Stock, DCTLUI_COMBO_BOX, 3, { GS_50D, GS_200T, GS_250D, GS_V3_500T, GS_V2_500T, GS_V1_500T, GS_800T, GS_5294 }, { "50D (finest)", "200T", "250D", "Vision3 500T", "Vision2 500T", "Vision / EXR 500T", "800T", "Eastman 5294 400T (coarse)" })
+DEFINE_UI_PARAMS(p_Format, Film Format, DCTLUI_COMBO_BOX, 1, { FMT_65, FMT_35, FMT_S16, FMT_S8 }, { "65 mm", "35 mm", "Super 16", "Super 8" })
+DEFINE_UI_PARAMS(p_GrainAmount, Grain Amount, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 4.0, 0.01)
+DEFINE_UI_PARAMS(p_GrainSize, Grain Size, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_GrainChroma, Grain Color, DCTLUI_SLIDER_FLOAT, 0.6, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Animate, Animate Grain, DCTLUI_CHECK_BOX, 1)
+DEFINE_UI_PARAMS(p_Seed, Grain Seed, DCTLUI_SLIDER_INT, 0, 0, 100, 1)
+
+DEFINE_UI_PARAMS(p_Breath, Film Breath, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Weave, Gate Weave, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Vignette, Vignette, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_Quality, Quality, DCTLUI_COMBO_BOX, 1, { Q_LOW, Q_MED, Q_HIGH }, { "Low (fast)", "Medium", "High" })
+
+#define GOLDEN    2.39996322973f
+#define DGAMMA    2.4f          // display gamma used to get back to light
+
+// -----------------------------------------------------------------------------
+//  Small helpers
+// -----------------------------------------------------------------------------
+
+__DEVICE__ float clampf(float x, float a, float b) { return _fminf(_fmaxf(x, a), b); }
+__DEVICE__ int clampi(int x, int a, int b) { return x < a ? a : (x > b ? b : x); }
+__DEVICE__ float3 add3(float3 a, float3 b) { return make_float3(a.x + b.x, a.y + b.y, a.z + b.z); }
+__DEVICE__ float3 scale3(float3 a, float s) { return make_float3(a.x * s, a.y * s, a.z * s); }
+__DEVICE__ float luma(float3 c) { return 0.2126f * c.x + 0.7152f * c.y + 0.0722f * c.z; }
+
+__DEVICE__ float to_light(float v) { return _powf(_fmaxf(v, 0.0f), DGAMMA); }
+__DEVICE__ float to_code(float v) { return _powf(_fmaxf(v, 0.0f), 1.0f / DGAMMA); }
+__DEVICE__ float3 light3(float3 c) { return make_float3(to_light(c.x), to_light(c.y), to_light(c.z)); }
+__DEVICE__ float3 code3(float3 c) { return make_float3(to_code(c.x), to_code(c.y), to_code(c.z)); }
+
+// -----------------------------------------------------------------------------
+//  Hashing / noise
+// -----------------------------------------------------------------------------
+
+__DEVICE__ unsigned int hash_u(unsigned int x)
+{
+    x ^= x >> 16; x *= 0x7feb352dU;
+    x ^= x >> 15; x *= 0x846ca68bU;
+    x ^= x >> 16;
+    return x;
+}
+
+__DEVICE__ unsigned int hash3u(int x, int y, unsigned int s)
+{
+    return hash_u((unsigned int)x + hash_u((unsigned int)y + hash_u(s)));
+}
+
+// uniform in [-1, 1]
+__DEVICE__ float hash_sf(int x, int y, unsigned int s)
+{
+    return (float)(hash3u(x, y, s) & 0x00FFFFFFU) * (2.0f / 16777215.0f) - 1.0f;
+}
+
+// approx. gaussian, unit variance (sum of three uniforms)
+__DEVICE__ float hash_gauss(int x, int y, unsigned int s)
+{
+    float a = hash_sf(x, y, s);
+    float b = hash_sf(x, y, s + 0x9e3779b9U);
+    float c = hash_sf(x, y, s + 0x3c6ef372U);
+    return (a + b + c);
+}
+
+// smooth value noise on a lattice of spacing `size` pixels
+__DEVICE__ float value_noise(float px, float py, float size, unsigned int s)
+{
+    float fx = px / size, fy = py / size;
+    float ix = _floorf(fx), iy = _floorf(fy);
+    float tx = fx - ix, ty = fy - iy;
+    tx = tx * tx * (3.0f - 2.0f * tx);
+    ty = ty * ty * (3.0f - 2.0f * ty);
+    int x0 = (int)ix, y0 = (int)iy;
+    float a = hash_gauss(x0,     y0,     s);
+    float b = hash_gauss(x0 + 1, y0,     s);
+    float c = hash_gauss(x0,     y0 + 1, s);
+    float d = hash_gauss(x0 + 1, y0 + 1, s);
+    return (a + (b - a) * tx) + ((c + (d - c) * tx) - (a + (b - a) * tx)) * ty;
+}
+
+// film grain: two octaves of dye-cloud noise plus a fine silver component
+__DEVICE__ float grain_noise(float px, float py, float size, unsigned int s)
+{
+    float n = 0.75f * value_noise(px, py, size, s)
+            + 0.45f * value_noise(px + 17.3f, py - 9.1f, size * 0.55f, s ^ 0x51ed270bU)
+            + 0.30f * hash_gauss((int)px, (int)py, s ^ 0xa3c59ac3U);
+    return n * 0.85f;
+}
+
+// -----------------------------------------------------------------------------
+//  Sampling (code values; the image is display-referred)
+// -----------------------------------------------------------------------------
+
+__DEVICE__ float3 fetch(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int x, int y, int w, int h)
+{
+    x = clampi(x, 0, w - 1);
+    y = clampi(y, 0, h - 1);
+    return make_float3(_tex2D(tR, x, y), _tex2D(tG, x, y), _tex2D(tB, x, y));
+}
+
+__DEVICE__ float3 fetch_bilinear(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, float x, float y, int w, int h)
+{
+    float fx = _floorf(x), fy = _floorf(y);
+    float tx = x - fx, ty = y - fy;
+    int x0 = (int)fx, y0 = (int)fy;
+    float3 top = add3(scale3(fetch(tR, tG, tB, x0, y0, w, h), 1.0f - tx), scale3(fetch(tR, tG, tB, x0 + 1, y0, w, h), tx));
+    float3 bot = add3(scale3(fetch(tR, tG, tB, x0, y0 + 1, w, h), 1.0f - tx), scale3(fetch(tR, tG, tB, x0 + 1, y0 + 1, w, h), tx));
+    return add3(scale3(top, 1.0f - ty), scale3(bot, ty));
+}
+
+// -----------------------------------------------------------------------------
+//  MTF: emulsion softness (dense gaussian), a softer red layer, and the
+//  development adjacency effect (acutance: local edge contrast)
+// -----------------------------------------------------------------------------
+
+__DEVICE__ float3 film_mtf(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int cx, int cy, int w, int h,
+                           float3 c, float sm, float sr, float sa, float acut)
+{
+    // softness: all layers at sm, red layer at sr (>= sm)
+    if (sr > 0.3f) {
+        int R = clampi((int)(3.0f * sr + 0.999f), 1, 4);
+        float3 acc = make_float3(0.0f, 0.0f, 0.0f);
+        float accR = 0.0f, ws = 0.0f, wr = 0.0f;
+        float im = sm > 0.3f ? 0.5f / (sm * sm) : 1e4f;
+        float ir = 0.5f / (sr * sr);
+        for (int dy = -R; dy <= R; dy++) {
+            for (int dx = -R; dx <= R; dx++) {
+                float d2 = (float)(dx * dx + dy * dy);
+                float3 s = fetch(tR, tG, tB, cx + dx, cy + dy, w, h);
+                float a = _expf(-d2 * im), b = _expf(-d2 * ir);
+                acc = add3(acc, scale3(s, a)); ws += a;
+                accR += s.x * b; wr += b;
+            }
+        }
+        c = scale3(acc, 1.0f / ws);
+        c.x = accR / wr;
+    }
+
+    // acutance: unsharp mask on luma (code values ~ density), wide and sparse
+    if (acut > 0.0f && sa > 0.3f) {
+        float acc = 0.0f, ws = 0.0f;
+        for (int i = 0; i < 24; i++) {
+            float r = _sqrtf(((float)i + 0.5f) / 24.0f) * 2.5f;
+            float a = (float)i * GOLDEN;
+            int sx = (int)((float)cx + _cosf(a) * r * sa + 0.5f);
+            int sy = (int)((float)cy + _sinf(a) * r * sa + 0.5f);
+            float wt = _expf(-0.5f * r * r);
+            acc += luma(fetch(tR, tG, tB, sx, sy, w, h)) * wt;
+            ws += wt;
+        }
+        float Y = luma(c);
+        float d = acut * (Y - acc / ws);
+        d = d / (1.0f + _fabs(d) * 4.0f);           // no hard halos on strong edges
+        c = add3(c, make_float3(d, d, d));
+    }
+    return c;
+}
+
+// -----------------------------------------------------------------------------
+//  Halation and bloom (display light)
+// -----------------------------------------------------------------------------
+
+__DEVICE__ float knee(float v, float thr)
+{
+    float k = 0.5f * _fmaxf(thr, 1e-3f);
+    if (v <= thr - k) return 0.0f;
+    if (v < thr + k) return (v - thr + k) * (v - thr + k) / (4.0f * k);
+    return v - thr;
+}
+
+__DEVICE__ float3 bloom_blur(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, float cx, float cy, int w, int h,
+                             float sigma, float thr, int n, float rot, float rj)
+{
+    float3 acc = make_float3(0.0f, 0.0f, 0.0f);
+    float wsum = 0.0f;
+    for (int i = 0; i < n; i++) {
+        float r = _sqrtf(((float)i + rj) / (float)n) * 2.6f;
+        float a = (float)i * GOLDEN + rot;
+        float3 c = light3(fetch(tR, tG, tB, (int)(cx + _cosf(a) * r * sigma + 0.5f), (int)(cy + _sinf(a) * r * sigma + 0.5f), w, h));
+        float y = luma(c);
+        float f = knee(y, thr) / _fmaxf(y, 1e-6f);
+        float wt = _expf(-0.5f * r * r);
+        acc = add3(acc, scale3(c, f * wt));
+        wsum += wt;
+    }
+    return scale3(acc, 1.0f / wsum);
+}
+
+// halation: light reflected from the film base back into the red (and some
+// green) layer; exponential profile, driven by the red-band light
+__DEVICE__ float halation_blur(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, float cx, float cy, int w, int h,
+                               float sigma, float thr, int n, float rot, float rj)
+{
+    float acc = 0.0f, wsum = 0.0f;
+    for (int i = 0; i < n; i++) {
+        float r = _sqrtf(((float)i + rj) / (float)n) * 4.0f;
+        float a = (float)i * GOLDEN + rot;
+        float3 c = light3(fetch(tR, tG, tB, (int)(cx + _cosf(a) * r * sigma + 0.5f), (int)(cy + _sinf(a) * r * sigma + 0.5f), w, h));
+        float wt = _expf(-r);
+        acc += knee(0.75f * c.x + 0.25f * c.y, thr) * wt;
+        wsum += wt;
+    }
+    return acc / wsum;
+}
+
+// how visible negative grain is after printing, by output code value:
+// peaks in the upper midtones, fades into deep blacks and clean whites
+__DEVICE__ float grain_weight(float v)
+{
+    v = clampf(v, 0.0f, 1.0f);
+    return _powf(v, 1.2f) * _powf(1.0f - v, 0.8f) * (1.0f / 0.26f) + 0.04f;
+}
+
+// -----------------------------------------------------------------------------
+//  Main
+// -----------------------------------------------------------------------------
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
+{
+    const float W = (float)p_Width;
+    const float H = (float)p_Height;
+    float3 orig = make_float3(_tex2D(p_TexR, p_X, p_Y), _tex2D(p_TexG, p_X, p_Y), _tex2D(p_TexB, p_X, p_Y));
+
+    // ---- per-frame seed: hash a sparse grid of source pixels so grain,
+    //      breath and weave change whenever the picture changes
+    unsigned int seed = hash_u(0x1234567U + (unsigned int)p_Seed * 0x9e3779b9U);
+    if (p_Animate) {
+        for (int j = 0; j < 4; j++) {
+            for (int i = 0; i < 4; i++) {
+                int sx = (int)((i + 0.5f) * W * 0.25f);
+                int sy = (int)((j + 0.5f) * H * 0.25f);
+                float v = _tex2D(p_TexR, sx, sy) + _tex2D(p_TexG, sx, sy) * 1.37f + _tex2D(p_TexB, sx, sy) * 1.91f;
+                seed = hash_u(seed ^ (unsigned int)(clampf(v, 0.0f, 16.0f) * 262143.0f));
+            }
+        }
+    }
+    float fr0 = (float)(hash_u(seed ^ 0x68e31da4U) & 0xFFFFU) / 32767.5f - 1.0f;
+    float fr1 = (float)(hash_u(seed ^ 0xb5297a4dU) & 0xFFFFU) / 32767.5f - 1.0f;
+    float fr2 = (float)(hash_u(seed ^ 0x1b56c4e9U) & 0xFFFFU) / 32767.5f - 1.0f;
+    float fr3 = (float)(hash_u(seed ^ 0x7f4a7c15U) & 0xFFFFU) / 32767.5f - 1.0f;
+    float fr4 = (float)(hash_u(seed ^ 0x2545f491U) & 0xFFFFU) / 32767.5f - 1.0f;
+
+    // ---- format: frame width in mm drives MTF, grain and halation scale
+    float frameMM = 24.89f;
+    if (p_Format == FMT_65) frameMM = 52.48f;
+    else if (p_Format == FMT_S16) frameMM = 12.52f;
+    else if (p_Format == FMT_S8) frameMM = 5.79f;
+    float pxPerMM = W / frameMM;
+
+    int nSamples = 64;
+    if (p_Quality == Q_LOW) nSamples = 32;
+    else if (p_Quality == Q_HIGH) nSamples = 128;
+
+    // ---- gate weave (sub-pixel image shift per frame)
+    float cx = (float)p_X, cy = (float)p_Y;
+    float3 c;
+    if (p_Weave > 0.0f && p_Animate) {
+        cx += fr0 * p_Weave * 0.0006f * W;
+        cy += fr1 * p_Weave * 0.0010f * W;
+        c = fetch_bilinear(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height);
+    } else {
+        c = orig;
+    }
+    int icx = (int)(cx + 0.5f), icy = (int)(cy + 0.5f);
+
+    // ---- MTF (code values)
+    float sm = 0.006f * p_MtfSoft * pxPerMM;
+    float sr = _sqrtf(sm * sm + (0.006f * p_RedSoft * pxPerMM) * (0.006f * p_RedSoft * pxPerMM));
+    float sa = 0.02f * p_AcuRadius * pxPerMM;
+    c = film_mtf(p_TexR, p_TexG, p_TexB, icx, icy, p_Width, p_Height, c, sm, sr, sa, p_Acutance);
+
+    // ---- light effects
+    float3 L = light3(c);
+    float rot = (float)(hash3u(p_X, p_Y, 0x5bd1e995U) & 0xFFFFU) * (6.2831853f / 65535.0f);
+    float rj = 0.15f + 0.7f * (float)(hash3u(p_X, p_Y, 0x8da6b343U) & 0xFFFFU) / 65535.0f;
+
+    // bloom / diffusion: redistributes highlight light (energy conserving)
+    if (p_BloomAmount > 0.0f) {
+        float thr = to_light(p_BloomThreshold);
+        float sigma = _fmaxf(p_BloomRadius * 0.01f * W, 0.5f);
+        float3 b = bloom_blur(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, sigma, thr, nSamples, rot, rj);
+        float y = luma(L);
+        float3 hl = scale3(L, knee(y, thr) / _fmaxf(y, 1e-6f));
+        L = add3(L, scale3(add3(b, scale3(hl, -1.0f)), p_BloomAmount));
+    }
+
+    // halation: added to red / some green
+    if (p_HalAmount > 0.0f) {
+        float thr = to_light(p_HalThreshold);
+        float sigma = _fmaxf(0.09f * p_HalRadius * pxPerMM, 0.5f);
+        float hv = halation_blur(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, sigma, thr, nSamples, rot + 1.7f, 1.0f - rj);
+        hv *= 3.5f * p_HalAmount;
+        L.x += hv;
+        L.y += hv * 0.30f * p_HalWarmth;
+        L.z += hv * 0.02f;
+    }
+
+    // vignette (lens falloff, in stops at the corners)
+    if (p_Vignette > 0.0f) {
+        float dx = ((float)p_X - 0.5f * W) / (0.5f * W);
+        float dy = ((float)p_Y - 0.5f * H) / (0.5f * W);
+        float r2 = (dx * dx + dy * dy) / (1.0f + (H * H) / (W * W));
+        L = scale3(L, _exp2f(-p_Vignette * r2 * r2 * 0.6f - p_Vignette * r2 * 0.4f));
+    }
+
+    // film breath: tiny per-frame exposure and colour drift
+    if (p_Breath > 0.0f && p_Animate) {
+        float e = p_Breath * 0.035f * fr2;
+        L = make_float3(L.x * _exp2f(e + p_Breath * 0.02f * fr3), L.y * _exp2f(e + p_Breath * 0.02f * fr4), L.z * _exp2f(e - p_Breath * 0.02f * fr3));
+    }
+    c = code3(L);
+
+    // ---- grain: dye clouds per layer, strongest in the midtones (where the
+    //      print curve is steepest), finer and weaker in deep blacks / whites
+    if (p_GrainAmount > 0.0f) {
+        float gr = 0.013f, gsz = 1.20f;
+        if (p_GrainStock == GS_50D) { gr = 0.0055f; gsz = 0.80f; }
+        else if (p_GrainStock == GS_200T) { gr = 0.0080f; gsz = 0.95f; }
+        else if (p_GrainStock == GS_250D) { gr = 0.0085f; gsz = 0.95f; }
+        else if (p_GrainStock == GS_V2_500T) { gr = 0.0160f; gsz = 1.25f; }
+        else if (p_GrainStock == GS_V1_500T) { gr = 0.0190f; gsz = 1.30f; }
+        else if (p_GrainStock == GS_800T) { gr = 0.0250f; gsz = 1.45f; }
+        else if (p_GrainStock == GS_5294) { gr = 0.0240f; gsz = 1.45f; }
+
+        float gsize = _fmaxf(0.012f * pxPerMM * gsz * p_GrainSize, 0.6f);
+        float px = (float)p_X, py = (float)p_Y;
+        unsigned int gs = hash_u(seed ^ 0x27d4eb2fU);
+        float nm = grain_noise(px, py, gsize, gs);
+        float nr = grain_noise(px, py, gsize, gs ^ 0x165667b1U);
+        float ng = grain_noise(px, py, gsize * 0.9f, gs ^ 0xd3a2646cU);
+        float nb = grain_noise(px, py, gsize * 1.15f, gs ^ 0xfd7046c5U);
+        float ch = p_GrainChroma;
+        float norm = 1.0f / _sqrtf((1.0f - ch) * (1.0f - ch) + ch * ch);
+        nr = (nm * (1.0f - ch) + nr * ch) * norm;
+        ng = (nm * (1.0f - ch) + ng * ch) * norm;
+        nb = (nm * (1.0f - ch) + nb * ch) * norm;
+
+        float amp = 1.25f * gr * p_GrainAmount * _sqrtf(24.89f / frameMM);
+        float wr = grain_weight(c.x), wg = grain_weight(c.y), wb = grain_weight(c.z);
+        c = make_float3(c.x + nr * amp * 1.00f * wr, c.y + ng * amp * 0.90f * wg, c.z + nb * amp * 1.35f * wb);
+    }
+
+    return add3(scale3(orig, 1.0f - p_Strength), scale3(c, p_Strength));
+}
