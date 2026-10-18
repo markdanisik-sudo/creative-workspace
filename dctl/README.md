@@ -37,12 +37,14 @@ Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN 
 ### Hlavička
 | Parametr | Co dělá |
 |---|---|
-| **Input Color Space / Input Gamma** | Gamut a gamma kamery zvlášť: DaVinci WG, ARRI WG3 / WG4, S-Gamut3.Cine, V-Gamut, RED WG, **Canon Cinema Gamut**, Rec.709, Rec.2020 · DaVinci Intermediate, LogC3, LogC4, S-Log3, V-Log, Log3G10, **Canon Log 2 / 3**, Gamma 2.4, Linear. |
-| **Negative Stock** | 23 negativů (Vision3, Vision2, Vision, Eastman EXR / ECN II) nebo **None – print only**: obraz jde rovnou na print (samotný 2383 bez Vision3). |
+| **Input Color Space / Input Gamma** | Gamut a gamma kamery zvlášť: DaVinci WG, ARRI WG3 / WG4, S-Gamut3.Cine, V-Gamut, RED WG, **Canon Cinema Gamut**, Rec.709, Rec.2020 · DaVinci Intermediate, LogC3, LogC4, S-Log3, V-Log, Log3G10, **Canon Log 2 / 3**, Gamma 2.4, Linear, **Cineon Log** (scan filmu). |
+| **Negative Stock** | 23 negativů (Vision3, Vision2, Vision, Eastman EXR / ECN II) nebo **None – print only**: obraz jde rovnou na print (samotný 2383 bez Vision3). Barevnost celé řady vychází z referenčního looku *Kodak 50D* (viz níže). |
 | **DRT** | **Film Print** (použije Print Stock) · **Neutral** (vlastní neutrální DRT: měkké rameno, zachovaný odstín, SDR i HDR) · **Off – DWG/Intermediate** (scénický výstup pro vlastní výstupní transformaci) · **Off – Cineon Log** (pro originální 2383 LUT z Resolve, viz níže). |
-| **Print Stock** | Kodak 2383 D65 · **2383 D60** (bílá v D60, o něco teplejší, jako u ACES / kinoprojekce) · Kodak 2393 (kontrastnější, hlubší černé). |
+| **Print Stock** | Kodak **2383 D65 / D60 / D55**: křivky a barvy podle Film Look LUTu *Kodak 2383* z DaVinci Resolve, varianty se liší jen bílou (D60 a D55 jsou teplejší) · Kodak 2393 (kontrastnější, hlubší černé, čistší barvy). |
 | **Output** | Rec.709 Gamma 2.4 · sRGB 2.2 · P3-D65 2.6 · **Rec.2100 PQ** · **Rec.2100 HLG** (HDR, gamut Rec.2020). |
 | **Strength** | Síla filmu: 1 = plný film, 0 = stejný obraz přes neutrální DRT bez filmu. |
+| **Negative Strength** | Síla emulace negativu: 1 = plný charakter stocku, 0 = neutrální „ideální“ negativ (jen print). |
+| **Print Strength** | Síla emulace printu: 1 = plný 2383 / 2393, 0 = negativ přes neutrální DRT bez printu. |
 
 ### Primaries
 | Parametr | Co dělá |
@@ -87,6 +89,13 @@ Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN 
 ### Originální 2383 LUT z Resolve
 1. V FilmLab Color nastav **DRT = Off – Cineon Log** (negativ si vyber, nebo nech *None – print only*).
 2. Do **dalšího nodu** dej LUT z Resolve: *Film Looks → Rec709 Kodak 2383 D65* (název se může podle verze Resolve mírně lišit). Tyhle LUTy počítají se vstupem Cineon log, který plugin v tomto režimu vydává (18% šeď = kód 445).
+
+## Kodak 50D look a 2383 z Resolve
+
+- **2383** je nafitovaný na originální *Film Looks → Kodak 2383* z DaVinci Resolve. S *Negative Stock = None* a vstupem *Cineon Log* se od nich liší v průměru o 0,004 (D65). Varianty D60 a D55 jsou stejný print s teplejší bílou.
+- **Barevnost Vision3 50D** vychází z referenčního LUTu *Kodak50D_Vibrant* (Rec.709 look). Z něj je převzatá barevnost (živé teplé tóny, sytá zeleň, nazelenalý nádech ve světlech), tonalita zůstává filmová (negativ + 2383).
+- **250D, 500T a ostatní stocky** stojí na stejném barevném základu a mají k tomu svůj vlastní charakter: toe, latitude, crossover a sytost (500T měkčí a se studenějšími stíny, Expression jemnější, ECN II sytější…).
+- **Zvednuté, matné černé** jako v referenčním LUTu: *Projection Flare* 1,5–2,0 (případně *Flare Tint Hue* 200 a *Amount* 0,3 pro studený nádech).
 
 ## FilmLab Texture: ovládání
 

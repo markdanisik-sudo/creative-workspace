@@ -7,8 +7,10 @@
 //    -> primaries: white balance (CAT02), exposure, contrast, highlights,
 //       shadows, saturation, skin
 //    -> negative: H&D curve per layer, push/pull, interimage colour, bleach bypass
+//       (Vision3 family colour matched to a Kodak 50D reference look)
 //    -> DRT: film print (printer lights, print H&D curve, dye saturation,
-//       dye crosstalk, bleach bypass) / neutral DRT / scene-referred output
+//       dye crosstalk, bleach bypass; 2383 matched to Resolve's 2383 film look)
+//       / neutral DRT / scene-referred output
 //    -> output encoding (Rec.709, sRGB, P3-D65, Rec.2100 PQ / HLG, DWG/DI, Cineon)
 //
 //  Grain, halation, bloom and MTF live in FilmLab_Texture.dctl (next node).
@@ -20,12 +22,14 @@
 // =============================================================================
 
 DEFINE_UI_PARAMS(p_InGamut, Input Color Space, DCTLUI_COMBO_BOX, 0, { G_DWG, G_AWG3, G_AWG4, G_SG3C, G_VG, G_RWG, G_CCG, G_709, G_2020 }, { "DaVinci Wide Gamut", "ARRI Wide Gamut 3", "ARRI Wide Gamut 4", "Sony S-Gamut3.Cine", "Panasonic V-Gamut", "RED Wide Gamut RGB", "Canon Cinema Gamut", "Rec.709", "Rec.2020" })
-DEFINE_UI_PARAMS(p_InGamma, Input Gamma, DCTLUI_COMBO_BOX, 0, { T_DI, T_LOGC3, T_LOGC4, T_SLOG3, T_VLOG, T_LOG3G10, T_CLOG2, T_CLOG3, T_G24, T_LIN }, { "DaVinci Intermediate", "ARRI LogC3", "ARRI LogC4", "Sony S-Log3", "Panasonic V-Log", "RED Log3G10", "Canon Log 2", "Canon Log 3", "Gamma 2.4", "Linear" })
+DEFINE_UI_PARAMS(p_InGamma, Input Gamma, DCTLUI_COMBO_BOX, 0, { T_DI, T_LOGC3, T_LOGC4, T_SLOG3, T_VLOG, T_LOG3G10, T_CLOG2, T_CLOG3, T_G24, T_LIN, T_CINEON }, { "DaVinci Intermediate", "ARRI LogC3", "ARRI LogC4", "Sony S-Log3", "Panasonic V-Log", "RED Log3G10", "Canon Log 2", "Canon Log 3", "Gamma 2.4", "Linear", "Cineon Log (film scan)" })
 DEFINE_UI_PARAMS(p_Stock, Negative Stock, DCTLUI_COMBO_BOX, 1, { V3_5203, V3_5207, V3_5213, V3_5219, V3_5219NR, V2_5201, V2_5205, V2_5212, V2_5217, V2_5218, V2_5229, V1_5246, V1_5274, V1_5277, V1_5279, V1_5289, E_5247, E_5294, EXR_5245, EXR_5248, EXR_5293, EXR_5296, EXR_5298, NEG_NONE }, { "Vision3 50D 5203", "Vision3 250D 5207", "Vision3 200T 5213", "Vision3 500T 5219", "Vision3 500T 5219 no rem-jet", "Vision2 50D 5201", "Vision2 250D 5205", "Vision2 100T 5212", "Vision2 200T 5217", "Vision2 500T 5218", "Vision2 Expression 500T 5229", "Vision 250D 5246", "Vision 200T 5274", "Vision 320T 5277", "Vision 500T 5279", "Vision 800T 5289", "Eastman ECN II 100T 5247", "Eastman 400T 5294", "Eastman EXR 50D 5245", "Eastman EXR 100T 5248", "Eastman EXR 200T 5293", "Eastman EXR 500T 5296", "Eastman EXR 500T 5298", "None - print only" })
 DEFINE_UI_PARAMS(p_DRT, DRT, DCTLUI_COMBO_BOX, 0, { DRT_FILM, DRT_NEUTRAL, DRT_OFF, DRT_CINEON }, { "Film Print", "Neutral", "Off - DWG / Intermediate", "Off - Cineon Log (for Resolve 2383 LUT)" })
-DEFINE_UI_PARAMS(p_Print, Print Stock, DCTLUI_COMBO_BOX, 0, { PR_2383, PR_2383D60, PR_2393 }, { "Kodak 2383 D65", "Kodak 2383 D60", "Kodak 2393" })
+DEFINE_UI_PARAMS(p_Print, Print Stock, DCTLUI_COMBO_BOX, 0, { PR_2383, PR_2383D60, PR_2383D55, PR_2393 }, { "Kodak 2383 D65", "Kodak 2383 D60", "Kodak 2383 D55", "Kodak 2393" })
 DEFINE_UI_PARAMS(p_Output, Output, DCTLUI_COMBO_BOX, 0, { OUT_709, OUT_SRGB, OUT_P3, OUT_PQ, OUT_HLG }, { "Rec.709 Gamma 2.4", "sRGB / Rec.709 Gamma 2.2", "P3-D65 Gamma 2.6", "Rec.2100 PQ (HDR)", "Rec.2100 HLG (HDR)" })
 DEFINE_UI_PARAMS(p_Strength, Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_NegStrength, Negative Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_PrintStrength, Print Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
 
 DEFINE_UI_PARAMS(p_Exposure, Exposure, DCTLUI_SLIDER_FLOAT, 0.0, -4.0, 4.0, 0.05)
 DEFINE_UI_PARAMS(p_Contrast, Contrast, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 1.5, 0.01)
@@ -191,6 +195,7 @@ __DEVICE__ float decode_gamma(float x, int t)
     if (t == T_CLOG2) return clog2_to_lin(x);
     if (t == T_CLOG3) return clog3_to_lin(x);
     if (t == T_G24) return _powf(_fmaxf(x, 0.0f), 2.4f);
+    if (t == T_CINEON) return GREY * exp10_f((x * 1023.0f - 446.0f) * 0.002f / 0.6f);   // ideal negative, grey at 446
     return x;
 }
 
@@ -309,6 +314,9 @@ typedef struct {
     float emax, ks;      // shoulder: max. log E range above toe; shoulder softness
     float sat;           // interimage effect (colour density)
     float trg, trb, tgr, tgb, tbr, tbg;   // interlayer hue coupling
+    float ovl;           // spectral overlap of the layers (1 = none, < 1 desaturates)
+    float plr, plg, plb; // colour balance of the negative (density offsets at mid grey)
+    float dye, dyeC, dyeM, dyeY;          // print dye saturation this negative prints with
     float grain;         // rms granularity at mid grey (density)
     float gsize;         // relative grain size
     float hal;           // halation factor (rem-jet efficiency)
@@ -318,165 +326,217 @@ typedef struct {
 __DEVICE__ NegStock neg_stock(int id)
 {
     NegStock s;
-    // Vision3 defaults: long straight line, very late shoulder, fine grain
-    s.gr = 0.60f; s.gg = 0.60f; s.gb = 0.60f;
-    s.xt = -1.17f; s.kt = 0.26f; s.emax = 3.70f; s.ks = 0.30f;
-    s.sat = 0.25f;
-    s.trg = 0.0f; s.trb = 0.0f; s.tgr = 0.0f; s.tgb = 0.0f; s.tbr = 0.0f; s.tbg = 0.0f;
-    s.grain = 0.010f; s.gsize = 1.0f; s.hal = 1.0f; s.hrad = 1.0f;
-
-    if (id == V3_5203) {          // 50D: finest grain, clean, slightly richer colour
-        s.gr = 0.61f; s.gg = 0.60f; s.gb = 0.60f;
-        s.sat = 0.30f; s.trg = 0.02f; s.tbg = 0.02f;
-        s.grain = 0.0055f; s.gsize = 0.80f; s.hal = 0.85f;
-    } else if (id == V3_5207) {   // 250D: neutral-warm, fine grain
-        s.gr = 0.61f; s.gg = 0.60f; s.gb = 0.59f;
-        s.sat = 0.26f; s.trg = 0.03f; s.tgr = 0.01f;
-        s.grain = 0.0085f; s.gsize = 0.95f; s.hal = 0.95f;
-    } else if (id == V3_5213) {   // 200T: firm shadows, rich skin
-        s.gr = 0.61f; s.gg = 0.61f; s.gb = 0.59f;
-        s.xt = -1.13f; s.kt = 0.24f;
-        s.sat = 0.27f; s.trg = 0.03f; s.tbr = -0.01f;
-        s.grain = 0.0080f; s.gsize = 0.95f; s.hal = 1.0f;
-    } else if (id == V3_5219) {   // 500T: soft toe, cool shadows, visible grain
-        s.gr = 0.60f; s.gg = 0.60f; s.gb = 0.57f;
-        s.xt = -1.22f; s.kt = 0.30f;
-        s.sat = 0.22f; s.tgb = 0.02f; s.tbg = 0.03f;
-        s.grain = 0.0130f; s.gsize = 1.20f; s.hal = 1.15f;
-    } else if (id == V3_5219NR) { // 500T without anti-halation backing (CineStill-style)
-        s.gr = 0.60f; s.gg = 0.60f; s.gb = 0.57f;
-        s.xt = -1.22f; s.kt = 0.30f;
-        s.sat = 0.22f; s.tgb = 0.02f; s.tbg = 0.03f;
-        s.grain = 0.0140f; s.gsize = 1.25f; s.hal = 3.0f; s.hrad = 2.2f;
-    } else if (id == V2_5201) {   // Vision2: earlier shoulder, a touch more contrast
-        s.gr = 0.63f; s.gg = 0.62f; s.gb = 0.62f;
-        s.xt = -1.12f; s.kt = 0.22f; s.emax = 3.10f; s.ks = 0.28f;
-        s.sat = 0.28f; s.trg = 0.02f; s.tbg = 0.02f;
-        s.grain = 0.0065f; s.gsize = 0.85f; s.hal = 0.9f;
+    if (id == V3_5203) {  // 50D: finest grain, clean, slightly richer colour
+        s.gr = 0.52f; s.gg = 0.6f; s.gb = 0.6124f;
+        s.xt = -1.17f; s.kt = 0.26f; s.emax = 3.7f; s.ks = 0.3f;
+        s.sat = 0.7101f; s.trg = -0.15f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1405f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.0055f; s.gsize = 0.8f; s.hal = 0.85f; s.hrad = 1.0f;
+    } else if (id == V3_5207) {  // 250D: neutral-warm, fine grain
+        s.gr = 0.52f; s.gg = 0.6f; s.gb = 0.6024f;
+        s.xt = -1.17f; s.kt = 0.26f; s.emax = 3.7f; s.ks = 0.3f;
+        s.sat = 0.6701f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.14f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.0085f; s.gsize = 0.95f; s.hal = 0.95f; s.hrad = 1.0f;
+    } else if (id == V3_5213) {  // 200T: firm shadows, rich skin
+        s.gr = 0.52f; s.gg = 0.61f; s.gb = 0.6024f;
+        s.xt = -1.13f; s.kt = 0.24f; s.emax = 3.7f; s.ks = 0.3f;
+        s.sat = 0.6801f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.15f; s.tbr = 0.14f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.008f; s.gsize = 0.95f; s.hal = 1.0f; s.hrad = 1.0f;
+    } else if (id == V3_5219) {  // 500T: soft toe, cool shadows, visible grain
+        s.gr = 0.51f; s.gg = 0.6f; s.gb = 0.5824f;
+        s.xt = -1.22f; s.kt = 0.3f; s.emax = 3.7f; s.ks = 0.3f;
+        s.sat = 0.6301f; s.trg = -0.17f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.13f; s.tbr = 0.15f; s.tbg = 0.1505f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.013f; s.gsize = 1.2f; s.hal = 1.15f; s.hrad = 1.0f;
+    } else if (id == V3_5219NR) {  // 500T without anti-halation backing (CineStill-style)
+        s.gr = 0.51f; s.gg = 0.6f; s.gb = 0.5824f;
+        s.xt = -1.22f; s.kt = 0.3f; s.emax = 3.7f; s.ks = 0.3f;
+        s.sat = 0.6301f; s.trg = -0.17f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.13f; s.tbr = 0.15f; s.tbg = 0.1505f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.014f; s.gsize = 1.25f; s.hal = 3.0f; s.hrad = 2.2f;
+    } else if (id == V2_5201) {  // Vision2: earlier shoulder, a touch more contrast
+        s.gr = 0.54f; s.gg = 0.62f; s.gb = 0.6324f;
+        s.xt = -1.12f; s.kt = 0.22f; s.emax = 3.1f; s.ks = 0.28f;
+        s.sat = 0.6901f; s.trg = -0.15f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1405f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.0065f; s.gsize = 0.85f; s.hal = 0.9f; s.hrad = 1.0f;
     } else if (id == V2_5205) {
-        s.gr = 0.63f; s.gg = 0.62f; s.gb = 0.61f;
-        s.xt = -1.12f; s.kt = 0.22f; s.emax = 3.10f; s.ks = 0.28f;
-        s.sat = 0.25f; s.trg = 0.03f; s.tgr = 0.015f;
-        s.grain = 0.0105f; s.gsize = 1.0f; s.hal = 1.0f;
+        s.gr = 0.54f; s.gg = 0.62f; s.gb = 0.6224f;
+        s.xt = -1.12f; s.kt = 0.22f; s.emax = 3.1f; s.ks = 0.28f;
+        s.sat = 0.6601f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.135f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.0105f; s.gsize = 1.0f; s.hal = 1.0f; s.hrad = 1.0f;
     } else if (id == V2_5212) {
-        s.gr = 0.63f; s.gg = 0.63f; s.gb = 0.61f;
-        s.xt = -1.10f; s.kt = 0.22f; s.emax = 3.10f; s.ks = 0.28f;
-        s.sat = 0.27f; s.trg = 0.02f;
-        s.grain = 0.0090f; s.gsize = 0.95f; s.hal = 1.0f;
+        s.gr = 0.54f; s.gg = 0.63f; s.gb = 0.6224f;
+        s.xt = -1.1f; s.kt = 0.22f; s.emax = 3.1f; s.ks = 0.28f;
+        s.sat = 0.6801f; s.trg = -0.15f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.009f; s.gsize = 0.95f; s.hal = 1.0f; s.hrad = 1.0f;
     } else if (id == V2_5217) {
-        s.gr = 0.63f; s.gg = 0.62f; s.gb = 0.60f;
-        s.xt = -1.12f; s.kt = 0.23f; s.emax = 3.10f; s.ks = 0.28f;
-        s.sat = 0.26f; s.trg = 0.03f; s.tbr = -0.01f;
-        s.grain = 0.0110f; s.gsize = 1.05f; s.hal = 1.05f;
+        s.gr = 0.54f; s.gg = 0.62f; s.gb = 0.6124f;
+        s.xt = -1.12f; s.kt = 0.23f; s.emax = 3.1f; s.ks = 0.28f;
+        s.sat = 0.6701f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.15f; s.tbr = 0.14f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.011f; s.gsize = 1.05f; s.hal = 1.05f; s.hrad = 1.0f;
     } else if (id == V2_5218) {
-        s.gr = 0.62f; s.gg = 0.62f; s.gb = 0.59f;
-        s.xt = -1.17f; s.kt = 0.27f; s.emax = 3.10f; s.ks = 0.28f;
-        s.sat = 0.22f; s.tgb = 0.02f; s.tbg = 0.03f;
-        s.grain = 0.0160f; s.gsize = 1.25f; s.hal = 1.15f;
-    } else if (id == V2_5229) {   // Expression 500T: low contrast, low saturation
-        s.gr = 0.54f; s.gg = 0.54f; s.gb = 0.52f;
-        s.xt = -1.30f; s.kt = 0.32f; s.emax = 3.30f; s.ks = 0.32f;
-        s.sat = 0.10f; s.tgb = 0.015f;
-        s.grain = 0.0150f; s.gsize = 1.25f; s.hal = 1.15f;
-    } else if (id == V1_5246) {   // Vision (1st gen): shorter scale, more grain
-        s.gr = 0.64f; s.gg = 0.63f; s.gb = 0.62f;
-        s.xt = -1.08f; s.kt = 0.20f; s.emax = 2.80f; s.ks = 0.26f;
-        s.sat = 0.28f; s.trg = 0.03f; s.tgr = 0.02f;
-        s.grain = 0.0125f; s.gsize = 1.05f; s.hal = 1.05f;
+        s.gr = 0.53f; s.gg = 0.62f; s.gb = 0.6024f;
+        s.xt = -1.17f; s.kt = 0.27f; s.emax = 3.1f; s.ks = 0.28f;
+        s.sat = 0.6301f; s.trg = -0.17f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.13f; s.tbr = 0.15f; s.tbg = 0.1505f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.016f; s.gsize = 1.25f; s.hal = 1.15f; s.hrad = 1.0f;
+    } else if (id == V2_5229) {  // Expression 500T: low contrast, low saturation
+        s.gr = 0.45f; s.gg = 0.54f; s.gb = 0.5324f;
+        s.xt = -1.3f; s.kt = 0.32f; s.emax = 3.3f; s.ks = 0.32f;
+        s.sat = 0.5101f; s.trg = -0.17f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.135f; s.tbr = 0.15f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.015f; s.gsize = 1.25f; s.hal = 1.15f; s.hrad = 1.0f;
+    } else if (id == V1_5246) {  // Vision (1st gen): shorter scale, more grain
+        s.gr = 0.55f; s.gg = 0.63f; s.gb = 0.6324f;
+        s.xt = -1.08f; s.kt = 0.2f; s.emax = 2.8f; s.ks = 0.26f;
+        s.sat = 0.6901f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.13f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.0125f; s.gsize = 1.05f; s.hal = 1.05f; s.hrad = 1.0f;
     } else if (id == V1_5274) {
-        s.gr = 0.64f; s.gg = 0.64f; s.gb = 0.62f;
-        s.xt = -1.08f; s.kt = 0.20f; s.emax = 2.80f; s.ks = 0.26f;
-        s.sat = 0.29f; s.trg = 0.03f; s.tbr = -0.01f;
-        s.grain = 0.0130f; s.gsize = 1.05f; s.hal = 1.05f;
-    } else if (id == V1_5277) {   // 320T: designed as a low-contrast stock
-        s.gr = 0.56f; s.gg = 0.56f; s.gb = 0.55f;
-        s.xt = -1.25f; s.kt = 0.30f; s.emax = 3.00f; s.ks = 0.30f;
-        s.sat = 0.16f; s.tgb = 0.01f;
-        s.grain = 0.0145f; s.gsize = 1.15f; s.hal = 1.1f;
+        s.gr = 0.55f; s.gg = 0.64f; s.gb = 0.6324f;
+        s.xt = -1.08f; s.kt = 0.2f; s.emax = 2.8f; s.ks = 0.26f;
+        s.sat = 0.7001f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.15f; s.tbr = 0.14f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.013f; s.gsize = 1.05f; s.hal = 1.05f; s.hrad = 1.0f;
+    } else if (id == V1_5277) {  // 320T: designed as a low-contrast stock
+        s.gr = 0.47f; s.gg = 0.56f; s.gb = 0.5624f;
+        s.xt = -1.25f; s.kt = 0.3f; s.emax = 3.0f; s.ks = 0.3f;
+        s.sat = 0.5701f; s.trg = -0.17f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.14f; s.tbr = 0.15f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.0145f; s.gsize = 1.15f; s.hal = 1.1f; s.hrad = 1.0f;
     } else if (id == V1_5279) {
-        s.gr = 0.63f; s.gg = 0.63f; s.gb = 0.60f;
-        s.xt = -1.12f; s.kt = 0.25f; s.emax = 2.80f; s.ks = 0.26f;
-        s.sat = 0.24f; s.tgb = 0.02f; s.tbg = 0.03f;
-        s.grain = 0.0185f; s.gsize = 1.30f; s.hal = 1.2f;
-    } else if (id == V1_5289) {   // 800T: push-stock look, heavy grain
-        s.gr = 0.62f; s.gg = 0.62f; s.gb = 0.58f;
-        s.xt = -1.10f; s.kt = 0.28f; s.emax = 2.70f; s.ks = 0.26f;
-        s.sat = 0.20f; s.tgb = 0.03f; s.tbg = 0.03f;
-        s.grain = 0.0250f; s.gsize = 1.45f; s.hal = 1.3f;
-    } else if (id == E_5247) {    // ECN II 100T (70s-80s): short scale, punchy warm colour
-        s.gr = 0.66f; s.gg = 0.65f; s.gb = 0.62f;
-        s.xt = -1.02f; s.kt = 0.20f; s.emax = 2.40f; s.ks = 0.24f;
-        s.sat = 0.34f; s.trg = 0.04f; s.tgr = 0.02f; s.tbg = 0.02f;
-        s.grain = 0.0150f; s.gsize = 1.15f; s.hal = 1.3f;
-    } else if (id == E_5294) {    // 400T (80s): fast, grainy, softer colour
-        s.gr = 0.64f; s.gg = 0.63f; s.gb = 0.59f;
-        s.xt = -1.05f; s.kt = 0.24f; s.emax = 2.40f; s.ks = 0.24f;
-        s.sat = 0.24f; s.trg = 0.03f; s.tgb = 0.02f; s.tbg = 0.03f;
-        s.grain = 0.0240f; s.gsize = 1.45f; s.hal = 1.35f;
+        s.gr = 0.54f; s.gg = 0.63f; s.gb = 0.6124f;
+        s.xt = -1.12f; s.kt = 0.25f; s.emax = 2.8f; s.ks = 0.26f;
+        s.sat = 0.6501f; s.trg = -0.17f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.13f; s.tbr = 0.15f; s.tbg = 0.1505f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.0185f; s.gsize = 1.3f; s.hal = 1.2f; s.hrad = 1.0f;
+    } else if (id == V1_5289) {  // 800T: push-stock look, heavy grain
+        s.gr = 0.53f; s.gg = 0.62f; s.gb = 0.5924f;
+        s.xt = -1.1f; s.kt = 0.28f; s.emax = 2.7f; s.ks = 0.26f;
+        s.sat = 0.6101f; s.trg = -0.17f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.12f; s.tbr = 0.15f; s.tbg = 0.1505f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.025f; s.gsize = 1.45f; s.hal = 1.3f; s.hrad = 1.0f;
+    } else if (id == E_5247) {  // ECN II 100T (70s-80s): short scale, punchy warm colour
+        s.gr = 0.57f; s.gg = 0.65f; s.gb = 0.6324f;
+        s.xt = -1.02f; s.kt = 0.2f; s.emax = 2.4f; s.ks = 0.24f;
+        s.sat = 0.7501f; s.trg = -0.13f; s.trb = 0.15f; s.tgr = -0.13f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1405f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.015f; s.gsize = 1.15f; s.hal = 1.3f; s.hrad = 1.0f;
+    } else if (id == E_5294) {  // 400T (80s): fast, grainy, softer colour
+        s.gr = 0.55f; s.gg = 0.63f; s.gb = 0.6024f;
+        s.xt = -1.05f; s.kt = 0.24f; s.emax = 2.4f; s.ks = 0.24f;
+        s.sat = 0.6501f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.13f; s.tbr = 0.15f; s.tbg = 0.1505f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.024f; s.gsize = 1.45f; s.hal = 1.35f; s.hrad = 1.0f;
     } else if (id == EXR_5245) {  // EXR (late 80s-90s): finer grain, still shorter scale than Vision
-        s.gr = 0.65f; s.gg = 0.64f; s.gb = 0.63f;
-        s.xt = -1.06f; s.kt = 0.20f; s.emax = 2.60f; s.ks = 0.25f;
-        s.sat = 0.31f; s.trg = 0.03f; s.tbg = 0.02f;
-        s.grain = 0.0090f; s.gsize = 0.90f; s.hal = 1.1f;
+        s.gr = 0.56f; s.gg = 0.64f; s.gb = 0.6424f;
+        s.xt = -1.06f; s.kt = 0.2f; s.emax = 2.6f; s.ks = 0.25f;
+        s.sat = 0.7201f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1405f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.009f; s.gsize = 0.9f; s.hal = 1.1f; s.hrad = 1.0f;
     } else if (id == EXR_5248) {
-        s.gr = 0.65f; s.gg = 0.64f; s.gb = 0.62f;
-        s.xt = -1.06f; s.kt = 0.21f; s.emax = 2.60f; s.ks = 0.25f;
-        s.sat = 0.30f; s.trg = 0.03f; s.tgr = 0.015f;
-        s.grain = 0.0120f; s.gsize = 1.05f; s.hal = 1.15f;
+        s.gr = 0.56f; s.gg = 0.64f; s.gb = 0.6324f;
+        s.xt = -1.06f; s.kt = 0.21f; s.emax = 2.6f; s.ks = 0.25f;
+        s.sat = 0.7101f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.135f; s.tgb = -0.15f; s.tbr = 0.15f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.012f; s.gsize = 1.05f; s.hal = 1.15f; s.hrad = 1.0f;
     } else if (id == EXR_5293) {
-        s.gr = 0.65f; s.gg = 0.65f; s.gb = 0.62f;
-        s.xt = -1.07f; s.kt = 0.21f; s.emax = 2.60f; s.ks = 0.25f;
-        s.sat = 0.29f; s.trg = 0.03f; s.tbr = -0.01f;
-        s.grain = 0.0150f; s.gsize = 1.15f; s.hal = 1.2f;
+        s.gr = 0.56f; s.gg = 0.65f; s.gb = 0.6324f;
+        s.xt = -1.07f; s.kt = 0.21f; s.emax = 2.6f; s.ks = 0.25f;
+        s.sat = 0.7001f; s.trg = -0.14f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.15f; s.tbr = 0.14f; s.tbg = 0.1205f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.015f; s.gsize = 1.15f; s.hal = 1.2f; s.hrad = 1.0f;
     } else if (id == EXR_5296) {  // 500T: the late-80s / 90s night stock
-        s.gr = 0.64f; s.gg = 0.63f; s.gb = 0.59f;
-        s.xt = -1.10f; s.kt = 0.25f; s.emax = 2.50f; s.ks = 0.25f;
-        s.sat = 0.25f; s.tgb = 0.02f; s.tbg = 0.03f;
-        s.grain = 0.0210f; s.gsize = 1.35f; s.hal = 1.3f;
+        s.gr = 0.55f; s.gg = 0.63f; s.gb = 0.6024f;
+        s.xt = -1.1f; s.kt = 0.25f; s.emax = 2.5f; s.ks = 0.25f;
+        s.sat = 0.6601f; s.trg = -0.17f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.13f; s.tbr = 0.15f; s.tbg = 0.1505f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.021f; s.gsize = 1.35f; s.hal = 1.3f; s.hrad = 1.0f;
     } else if (id == EXR_5298) {  // 500T: higher contrast, punchier than 5296
-        s.gr = 0.67f; s.gg = 0.66f; s.gb = 0.63f;
-        s.xt = -1.06f; s.kt = 0.23f; s.emax = 2.50f; s.ks = 0.25f;
-        s.sat = 0.29f; s.trg = 0.02f; s.tgb = 0.02f; s.tbg = 0.02f;
-        s.grain = 0.0200f; s.gsize = 1.35f; s.hal = 1.3f;
-    } else if (id == NEG_NONE) {  // ideal negative: straight line, no colour of its own
-        s.gr = 0.60f; s.gg = 0.60f; s.gb = 0.60f;
-        s.xt = -1.17f; s.kt = 0.10f; s.emax = 9.0f; s.ks = 0.30f;
+        s.gr = 0.58f; s.gg = 0.66f; s.gb = 0.6424f;
+        s.xt = -1.06f; s.kt = 0.23f; s.emax = 2.5f; s.ks = 0.25f;
+        s.sat = 0.7001f; s.trg = -0.15f; s.trb = 0.15f; s.tgr = -0.15f; s.tgb = -0.13f; s.tbr = 0.15f; s.tbg = 0.1405f;
+        s.ovl = 1.0f; s.plr = 0.0274f; s.plg = 0.04f; s.plb = -0.0162f;
+        s.dye = 1.1081f; s.dyeC = 1.0985f; s.dyeM = 0.8724f; s.dyeY = 1.1063f;
+        s.grain = 0.02f; s.gsize = 1.35f; s.hal = 1.3f; s.hrad = 1.0f;
+    } else {                      // NEG_NONE: ideal negative, straight line, no colour of its own
+        s.gr = 0.6f; s.gg = 0.6f; s.gb = 0.6f;
+        s.xt = -1.17f; s.kt = 0.02f; s.emax = 9.0f; s.ks = 0.3f;
         s.sat = 0.0f; s.trg = 0.0f; s.trb = 0.0f; s.tgr = 0.0f; s.tgb = 0.0f; s.tbr = 0.0f; s.tbg = 0.0f;
+        s.ovl = 1.0f; s.plr = 0.0f; s.plg = 0.0f; s.plb = 0.0f;
+        s.dye = 1.0f; s.dyeC = 1.0f; s.dyeM = 1.0f; s.dyeY = 1.0f;
+        s.grain = 0.01f; s.gsize = 1.0f; s.hal = 1.0f; s.hrad = 1.0f;
     }
     return s;
 }
 
 typedef struct {
-    float gr, gg, gb;    // print gamma per layer
-    float target;        // density of mid grey above Dmin
-    float kt;            // toe softness (highlight roll-off)
-    float sc, us;        // extra contrast in the lower scale (shadows) and where it starts
-    float dmax, ks;      // max density above Dmin; shoulder softness (blacks)
-    float3 m0, m1, m2;   // negative dye -> print exposure crosstalk (rows sum to 1)
-    float3 n0, n1, n2;   // print dye unwanted absorptions (rows sum to 1)
+    float3 g;            // print gamma per layer
+    float3 target;       // density of mid grey above Dmin
+    float3 kt;           // toe softness (highlight roll-off)
+    float3 sc;           // extra contrast in the lower scale (shadows)
+    float3 dmax;         // max density above Dmin
+    float us, ks, ws;    // where the lower-scale contrast starts, shoulder softness, its width
+    float3 m0, m1, m2;   // negative dye -> print exposure crosstalk
+    float3 n0, n1, n2;   // print dye unwanted absorptions
+    float3 white;        // projection white (D65 / D60 / D55)
 } PrintStock;
 
 __DEVICE__ PrintStock print_stock(int id)
 {
     PrintStock p;
+    p.white = make_float3(1.0f, 1.0f, 1.0f);
     if (id == PR_2393) {          // Vision Premier: higher contrast, denser blacks, purer colour
-        p.gr = 2.95f; p.gg = 2.88f; p.gb = 2.80f;
-        p.target = 0.86f; p.kt = 0.28f; p.sc = 0.80f; p.us = 0.22f; p.dmax = 4.4f; p.ks = 0.30f;
-        p.m0 = make_float3(0.979f, 0.018f, 0.003f);
-        p.m1 = make_float3(0.012f, 0.973f, 0.015f);
-        p.m2 = make_float3(0.003f, 0.021f, 0.976f);
-        p.n0 = make_float3(0.985f, 0.012f, 0.003f);
-        p.n1 = make_float3(0.015f, 0.970f, 0.015f);
-        p.n2 = make_float3(0.003f, 0.027f, 0.970f);
-    } else {                      // 2383: the classic release print
-        p.gr = 2.72f; p.gg = 2.66f; p.gb = 2.56f;
-        p.target = 0.82f; p.kt = 0.30f; p.sc = 0.60f; p.us = 0.25f; p.dmax = 3.9f; p.ks = 0.32f;
-        p.m0 = make_float3(0.970f, 0.024f, 0.006f);
-        p.m1 = make_float3(0.015f, 0.961f, 0.024f);
-        p.m2 = make_float3(0.003f, 0.033f, 0.964f);
-        p.n0 = make_float3(0.979f, 0.015f, 0.006f);
-        p.n1 = make_float3(0.021f, 0.958f, 0.021f);
-        p.n2 = make_float3(0.006f, 0.036f, 0.958f);
+        p.g = make_float3(3.2635f, 2.7529f, 2.4201f); p.target = make_float3(0.9258f, 0.9273f, 0.8558f);
+        p.kt = make_float3(0.4236f, 0.3484f, 0.4346f); p.sc = make_float3(0.5067f, 0.4495f, 0.5863f); p.dmax = make_float3(3.9338f, 3.9487f, 3.5653f);
+        p.us = 0.0063f; p.ks = 0.0960f; p.ws = 0.1336f;
+        p.m0 = make_float3(0.9936f, 0.0002f, 0.0062f);
+        p.m1 = make_float3(-0.0582f, 1.0404f, 0.0178f);
+        p.m2 = make_float3(-0.0062f, 0.0305f, 0.9757f);
+        p.n0 = make_float3(0.8170f, 0.1747f, 0.0083f);
+        p.n1 = make_float3(0.1673f, 0.7868f, 0.0459f);
+        p.n2 = make_float3(0.0396f, 0.1075f, 0.8528f);
+    } else {                      // 2383, matched to the Kodak 2383 film look in DaVinci Resolve
+        p.g = make_float3(3.0217f, 2.5490f, 2.2409f); p.target = make_float3(0.9258f, 0.9273f, 0.8558f);
+        p.kt = make_float3(0.4236f, 0.3484f, 0.4346f); p.sc = make_float3(0.5067f, 0.4495f, 0.5863f); p.dmax = make_float3(3.4838f, 3.4987f, 3.1153f);
+        p.us = 0.0063f; p.ks = 0.0960f; p.ws = 0.1336f;
+        p.m0 = make_float3(0.9902f, 0.0003f, 0.0095f);
+        p.m1 = make_float3(-0.0896f, 1.0621f, 0.0274f);
+        p.m2 = make_float3(-0.0095f, 0.0469f, 0.9626f);
+        p.n0 = make_float3(0.7185f, 0.2687f, 0.0128f);
+        p.n1 = make_float3(0.2574f, 0.6720f, 0.0706f);
+        p.n2 = make_float3(0.0609f, 0.1655f, 0.7736f);
+        // D60 / D55: same print, warmer projection white (gains in display light)
+        if (id == PR_2383D60) p.white = make_float3(1.0f, 0.951f, 0.875f);
+        else if (id == PR_2383D55) p.white = make_float3(1.0f, 0.895f, 0.746f);
     }
     return p;
 }
@@ -494,18 +554,25 @@ __DEVICE__ float hd_curve(float x, float xt, float kt, float emax, float ks)
 }
 
 // print curve: as above plus extra lower-scale contrast for dense blacks
-__DEVICE__ float print_curve(float u, float ut, float kt, float sc, float us, float emax, float ks)
+__DEVICE__ float print_curve(float u, float ut, float kt, float sc, float us, float emax, float ks, float ws)
 {
-    float e = kt * softplus10((u - ut) / kt) + sc * 0.15f * softplus10((u - us) / 0.15f);
+    float e = kt * softplus10((u - ut) / kt) + sc * ws * softplus10((u - us) / ws);
     return e - ks * softplus10((e - emax) / ks);
 }
 
 // solve the print toe position so that u = 0 lands exactly on `target`
-__DEVICE__ float print_toe(float target, float kt, float sc, float us, float emax, float ks)
+__DEVICE__ float print_toe(float target, float kt, float sc, float us, float emax, float ks, float ws)
 {
     float ut = -target;
-    for (int i = 0; i < 4; i++) ut += print_curve(0.0f, ut, kt, sc, us, emax, ks) - target;
+    for (int i = 0; i < 4; i++) ut += print_curve(0.0f, ut, kt, sc, us, emax, ks, ws) - target;
     return ut;
+}
+
+// one print layer: exposure u -> density, grey calibrated to `target`
+__DEVICE__ float print_layer(float u, float g, float target, float kt, float sc, float us, float dmax, float ks, float ws)
+{
+    float ut = print_toe(target / g, kt, sc, us, dmax / g, ks / g, ws);
+    return g * print_curve(u, ut, kt, sc, us, dmax / g, ks / g, ws);
 }
 
 // -----------------------------------------------------------------------------
@@ -532,14 +599,12 @@ __DEVICE__ NegStock develop(NegStock s, float pp, int neutral)
     return s;
 }
 
-__DEVICE__ NegOut negative(float3 E, NegStock ns, float cd, int bleach, int overlap)
+__DEVICE__ NegOut negative(float3 E, NegStock ns, float cd, int bleach)
 {
     // spectral sensitivity overlap of the three layers: each layer also sees
-    // part of its neighbours' light (linear, hue preserving desaturation)
-    if (overlap) {
-        float y = luma2020(E);
-        E = make_float3(y + (E.x - y) * 0.78f, y + (E.y - y) * 0.78f, y + (E.z - y) * 0.78f);
-    }
+    // part of its neighbours' light (linear, hue preserving)
+    float y = luma2020(E);
+    E = make_float3(y + (E.x - y) * ns.ovl, y + (E.y - y) * ns.ovl, y + (E.z - y) * ns.ovl);
 
     float xr = _log10f(_fmaxf(E.x, 1e-7f) / GREY);
     float xg = _log10f(_fmaxf(E.y, 1e-7f) / GREY);
@@ -632,23 +697,25 @@ __DEVICE__ float3 film_print(NegOut n, PrintCtl c)
     float ug = _log10f(_fmaxf(eg, 1e-9f)) - PT * (c.printExp + c.printG);
     float ub = _log10f(_fmaxf(eb, 1e-9f)) - PT * (c.printExp + c.printB);
 
-    float pgr = ps.gr, pgg = ps.gg, pgb = ps.gb;
-    if (c.neutral) { float m = (pgr + pgg + pgb) * (1.0f / 3.0f); pgr = m; pgg = m; pgb = m; }
-    pgr *= c.contrast; pgg *= c.contrast; pgb *= c.contrast;
+    if (c.neutral) {
+        float m;
+        m = (ps.g.x + ps.g.y + ps.g.z) * (1.0f / 3.0f); ps.g = make_float3(m, m, m);
+        m = (ps.target.x + ps.target.y + ps.target.z) * (1.0f / 3.0f); ps.target = make_float3(m, m, m);
+        m = (ps.kt.x + ps.kt.y + ps.kt.z) * (1.0f / 3.0f); ps.kt = make_float3(m, m, m);
+        m = (ps.sc.x + ps.sc.y + ps.sc.z) * (1.0f / 3.0f); ps.sc = make_float3(m, m, m);
+        m = (ps.dmax.x + ps.dmax.y + ps.dmax.z) * (1.0f / 3.0f); ps.dmax = make_float3(m, m, m);
+    }
+    float3 g = ps.g;
+    g = scale3(g, c.contrast);
 
     // curve shape: highlight roll-off = toe length, shadow roll-off = shoulder
     // softness, black toe = how deep the blacks go
-    float kt = _fmaxf(ps.kt * (1.0f + 0.6f * c.highlightRoll), 0.06f);
-    float ks = _fmaxf(ps.ks * (1.0f + 0.8f * c.shadowRoll), 0.05f);
-    float sc = _fmaxf(ps.sc * (1.0f - 0.5f * c.shadowRoll) * (1.0f - 0.5f * c.blackToe), 0.0f);
-    float dmax = _fmaxf(ps.dmax - 0.9f * c.blackToe, 1.8f);
-
-    float utR = print_toe(ps.target / pgr, kt, sc, ps.us, dmax / pgr, ks / pgr);
-    float utG = print_toe(ps.target / pgg, kt, sc, ps.us, dmax / pgg, ks / pgg);
-    float utB = print_toe(ps.target / pgb, kt, sc, ps.us, dmax / pgb, ks / pgb);
-    float Dr = pgr * print_curve(ur, utR, kt, sc, ps.us, dmax / pgr, ks / pgr);
-    float Dg = pgg * print_curve(ug, utG, kt, sc, ps.us, dmax / pgg, ks / pgg);
-    float Db = pgb * print_curve(ub, utB, kt, sc, ps.us, dmax / pgb, ks / pgb);
+    float hr = 1.0f + 0.6f * c.highlightRoll;
+    float sr = (1.0f - 0.5f * c.shadowRoll) * (1.0f - 0.5f * c.blackToe);
+    float ks = _fmaxf(ps.ks * (1.0f + 0.8f * c.shadowRoll), 0.04f);
+    float Dr = print_layer(ur, g.x, ps.target.x, _fmaxf(ps.kt.x * hr, 0.06f), _fmaxf(ps.sc.x * sr, 0.0f), ps.us, _fmaxf(ps.dmax.x - 0.9f * c.blackToe, 1.8f), ks, ps.ws);
+    float Dg = print_layer(ug, g.y, ps.target.y, _fmaxf(ps.kt.y * hr, 0.06f), _fmaxf(ps.sc.y * sr, 0.0f), ps.us, _fmaxf(ps.dmax.y - 0.9f * c.blackToe, 1.8f), ks, ps.ws);
+    float Db = print_layer(ub, g.z, ps.target.z, _fmaxf(ps.kt.z * hr, 0.06f), _fmaxf(ps.sc.z * sr, 0.0f), ps.us, _fmaxf(ps.dmax.z - 0.9f * c.blackToe, 1.8f), ks, ps.ws);
 
     // dye saturation: each dye's departure from neutral (cyan = reds,
     // magenta = greens, yellow = blues)
@@ -670,12 +737,7 @@ __DEVICE__ float3 film_print(NegOut n, PrintCtl c)
 
     float3 L = make_float3(exp10_f(-_fmaxf(Pr, 0.0f)), exp10_f(-_fmaxf(Pg, 0.0f)), exp10_f(-_fmaxf(Pb, 0.0f)));
 
-    // D60: clear print renders at the D60 white (von Kries in CAT02 space)
-    if (c.print == PR_2383D60) {
-        float3 lms = mul3(L, 0.57961887f, 0.39268423f, -0.02307198f, -0.00223007f, 1.04932052f, -0.01168798f, 0.00548360f, 0.03726131f, 1.04468585f);
-        lms = make_float3(lms.x * 1.01541743f, lms.y * 0.99803902f, lms.z * 0.92744905f);
-        L = mul3(lms, 1.72249578f, -0.64569902f, 0.03081737f, 0.00355862f, 0.95128521f, 0.01072160f, -0.00916837f, -0.03054065f, 0.95668139f);
-    }
+    L = make_float3(L.x * ps.white.x, L.y * ps.white.y, L.z * ps.white.z);
     return add_flare(L, c.flare, c.flareHue, c.flareTint);
 }
 
@@ -757,25 +819,32 @@ __DEVICE__ float3 encode_output(float3 L, int outSel, float peak, float grey)
     return make_float3(_powf(o.x, gm), _powf(o.y, gm), _powf(o.z, gm));
 }
 
-// the whole node after the primaries: `film` = 0 renders the neutral
-// reference used by Strength
-__DEVICE__ float3 render(float3 E, int film, int drt, int outSel, NegStock ns, int stock,
-                         float cd, int negBleach, PrintCtl pc, float peak, float grey)
+// the whole node after the primaries; `film` = 0 renders the neutral
+// reference used by Strength (ideal negative, neutral DRT)
+__DEVICE__ float3 render(float3 E, int film, int drt, int outSel, NegStock ns, int stock, float cd, int negBleach,
+                         float negStr, float printStr, PrintCtl pc, float peak, float grey)
 {
-    int hasNeg = film && stock != NEG_NONE;
-    if (drt == DRT_CINEON) {
-        // the Strength reference is an ideal, colour-neutral negative
-        if (film) return negative_to_cineon(negative(E, ns, cd, negBleach, stock != NEG_NONE), ns);
-        NegStock ideal = neg_stock(NEG_NONE);
-        return negative_to_cineon(negative(E, ideal, 1.0f, 0, 0), ideal);
+    // negative: the stock blended with an ideal, colour-neutral negative
+    NegStock nu = neg_stock(NEG_NONE);
+    NegOut n = negative(E, nu, 1.0f, 0);
+    if (film) {
+        NegOut s = negative(E, ns, cd, negBleach);
+        n.r += negStr * (s.r - n.r); n.g += negStr * (s.g - n.g); n.b += negStr * (s.b - n.b);
+        n.e0 = s.e0;
+        nu = ns;
     }
-    float3 scene = E;
-    if (hasNeg) scene = negative_to_scene(negative(E, ns, cd, negBleach, 1), ns);
+    if (drt == DRT_CINEON) return negative_to_cineon(n, nu);
+
+    float3 scene = (film && stock != NEG_NONE) ? negative_to_scene(n, nu) : E;
     if (drt == DRT_OFF) return lin2020_to_di(scene);
-    float3 L;
-    if (drt == DRT_FILM && film) L = film_print(negative(E, ns, cd, negBleach, stock != NEG_NONE), pc);
-    else L = neutral_drt(scene);
-    return encode_output(L, outSel, peak, grey);
+
+    float3 neutralOut = encode_output(neutral_drt(scene), outSel, peak, grey);
+    if (drt != DRT_FILM || !film) return neutralOut;
+    // the negative's colour balance belongs to printing (it is set against the
+    // print's own per-layer curves), not to scans or a neutral print curve
+    if (!pc.neutral) { n.r += negStr * ns.plr; n.g += negStr * ns.plg; n.b += negStr * ns.plb; }
+    float3 printOut = encode_output(film_print(n, pc), outSel, peak, grey);
+    return add3(scale3(neutralOut, 1.0f - printStr), scale3(printOut, printStr));
 }
 
 // -----------------------------------------------------------------------------
@@ -790,7 +859,12 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     pc.print = p_Print;
     pc.printExp = p_PrintExp; pc.printR = p_PrintR; pc.printG = p_PrintG; pc.printB = p_PrintB;
     pc.contrast = p_PrintContrast;
-    pc.dyeSat = p_DyeSat; pc.dyeC = p_DyeC; pc.dyeM = p_DyeM; pc.dyeY = p_DyeY;
+    // the negative brings its own print dye saturation (scaled by Negative Strength)
+    float nsv = p_NegStrength;
+    pc.dyeSat = p_DyeSat * (1.0f + nsv * (ns.dye - 1.0f));
+    pc.dyeC = p_DyeC * (1.0f + nsv * (ns.dyeC - 1.0f));
+    pc.dyeM = p_DyeM * (1.0f + nsv * (ns.dyeM - 1.0f));
+    pc.dyeY = p_DyeY * (1.0f + nsv * (ns.dyeY - 1.0f));
     pc.blackToe = p_BlackToe; pc.shadowRoll = p_ShadowRoll; pc.highlightRoll = p_HighlightRoll;
     pc.bleach = p_PrintBleach; pc.neutral = p_NeutralPrint;
     pc.flare = p_Flare; pc.flareHue = p_FlareHue; pc.flareTint = p_FlareTint;
@@ -818,9 +892,9 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     E = primaries(E, p_Exposure, p_Contrast, p_Pivot, p_Highlights, p_Shadows,
                   p_Temp, p_Tint, p_Saturation, p_SkinHue, p_SkinSat);
 
-    float3 res = render(E, 1, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, pc, p_HdrPeak, p_HdrGrey);
+    float3 res = render(E, 1, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
     if (p_Strength < 1.0f) {
-        float3 ref = render(E, 0, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, pc, p_HdrPeak, p_HdrGrey);
+        float3 ref = render(E, 0, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
         res = add3(scale3(ref, 1.0f - p_Strength), scale3(res, p_Strength));
     }
 
