@@ -368,5 +368,6 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
         c = make_float3(c.x + nr * amp * 1.00f * wr, c.y + ng * amp * 0.90f * wg, c.z + nb * amp * 1.35f * wb);
     }
 
-    return add3(scale3(orig, 1.0f - p_Strength), scale3(c, p_Strength));
+    float3 res = add3(scale3(orig, 1.0f - p_Strength), scale3(c, p_Strength));
+    return make_float3(res.x, res.y, res.z);
 }

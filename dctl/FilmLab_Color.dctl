@@ -8,7 +8,7 @@
 //       shadows, saturation, skin
 //    -> negative: H&D curve per layer, push/pull, interimage colour, bleach bypass
 //    -> DRT: film print (printer lights, print H&D curve, dye saturation,
-//       dye crosstalk, bleach bypass) / neutral DRT / scene-referred out
+//       dye crosstalk, bleach bypass) / neutral DRT / scene-referred output
 //    -> output encoding (Rec.709, sRGB, P3-D65, Rec.2100 PQ / HLG, DWG/DI, Cineon)
 //
 //  Grain, halation, bloom and MTF live in FilmLab_Texture.dctl (next node).
@@ -218,15 +218,15 @@ __DEVICE__ float3 lin2020_to_di(float3 c)
 // -----------------------------------------------------------------------------
 
 // CIE 1960 uv of a blackbody (Krystek approximation, 1000 - 15000 K)
-__DEVICE__ float2 planck_uv(float T)
+__DEVICE__ float3 planck_uv(float T)
 {
     float u = (0.860117757f + 1.54118254e-4f * T + 1.28641212e-7f * T * T) / (1.0f + 8.42420235e-4f * T + 7.08145163e-7f * T * T);
     float v = (0.317398726f + 4.22806245e-5f * T + 4.20481691e-8f * T * T) / (1.0f - 2.89741816e-5f * T + 1.61456053e-7f * T * T);
-    return make_float2(u, v);
+    return make_float3(u, v, 0.0f);
 }
 
 // white point (uv) -> CAT02 LMS cone response
-__DEVICE__ float3 uv_to_lms(float2 uv)
+__DEVICE__ float3 uv_to_lms(float3 uv)
 {
     float d = 2.0f * uv.x - 8.0f * uv.y + 4.0f;
     float x = 3.0f * uv.x / d, y = 2.0f * uv.y / d;
@@ -240,8 +240,9 @@ __DEVICE__ float3 white_balance(float3 c, float T, float tint)
 {
     if (T == 6500.0f && tint == 0.0f) return c;
     // tint moves the source white across the blackbody locus (green <-> magenta)
-    float2 src = planck_uv(T);
-    float2 t0 = planck_uv(T - 50.0f), t1 = planck_uv(T + 50.0f);
+    float3 src = planck_uv(T);
+    float3 t0 = planck_uv(T - 50.0f);
+    float3 t1 = planck_uv(T + 50.0f);
     float tu = t1.x - t0.x, tv = t1.y - t0.y, tl = _sqrtf(tu * tu + tv * tv);
     src.x += 0.015f * tint * tv / tl;
     src.y -= 0.015f * tint * tu / tl;
@@ -731,13 +732,13 @@ __DEVICE__ float3 gamut_compress(float3 o, float Y)
 }
 
 // display light (linear Rec.2020, SDR white = 1) -> output code values
-__DEVICE__ float3 encode_output(float3 L, int out, float peak, float grey)
+__DEVICE__ float3 encode_output(float3 L, int outSel, float peak, float grey)
 {
     float Y = luma2020(L);
-    if (out == OUT_PQ || out == OUT_HLG) {
+    if (outSel == OUT_PQ || outSel == OUT_HLG) {
         float3 n = hdr_expand(gamut_compress(L, Y), peak, grey);
         n = make_float3(_fmaxf(n.x, 0.0f), _fmaxf(n.y, 0.0f), _fmaxf(n.z, 0.0f));
-        if (out == OUT_PQ) return make_float3(pq_encode(n.x), pq_encode(n.y), pq_encode(n.z));
+        if (outSel == OUT_PQ) return make_float3(pq_encode(n.x), pq_encode(n.y), pq_encode(n.z));
         // HLG: undo the reference OOTF for this peak, then the OETF
         float g = 1.2f + 0.42f * _log10f(peak / 1000.0f);
         float3 d = scale3(n, 1.0f / peak);
@@ -746,19 +747,19 @@ __DEVICE__ float3 encode_output(float3 L, int out, float peak, float grey)
         return make_float3(hlg_oetf(sc.x), hlg_oetf(sc.y), hlg_oetf(sc.z));
     }
     float3 o;
-    if (out == OUT_P3) o = mul3(L, 1.34357825f, -0.28217967f, -0.06139858f, -0.06529745f, 1.07578792f, -0.01049046f, 0.00282179f, -0.01959849f, 1.01677671f);
+    if (outSel == OUT_P3) o = mul3(L, 1.34357825f, -0.28217967f, -0.06139858f, -0.06529745f, 1.07578792f, -0.01049046f, 0.00282179f, -0.01959849f, 1.01677671f);
     else o = mul3(L, 1.66049100f, -0.58764114f, -0.07284986f, -0.12455047f, 1.13289990f, -0.00834942f, -0.01815076f, -0.10057890f, 1.11872966f);
     o = gamut_compress(o, Y);
     o = make_float3(clampf(o.x, 0.0f, 1.0f), clampf(o.y, 0.0f, 1.0f), clampf(o.z, 0.0f, 1.0f));
     float gm = 1.0f / 2.4f;
-    if (out == OUT_SRGB) gm = 1.0f / 2.2f;
-    else if (out == OUT_P3) gm = 1.0f / 2.6f;
+    if (outSel == OUT_SRGB) gm = 1.0f / 2.2f;
+    else if (outSel == OUT_P3) gm = 1.0f / 2.6f;
     return make_float3(_powf(o.x, gm), _powf(o.y, gm), _powf(o.z, gm));
 }
 
 // the whole node after the primaries: `film` = 0 renders the neutral
 // reference used by Strength
-__DEVICE__ float3 render(float3 E, int film, int drt, int out, NegStock ns, int stock,
+__DEVICE__ float3 render(float3 E, int film, int drt, int outSel, NegStock ns, int stock,
                          float cd, int negBleach, PrintCtl pc, float peak, float grey)
 {
     int hasNeg = film && stock != NEG_NONE;
@@ -774,7 +775,7 @@ __DEVICE__ float3 render(float3 E, int film, int drt, int out, NegStock ns, int 
     float3 L;
     if (drt == DRT_FILM && film) L = film_print(negative(E, ns, cd, negBleach, stock != NEG_NONE), pc);
     else L = neutral_drt(scene);
-    return encode_output(L, out, peak, grey);
+    return encode_output(L, outSel, peak, grey);
 }
 
 // -----------------------------------------------------------------------------
@@ -794,44 +795,47 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     pc.bleach = p_PrintBleach; pc.neutral = p_NeutralPrint;
     pc.flare = p_Flare; pc.flareHue = p_FlareHue; pc.flareTint = p_FlareTint;
 
-    // ---- Show Curve: neutral grey ramp through the whole node, drawn bottom left
+    // ---- Show Curve: a neutral grey ramp through the whole node, drawn bottom left
+    int inBox = 0;
+    float fx = 0.0f, fy = 0.0f, bw = 1.0f, bh = 1.0f;
     if (p_ShowCurve) {
-        float bw = 0.32f * (float)p_Width, bh = 0.30f * (float)p_Height;
-        float bx = 0.03f * (float)p_Width, by = (float)p_Height - 0.04f * (float)p_Height - bh;
-        float fx = ((float)p_X - bx) / bw, fy = 1.0f - ((float)p_Y - by) / bh;
-        if (fx >= 0.0f && fx <= 1.0f && fy >= 0.0f && fy <= 1.0f) {
-            float3 bg = make_float3(0.08f, 0.08f, 0.08f);
-            float stops = -8.0f + 16.0f * fx;                       // scene stops around grey
-            float px = 1.0f / bh;                                   // one pixel in curve units
-            float gx = _fabs(stops - 2.0f * _floorf(stops * 0.5f + 0.5f)) * bw / 16.0f;
-            float gy = _fabs(fy * 4.0f - _floorf(fy * 4.0f + 0.5f)) * bh / 4.0f;
-            if (gx < 0.6f || gy < 0.6f) bg = make_float3(0.18f, 0.18f, 0.18f);
-            if (_fabs(stops) * bw / 16.0f < 0.8f) bg = make_float3(0.32f, 0.32f, 0.32f);
-            float g = GREY * _exp2f(stops);
-            float3 E = primaries(make_float3(g, g, g), p_Exposure, p_Contrast, p_Pivot, p_Highlights, p_Shadows,
-                                 p_Temp, p_Tint, p_Saturation, p_SkinHue, p_SkinSat);
-            float3 c = render(E, 1, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, pc, p_HdrPeak, p_HdrGrey);
-            if (p_Strength < 1.0f) {
-                float3 r = render(E, 0, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, pc, p_HdrPeak, p_HdrGrey);
-                c = add3(scale3(r, 1.0f - p_Strength), scale3(c, p_Strength));
-            }
-            float w = 1.6f * px;
-            float3 o = bg;
-            if (_fabs(c.z - fy) < w) o = make_float3(0.25f, 0.45f, 1.0f);
-            if (_fabs(c.y - fy) < w) o = make_float3(0.2f, 0.9f, 0.3f);
-            if (_fabs(c.x - fy) < w) o = make_float3(1.0f, 0.25f, 0.2f);
-            return o;
-        }
+        bw = 0.32f * (float)p_Width;
+        bh = 0.30f * (float)p_Height;
+        float bx = 0.03f * (float)p_Width;
+        float by = (float)p_Height - 0.04f * (float)p_Height - bh;
+        fx = ((float)p_X - bx) / bw;
+        fy = 1.0f - ((float)p_Y - by) / bh;
+        if (fx >= 0.0f && fx <= 1.0f && fy >= 0.0f && fy <= 1.0f) inBox = 1;
     }
 
-    float3 E = gamut_to_2020(make_float3(decode_gamma(p_R, p_InGamma), decode_gamma(p_G, p_InGamma), decode_gamma(p_B, p_InGamma)), p_InGamut);
+    float3 E;
+    if (inBox) {
+        float g = GREY * _exp2f(-8.0f + 16.0f * fx);               // scene stops around grey
+        E = make_float3(g, g, g);
+    } else {
+        E = gamut_to_2020(make_float3(decode_gamma(p_R, p_InGamma), decode_gamma(p_G, p_InGamma), decode_gamma(p_B, p_InGamma)), p_InGamut);
+    }
     E = primaries(E, p_Exposure, p_Contrast, p_Pivot, p_Highlights, p_Shadows,
                   p_Temp, p_Tint, p_Saturation, p_SkinHue, p_SkinSat);
 
-    float3 o = render(E, 1, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, pc, p_HdrPeak, p_HdrGrey);
+    float3 res = render(E, 1, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, pc, p_HdrPeak, p_HdrGrey);
     if (p_Strength < 1.0f) {
-        float3 r = render(E, 0, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, pc, p_HdrPeak, p_HdrGrey);
-        o = add3(scale3(r, 1.0f - p_Strength), scale3(o, p_Strength));
+        float3 ref = render(E, 0, p_DRT, p_Output, ns, p_Stock, p_ColorDensity, p_NegBleach, pc, p_HdrPeak, p_HdrGrey);
+        res = add3(scale3(ref, 1.0f - p_Strength), scale3(res, p_Strength));
     }
-    return o;
+
+    if (inBox) {
+        float stops = -8.0f + 16.0f * fx;
+        float3 dot = make_float3(0.08f, 0.08f, 0.08f);
+        float gx = _fabs(stops - 2.0f * _floorf(stops * 0.5f + 0.5f)) * bw / 16.0f;
+        float gy = _fabs(fy * 4.0f - _floorf(fy * 4.0f + 0.5f)) * bh / 4.0f;
+        if (gx < 0.6f || gy < 0.6f) dot = make_float3(0.18f, 0.18f, 0.18f);
+        if (_fabs(stops) * bw / 16.0f < 0.8f) dot = make_float3(0.32f, 0.32f, 0.32f);
+        float w = 1.6f / bh;
+        if (_fabs(res.z - fy) < w) dot = make_float3(0.25f, 0.45f, 1.0f);
+        if (_fabs(res.y - fy) < w) dot = make_float3(0.2f, 0.9f, 0.3f);
+        if (_fabs(res.x - fy) < w) dot = make_float3(1.0f, 0.25f, 0.2f);
+        res = dot;
+    }
+    return make_float3(res.x, res.y, res.z);
 }

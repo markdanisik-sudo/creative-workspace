@@ -32,6 +32,8 @@ Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN 
 
 ## FilmLab Color: ovládání
 
+> **Pořadí v Resolve:** Resolve řadí ovládání DCTL podle typu, ne podle pořadí v kódu. Nahoře jsou všechny **posuvníky**, pod nimi **zaškrtávátka** a úplně dole **rozbalovací menu** (Input Color Space, Input Gamma, Negative Stock, DRT, Print Stock, Output). Tabulky níže jsou seřazené podle významu.
+
 ### Hlavička
 | Parametr | Co dělá |
 |---|---|
