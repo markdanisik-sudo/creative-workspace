@@ -6,6 +6,9 @@ Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN 
 |---|---|
 | `FilmLab_Color.dctl` | Barva a tonalita: vstup z kamery, primaries (expozice, kontrast, teplota, …), negativ, print / DRT a výstup |
 | `FilmLab_Texture.dctl` | Textura filmu: MTF (kresba), halace, bloom, zrno, breath, gate weave a vinětace |
+| `FilmLab_LUT_Library.dctl` + složka `FilmLab_LUTs` | Knihovna 10 vlastních LUTů s posuvníkem intenzity |
+
+**Doporučený node tree (10 nodů) a nastavení vestavěné halace a zrna:** viz [`NODE_TREE.md`](NODE_TREE.md).
 
 > Vyžaduje **DaVinci Resolve Studio**.
 >

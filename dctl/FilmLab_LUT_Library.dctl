@@ -1,0 +1,48 @@
+// =============================================================================
+//  FILM LAB LUT LIBRARY  |  your own .cube LUTs, one slider for intensity
+//  v1.0
+//
+//  Put up to ten .cube files into the folder FilmLab_LUTs (next to this file)
+//  and name them slot01.cube ... slot10.cube.  Pick the slot in Resolve and
+//  set the intensity.  No colour space conversion happens here: the LUT sees
+//  exactly what comes into the node, so place the node where the LUT expects
+//  its input (see README).
+//
+//  After replacing a LUT file: Project Settings > Color Management >
+//  Lookup Tables > Update Lists (or restart Resolve).
+// =============================================================================
+
+DEFINE_UI_PARAMS(p_Intensity, Intensity, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Bypass, Bypass, DCTLUI_CHECK_BOX, 0)
+DEFINE_UI_PARAMS(p_Slot, LUT Slot, DCTLUI_COMBO_BOX, 0, { SLOT01, SLOT02, SLOT03, SLOT04, SLOT05, SLOT06, SLOT07, SLOT08, SLOT09, SLOT10 }, { "Slot 01", "Slot 02", "Slot 03", "Slot 04", "Slot 05", "Slot 06", "Slot 07", "Slot 08", "Slot 09", "Slot 10" })
+
+DEFINE_LUT(Lut01, FilmLab_LUTs/slot01.cube)
+DEFINE_LUT(Lut02, FilmLab_LUTs/slot02.cube)
+DEFINE_LUT(Lut03, FilmLab_LUTs/slot03.cube)
+DEFINE_LUT(Lut04, FilmLab_LUTs/slot04.cube)
+DEFINE_LUT(Lut05, FilmLab_LUTs/slot05.cube)
+DEFINE_LUT(Lut06, FilmLab_LUTs/slot06.cube)
+DEFINE_LUT(Lut07, FilmLab_LUTs/slot07.cube)
+DEFINE_LUT(Lut08, FilmLab_LUTs/slot08.cube)
+DEFINE_LUT(Lut09, FilmLab_LUTs/slot09.cube)
+DEFINE_LUT(Lut10, FilmLab_LUTs/slot10.cube)
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    float3 c = make_float3(p_R, p_G, p_B);
+    float3 o = c;
+    if (!p_Bypass) {
+        if (p_Slot == SLOT01) o = APPLY_LUT(p_R, p_G, p_B, Lut01);
+        else if (p_Slot == SLOT02) o = APPLY_LUT(p_R, p_G, p_B, Lut02);
+        else if (p_Slot == SLOT03) o = APPLY_LUT(p_R, p_G, p_B, Lut03);
+        else if (p_Slot == SLOT04) o = APPLY_LUT(p_R, p_G, p_B, Lut04);
+        else if (p_Slot == SLOT05) o = APPLY_LUT(p_R, p_G, p_B, Lut05);
+        else if (p_Slot == SLOT06) o = APPLY_LUT(p_R, p_G, p_B, Lut06);
+        else if (p_Slot == SLOT07) o = APPLY_LUT(p_R, p_G, p_B, Lut07);
+        else if (p_Slot == SLOT08) o = APPLY_LUT(p_R, p_G, p_B, Lut08);
+        else if (p_Slot == SLOT09) o = APPLY_LUT(p_R, p_G, p_B, Lut09);
+        else o = APPLY_LUT(p_R, p_G, p_B, Lut10);
+    }
+    float k = p_Bypass ? 0.0f : p_Intensity;
+    return make_float3(c.x + (o.x - c.x) * k, c.y + (o.y - c.y) * k, c.z + (o.z - c.z) * k);
+}

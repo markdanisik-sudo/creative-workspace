@@ -1,0 +1,10 @@
+# FilmLab LUT slot 03: replace this file with your own .cube (keep the file name)
+LUT_3D_SIZE 2
+0 0 0
+1 0 0
+0 1 0
+1 1 0
+0 0 1
+1 0 1
+0 1 1
+1 1 1
