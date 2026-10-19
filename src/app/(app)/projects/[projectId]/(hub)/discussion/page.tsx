@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireViewer } from "@/features/auth/session";
+import { requireProjectViewer } from "@/features/auth/session";
 import { Discussion } from "@/features/hub/Discussion";
 import { listComments } from "@/features/hub/queries";
 import { getWorkspace } from "@/features/workspace/queries";
@@ -18,7 +18,7 @@ export default async function DiscussionPage({
   const { projectId } = await params;
   const { o, t: target } = await searchParams;
   const [viewer, comments, workspace] = await Promise.all([
-    requireViewer(),
+    requireProjectViewer(projectId),
     listComments(projectId),
     getWorkspace(projectId),
   ]);

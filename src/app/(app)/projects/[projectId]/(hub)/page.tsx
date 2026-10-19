@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { requireViewer } from "@/features/auth/session";
+import { requireProjectViewer } from "@/features/auth/session";
 import { listDeliveryLinks } from "@/features/budget/queries";
 import { getProjectDetails, listTasks } from "@/features/hub/queries";
 import { PhaseChecklist } from "@/features/hub/PhaseChecklist";
@@ -17,7 +17,7 @@ export async function generateMetadata({
 export default async function ProjectOverviewPage({ params }: PageProps<"/projects/[projectId]">) {
   const { projectId } = await params;
   const [viewer, details, tasks, shots, links] = await Promise.all([
-    requireViewer(),
+    requireProjectViewer(projectId),
     getProjectDetails(projectId),
     listTasks(projectId),
     listShotChecks(projectId),

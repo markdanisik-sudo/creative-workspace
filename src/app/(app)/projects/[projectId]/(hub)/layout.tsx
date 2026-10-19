@@ -2,7 +2,7 @@ import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppHeader } from "@/components/app/AppHeader";
-import { requireViewer } from "@/features/auth/session";
+import { requireProjectViewer } from "@/features/auth/session";
 import { HubTabs } from "@/features/hub/HubTabs";
 import { isProjectFinished, PhaseStepper, type PhaseProgress } from "@/features/hub/PhaseStepper";
 import { cn } from "@/lib/cn";
@@ -37,7 +37,7 @@ export default async function ProjectHubLayout({
   if (!isUuid(projectId)) notFound();
 
   const [viewer, i18n, project, summary, tasks, shots] = await Promise.all([
-    requireViewer(),
+    requireProjectViewer(projectId),
     getI18n(),
     getProjectDetails(projectId),
     getProject(projectId),

@@ -78,13 +78,17 @@ function report(message: string, error: unknown) {
 const DEV_STUDIO_EMAIL = "studio@m-studio-lab.local";
 let cachedEmail: string | null = null;
 
-/** The studio account's email, creating a studio account if there is none yet. */
+/**
+ * The local account to sign in as: whoever ran the studio before personal
+ * workspaces, else studio@m-studio-lab.local, created the first time.
+ */
 async function studioEmail(admin: SupabaseClient<Database>): Promise<string | null> {
   if (cachedEmail) return cachedEmail;
 
   const { data: studio } = await admin
     .from("studio_members")
     .select("user_id")
+    .order("created_at")
     .limit(1)
     .maybeSingle();
   if (studio) {
@@ -93,14 +97,13 @@ async function studioEmail(admin: SupabaseClient<Database>): Promise<string | nu
     return cachedEmail;
   }
 
-  // Empty database: the first account becomes the studio (see handle_new_user).
   const { error } = await admin.auth.admin.createUser({
     email: DEV_STUDIO_EMAIL,
     password: crypto.randomUUID(),
     email_confirm: true,
     user_metadata: { display_name: "Studio" },
   });
-  if (error) {
+  if (error && error.code !== "email_exists") {
     report("could not create the studio account", error);
     return null;
   }

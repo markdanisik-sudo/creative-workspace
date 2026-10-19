@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireViewer } from "@/features/auth/session";
+import { requireProjectViewer, requireViewer } from "@/features/auth/session";
 import { logError, type ActionResult } from "@/lib/errors";
 import { getI18n } from "@/lib/i18n/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -144,19 +144,12 @@ export async function deletePlanItem(projectId: string, id: string): Promise<Act
   return { ok: true, data: null };
 }
 
-/** Which boxes the Plan shows. The studio, or the client who started the project. */
+/** Which boxes the Plan shows: the project's owner decides. */
 export async function savePlanModules(projectId: string, modules: string[]): Promise<ActionResult> {
   const { t } = await getI18n();
-  const viewer = await requireViewer();
+  const viewer = await requireProjectViewer(projectId);
   const supabase = await createSupabaseServerClient();
-  if (!viewer.isStudio) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("owner_id")
-      .eq("id", projectId)
-      .maybeSingle();
-    if (project?.owner_id !== viewer.id) return { ok: false, error: t("boxes.cantEdit") };
-  }
+  if (!viewer.isStudio) return { ok: false, error: t("boxes.cantEdit") };
   const chosen = [...new Set(modules.filter(isPlanModuleId))] as PlanModuleId[];
   if (chosen.length === 0) return { ok: false, error: t("boxes.pickOne") };
   const { error } = await supabase

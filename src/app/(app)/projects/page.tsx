@@ -86,11 +86,11 @@ function Masthead({
 async function SearchResultsView({
   query,
   i18n,
-  canManage,
+  viewerId,
 }: {
   query: string;
   i18n: Translator;
-  canManage: boolean;
+  viewerId: string;
 }) {
   const { t, tp, locale } = i18n;
   const results = await search(query);
@@ -110,7 +110,7 @@ async function SearchResultsView({
       {results.projects.length > 0 ? (
         <section className="flex flex-col gap-6">
           <SectionLabel label={t("dashboard.projectsSection")} index={1} />
-          <ProjectIndex projects={results.projects} i18n={i18n} canManage={canManage} />
+          <ProjectIndex projects={results.projects} i18n={i18n} viewerId={viewerId} />
         </section>
       ) : null}
       {results.boards.length > 0 ? (
@@ -152,11 +152,13 @@ async function ProjectsView({
   sort,
   i18n,
   isStudio,
+  viewerId,
 }: {
   viewerName: string;
   sort: SortOrder;
   i18n: Translator;
   isStudio: boolean;
+  viewerId: string;
 }) {
   const { t } = i18n;
   const [projects, invitations, listEnabled] = await Promise.all([
@@ -193,7 +195,12 @@ async function ProjectsView({
           />
           <div className="grid gap-2 sm:grid-cols-2">
             {recent.map((project) => (
-              <WorkCard key={project.id} project={project} i18n={i18n} canManage={isStudio} />
+              <WorkCard
+                key={project.id}
+                project={project}
+                i18n={i18n}
+                canManage={project.ownerId === viewerId}
+              />
             ))}
           </div>
         </section>
@@ -214,7 +221,7 @@ async function ProjectsView({
               index={4}
               aside={<SortSwitch current={sort} t={t} />}
             />
-            <ProjectIndex projects={indexed} i18n={i18n} canManage={isStudio} />
+            <ProjectIndex projects={indexed} i18n={i18n} viewerId={viewerId} />
           </section>
         ) : null}
       </div>
@@ -236,13 +243,14 @@ export default async function ProjectsPage({ searchParams }: PageProps<"/project
       />
       <main className="mx-auto max-w-[1272px] px-4 pb-32 sm:px-8">
         {query ? (
-          <SearchResultsView query={query} i18n={i18n} canManage={viewer.isStudio} />
+          <SearchResultsView query={query} i18n={i18n} viewerId={viewer.id} />
         ) : (
           <ProjectsView
             viewerName={viewer.displayName}
             sort={order}
             i18n={i18n}
             isStudio={viewer.isStudio}
+            viewerId={viewer.id}
           />
         )}
       </main>

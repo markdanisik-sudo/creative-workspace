@@ -4,9 +4,14 @@ import { logError } from "@/lib/errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Budget, ClientBilling, DeliveryLink, StudioBilling } from "./types";
 
-export const getStudioBilling = cache(async (): Promise<StudioBilling> => {
+/** Someone's billing details as an invoice supplier (each account has its own). */
+export const getStudioBilling = cache(async (ownerId: string): Promise<StudioBilling> => {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.from("studio_billing").select("*").maybeSingle();
+  const { data, error } = await supabase
+    .from("studio_billing")
+    .select("*")
+    .eq("owner_id", ownerId)
+    .maybeSingle();
   if (error) logError("budget.studioBilling", error);
   return {
     name: data?.name ?? "",

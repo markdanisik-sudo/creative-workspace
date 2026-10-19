@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { requireViewer } from "@/features/auth/session";
+import { requireProjectViewer } from "@/features/auth/session";
 import { EventDate } from "@/features/hub/EventDate";
 import { PlanBoard } from "@/features/hub/PlanBoard";
 import {
@@ -79,7 +79,7 @@ export default async function PlanPage({
   const { m } = await searchParams;
   const [viewer, i18n, events, requests, comments, summary, workspace, tasks, details, notes] =
     await Promise.all([
-      requireViewer(),
+      requireProjectViewer(projectId),
       getI18n(),
       listEvents(projectId),
       listRequests(projectId),

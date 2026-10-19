@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import QRCode from "qrcode";
-import { requireViewer } from "@/features/auth/session";
+import { requireProjectViewer } from "@/features/auth/session";
 import { BudgetView, type QrPayment } from "@/features/budget/BudgetView";
 import { payableIban, spaydString } from "@/features/budget/payment";
 import { getBudget, getStudioBilling } from "@/features/budget/queries";
 import { budgetTotals } from "@/features/budget/totals";
 import { getProjectDetails, listRequests, listServices } from "@/features/hub/queries";
+import { getProject } from "@/features/projects/queries";
 import { RequestsView } from "@/features/hub/RequestsView";
 import { getI18n } from "@/lib/i18n/server";
 
@@ -16,13 +17,18 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function BudgetPage({ params }: PageProps<"/projects/[projectId]/budget">) {
   const { projectId } = await params;
-  const [viewer, budget, requests, services, studio, project] = await Promise.all([
-    requireViewer(),
+  const [viewer, budget, requests, project, summary] = await Promise.all([
+    requireProjectViewer(projectId),
     getBudget(projectId),
     listRequests(projectId),
-    listServices({ activeOnly: true }),
-    getStudioBilling(),
     getProjectDetails(projectId),
+    getProject(projectId),
+  ]);
+  // Prices and billing details are those of whoever runs the project.
+  const ownerId = summary?.ownerId ?? viewer.id;
+  const [services, studio] = await Promise.all([
+    listServices({ ownerId, activeOnly: true }),
+    getStudioBilling(ownerId),
   ]);
   const totals = budgetTotals(budget.lines, requests, {
     payer: studio.vatPayer,

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { logError, type ActionResult } from "@/lib/errors";
 import { getI18n } from "@/lib/i18n/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { czechAccountToIban, isValidIban, normalizeIban } from "./payment";
 import { CLIENT_BILLING_FIELDS, type ClientBilling } from "./types";
 
@@ -207,24 +207,25 @@ export async function saveStudioBilling(input: StudioBillingInput): Promise<Acti
   }
   const vatRate = toNumber(input.vatRate || "21");
   const dueDays = Math.round(toNumber(input.dueDays || "14"));
+  const user = await getCurrentUser();
+  if (!user) return fail("budget.saveStudioBilling", "signed out");
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from("studio_billing")
-    .update({
-      name: clean(input.name, 200),
-      address: cleanOptional(input.address, 500),
-      ico: cleanOptional(input.ico, 20),
-      dic: cleanOptional(input.dic, 20),
-      iban: iban ? normalizeIban(iban) : null,
-      bank_account: cleanOptional(bankAccount, 40),
-      email: cleanOptional(input.email, 200),
-      phone: cleanOptional(input.phone, 50),
-      vat_payer: input.vatPayer,
-      vat_rate: Number.isFinite(vatRate) ? Math.min(100, Math.max(0, vatRate)) : 21,
-      due_days: Number.isFinite(dueDays) ? Math.min(365, Math.max(0, dueDays)) : 14,
-      invoice_note: cleanOptional(input.invoiceNote, 1000),
-    })
-    .eq("id", true);
+  // Each account has its own row; the first save creates it.
+  const { error } = await supabase.from("studio_billing").upsert({
+    owner_id: user.id,
+    name: clean(input.name, 200),
+    address: cleanOptional(input.address, 500),
+    ico: cleanOptional(input.ico, 20),
+    dic: cleanOptional(input.dic, 20),
+    iban: iban ? normalizeIban(iban) : null,
+    bank_account: cleanOptional(bankAccount, 40),
+    email: cleanOptional(input.email, 200),
+    phone: cleanOptional(input.phone, 50),
+    vat_payer: input.vatPayer,
+    vat_rate: Number.isFinite(vatRate) ? Math.min(100, Math.max(0, vatRate)) : 21,
+    due_days: Number.isFinite(dueDays) ? Math.min(365, Math.max(0, dueDays)) : 14,
+    invoice_note: cleanOptional(input.invoiceNote, 1000),
+  });
   if (error) return fail("budget.saveStudioBilling", error);
   revalidatePath("/", "layout");
   return { ok: true, data: null };

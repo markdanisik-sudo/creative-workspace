@@ -157,6 +157,7 @@ export const cs: Dictionary = {
   dashboard: {
     joinBodyCode: "Vložte odkaz nebo kód z pozvánky, kterou vám poslalo studio.",
     joinLabel: "Připojení",
+    shared: "Sdíleno s vámi",
     projectLabel: "Projekt",
     startTitle: "Začít nový projekt",
     startBody: "Brief, moodboard, shot list a lokace — všechno k natáčení na jednom místě.",

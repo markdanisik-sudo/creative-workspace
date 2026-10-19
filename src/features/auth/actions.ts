@@ -95,14 +95,8 @@ export async function signUp(_prev: AuthFormState, formData: FormData): Promise<
   }
   if (Object.keys(fieldErrors).length > 0) return { email, name, fieldErrors };
 
+  // Anyone can sign up; each account gets its own private workspace.
   const supabase = await createSupabaseServerClient();
-
-  // Once the studio exists, new accounts come only through invitations.
-  if (!invite) {
-    const { data: studioExists } = await supabase.rpc("studio_is_set_up");
-    if (studioExists) return { email, name, error: t("auth.inviteOnlyTitle") };
-  }
-
   const origin = await siteOrigin();
   const { data, error } = await supabase.auth.signUp({
     email,

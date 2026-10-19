@@ -301,12 +301,18 @@ export async function createRequest(
   let snapshot: { title: string; unit: Unit; unit_price: number | null; currency: string };
   if (input.serviceId) {
     // Price and unit come from the catalog, never from the client.
-    const { data: service, error } = await supabase
-      .from("services")
-      .select("id, name, unit, unit_price, currency, active")
-      .eq("id", input.serviceId)
-      .single();
-    if (error || !service?.active) return fail("hub.createRequest", error ?? "inactive service");
+    // …and from the catalog of whoever runs this project.
+    const [{ data: service, error }, { data: project }] = await Promise.all([
+      supabase
+        .from("services")
+        .select("id, name, unit, unit_price, currency, active, owner_id")
+        .eq("id", input.serviceId)
+        .single(),
+      supabase.from("projects").select("owner_id").eq("id", projectId).single(),
+    ]);
+    if (error || !service?.active || service.owner_id !== project?.owner_id) {
+      return fail("hub.createRequest", error ?? "service not offered here");
+    }
     snapshot = {
       title: service.name,
       unit: service.unit as Unit,

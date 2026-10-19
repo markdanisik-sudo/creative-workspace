@@ -38,9 +38,10 @@ export default async function SettingsPage() {
     getI18n(),
     getThemePreference(),
   ]);
-  const [services, billing] = viewer.isStudio
-    ? await Promise.all([listServices({ activeOnly: false }), getStudioBilling()])
-    : [[], null];
+  const [services, billing] = await Promise.all([
+    listServices({ ownerId: viewer.id, activeOnly: false }),
+    getStudioBilling(viewer.id),
+  ]);
   const supabase = await createSupabaseServerClient();
   const { data: factors } = await supabase.auth.mfa.listFactors();
   const verifiedFactorId = factors?.totp.find((factor) => factor.status === "verified")?.id ?? null;

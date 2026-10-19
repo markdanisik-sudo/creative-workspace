@@ -2,8 +2,8 @@
  * Row Level Security checks against a local Supabase stack.
  * Run with: npm run test:db (after `npx supabase start`).
  *
- * Cast: the studio (runs the workspace), a client invited to one project,
- * and an outsider with an account but no invitation.
+ * Cast: the studio (owns the project under test), a client invited to it,
+ * and an outsider: another account with its own, separate workspace.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
@@ -68,10 +68,6 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     studio = await createUser(admin);
     client = await createUser(admin);
     outsider = await createUser(admin);
-    const promote = await admin
-      .from("studio_members")
-      .upsert({ user_id: studio.id }, { onConflict: "user_id", ignoreDuplicates: true });
-    if (promote.error) throw promote.error;
 
     const project = await studio.client
       .from("projects")
@@ -111,63 +107,47 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     expect(spoof.error).not.toBeNull();
   });
 
-  describe("projects started by a client", () => {
+  describe("everyone's own workspace", () => {
     let ownProjectId: string;
 
     beforeAll(async () => {
-      // An account nobody invited can't start projects…
-      const uninvited = await outsider.client.from("projects").insert({ name: "Spam" });
-      expect(uninvited.error).not.toBeNull();
-
-      // …a client invited to some other project can.
-      const other = await admin
-        .from("projects")
-        .insert({ name: "Earlier job", owner_id: studio.id })
-        .select("id")
-        .single();
-      if (other.error) throw other.error;
-      const membership = await admin
-        .from("project_members")
-        .insert({ project_id: other.data.id, user_id: outsider.id });
-      if (membership.error) throw membership.error;
-
+      // Any account can start projects, invited or not.
       const project = await outsider.client
         .from("projects")
-        .insert({ name: "Client brief" })
+        .insert({ name: "My own job" })
         .select()
         .single();
       if (project.error) throw project.error;
       ownProjectId = project.data.id;
     });
 
-    it("makes the client a member and shows the project to the studio", async () => {
+    it("makes them its owner, not a member", async () => {
       const membership = await outsider.client
         .from("project_members")
         .select("user_id")
         .eq("project_id", ownProjectId);
-      expect(membership.data).toEqual([{ user_id: outsider.id }]);
-
-      const seen = await studio.client
-        .from("project_summaries")
-        .select("id, created_by_client")
-        .eq("id", ownProjectId)
-        .single();
-      expect(seen.data).toEqual({ id: ownProjectId, created_by_client: true });
-
-      const studioOwn = await studio.client
-        .from("project_summaries")
-        .select("created_by_client")
-        .eq("id", projectId)
-        .single();
-      expect(studioOwn.data?.created_by_client).toBe(false);
+      expect(membership.data).toEqual([]);
+      const runs = await outsider.client.rpc("runs_project", { target: ownProjectId });
+      expect(runs.data).toBe(true);
+      const notTheirs = await outsider.client.rpc("runs_project", { target: projectId });
+      expect(notTheirs.data).toBe(false);
     });
 
-    it("keeps it private from other clients", async () => {
-      const other = await client.client.from("projects").select("id").eq("id", ownProjectId);
-      expect(other.data).toEqual([]);
+    it("keeps it private from every other account", async () => {
+      for (const other of [studio, client]) {
+        const projects = await other.client.from("projects").select("id").eq("id", ownProjectId);
+        expect(projects.data).toEqual([]);
+        const summaries = await other.client
+          .from("project_summaries")
+          .select("id")
+          .eq("id", ownProjectId);
+        expect(summaries.data).toEqual([]);
+        const runs = await other.client.rpc("runs_project", { target: ownProjectId });
+        expect(runs.data).toBe(false);
+      }
     });
 
-    it("lets the client manage boards in their own project only", async () => {
+    it("lets them manage boards in their own project only", async () => {
       const board = await outsider.client
         .from("boards")
         .insert({ project_id: ownProjectId, name: "Ideas" })
@@ -181,21 +161,53 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
         .select();
       expect(rename.data).toHaveLength(1);
 
-      const intoStudioProject = await outsider.client
+      const intoOtherProject = await outsider.client
         .from("boards")
         .insert({ project_id: projectId, name: "Nope" });
-      expect(intoStudioProject.error).not.toBeNull();
+      expect(intoOtherProject.error).not.toBeNull();
+      const intoTheirs = await studio.client
+        .from("boards")
+        .insert({ project_id: ownProjectId, name: "Nope" });
+      expect(intoTheirs.error).not.toBeNull();
     });
 
-    it("leaves deleting the project to the studio", async () => {
-      const removed = await outsider.client
+    it("keeps service catalogs and billing details apart", async () => {
+      const service = await outsider.client
+        .from("services")
+        .insert({ name: "Drone day", unit_price: 9000 })
+        .select("owner_id")
+        .single();
+      expect(service.data?.owner_id).toBe(outsider.id);
+      const billing = await outsider.client
+        .from("studio_billing")
+        .upsert({ owner_id: outsider.id, name: "Outsider s.r.o." });
+      expect(billing.error).toBeNull();
+
+      const theirServices = await studio.client
+        .from("services")
+        .select("id")
+        .eq("owner_id", outsider.id);
+      expect(theirServices.data).toEqual([]);
+      const theirBilling = await studio.client
+        .from("studio_billing")
+        .select("name")
+        .eq("owner_id", outsider.id);
+      expect(theirBilling.data).toEqual([]);
+      const spoof = await studio.client
+        .from("services")
+        .insert({ name: "Spoof", owner_id: outsider.id });
+      expect(spoof.error).not.toBeNull();
+    });
+
+    it("lets only the owner delete it", async () => {
+      const byOther = await studio.client.from("projects").delete().eq("id", ownProjectId).select();
+      expect(byOther.data ?? []).toEqual([]);
+      const byOwner = await outsider.client
         .from("projects")
         .delete()
         .eq("id", ownProjectId)
         .select();
-      expect(removed.data ?? []).toEqual([]);
-      const still = await studio.client.from("projects").select("id").eq("id", ownProjectId);
-      expect(still.data).toHaveLength(1);
+      expect(byOwner.data).toHaveLength(1);
     });
   });
 
@@ -693,7 +705,7 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
       const billing = await client.client
         .from("studio_billing")
         .update({ name: "Hacked" })
-        .eq("id", true)
+        .eq("owner_id", studio.id)
         .select();
       expect(billing.data ?? []).toEqual([]);
 
@@ -703,8 +715,7 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
       expect(studioLine.error).toBeNull();
       const studioBilling = await studio.client
         .from("studio_billing")
-        .update({ name: "m.studio", iban: "CZ6508000000192000145399" })
-        .eq("id", true);
+        .upsert({ owner_id: studio.id, name: "m.studio", iban: "CZ6508000000192000145399" });
       expect(studioBilling.error).toBeNull();
     });
 
@@ -762,7 +773,7 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     const password = `pw-${randomUUID()}`;
     const created = await admin.auth.admin.createUser({ email, password, email_confirm: true });
     const userId = created.data.user!.id;
-    await admin.from("studio_members").insert({ user_id: userId });
+    await admin.from("studio_billing").insert({ owner_id: userId, name: "MFA studio" });
 
     const first = createClient<Database>(url, publishableKey, { auth: { persistSession: false } });
     await first.auth.signInWithPassword({ email, password });
@@ -782,7 +793,7 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     const blocked = await passwordOnly
       .from("studio_billing")
       .update({ iban: "CZ6508000000192000145399" })
-      .eq("id", true)
+      .eq("owner_id", userId)
       .select();
     expect(blocked.data ?? []).toEqual([]);
 
@@ -790,11 +801,10 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     const allowed = await first
       .from("studio_billing")
       .update({ phone: "+420 777 000 000" })
-      .eq("id", true)
+      .eq("owner_id", userId)
       .select("phone");
     expect(allowed.data).toEqual([{ phone: "+420 777 000 000" }]);
 
-    await admin.from("studio_members").delete().eq("user_id", userId);
     await admin.auth.admin.deleteUser(userId);
   });
 

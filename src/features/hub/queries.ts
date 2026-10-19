@@ -39,26 +39,29 @@ export const getProjectDetails = cache(
   },
 );
 
-/** Display names for a set of users, marking who belongs to the studio. */
-const getPeople = cache(async (ids: string): Promise<Map<string, Person>> => {
+/** Display names for a set of users, marking who runs the project (its owner). */
+const getPeople = cache(async (projectId: string, ids: string): Promise<Map<string, Person>> => {
   const list = ids ? ids.split(",") : [];
   const people = new Map<string, Person>();
   if (list.length === 0) return people;
   const supabase = await createSupabaseServerClient();
-  const [profiles, studio] = await Promise.all([
+  const [profiles, project] = await Promise.all([
     supabase.from("profiles").select("id, display_name").in("id", list),
-    supabase.from("studio_members").select("user_id"),
+    supabase.from("projects").select("owner_id").eq("id", projectId).maybeSingle(),
   ]);
-  const studioIds = new Set((studio.data ?? []).map((row) => row.user_id));
+  const ownerId = project.data?.owner_id;
   for (const id of list) {
     const profile = profiles.data?.find((row) => row.id === id);
-    people.set(id, { id, name: profile?.display_name || "—", isStudio: studioIds.has(id) });
+    people.set(id, { id, name: profile?.display_name || "—", isStudio: id === ownerId });
   }
   return people;
 });
 
-function peopleFor(ids: (string | null)[]) {
-  return getPeople([...new Set(ids.filter((id): id is string => Boolean(id)))].sort().join(","));
+function peopleFor(projectId: string, ids: (string | null)[]) {
+  return getPeople(
+    projectId,
+    [...new Set(ids.filter((id): id is string => Boolean(id)))].sort().join(","),
+  );
 }
 
 export const listTasks = cache(async (projectId: string): Promise<Task[]> => {
@@ -112,8 +115,11 @@ type CommentRow = {
   resolved_at: string | null;
 };
 
-async function toComments(rows: CommentRow[]): Promise<Comment[]> {
-  const people = await peopleFor(rows.map((row) => row.author_id));
+async function toComments(projectId: string, rows: CommentRow[]): Promise<Comment[]> {
+  const people = await peopleFor(
+    projectId,
+    rows.map((row) => row.author_id),
+  );
   return rows.map((row) => ({
     id: row.id,
     body: row.body,
@@ -139,7 +145,7 @@ export async function listComments(projectId: string, limit?: number): Promise<C
   if (limit) query = query.limit(limit);
   const { data, error } = await query;
   if (error) logError("hub.comments", error, { projectId });
-  return toComments((data ?? []).reverse());
+  return toComments(projectId, (data ?? []).reverse());
 }
 
 /** Unresolved messages about a Plan box, oldest first. */
@@ -153,14 +159,22 @@ export async function listOpenNotes(projectId: string): Promise<Comment[]> {
     .is("resolved_at", null)
     .order("created_at");
   if (error) logError("hub.openNotes", error, { projectId });
-  return toComments(data ?? []);
+  return toComments(projectId, data ?? []);
 }
 
-export async function listServices({ activeOnly }: { activeOnly: boolean }): Promise<Service[]> {
+/** Someone's service catalog (each account has its own). */
+export async function listServices({
+  ownerId,
+  activeOnly,
+}: {
+  ownerId: string;
+  activeOnly: boolean;
+}): Promise<Service[]> {
   const supabase = await createSupabaseServerClient();
   let query = supabase
     .from("services")
     .select("id, name, description, unit, unit_price, currency, active")
+    .eq("owner_id", ownerId)
     .order("position")
     .order("created_at");
   if (activeOnly) query = query.eq("active", true);
@@ -188,7 +202,10 @@ export async function listRequests(projectId: string): Promise<AddOnRequest[]> {
     .order("created_at", { ascending: false });
   if (error) logError("hub.requests", error, { projectId });
   const rows = data ?? [];
-  const people = await peopleFor(rows.map((row) => row.requested_by));
+  const people = await peopleFor(
+    projectId,
+    rows.map((row) => row.requested_by),
+  );
   return rows.map((row) => ({
     id: row.id,
     title: row.title,
@@ -220,7 +237,10 @@ export async function listMembers(projectId: string): Promise<Member[]> {
   ]);
   if (members.error) logError("hub.members", members.error, { projectId });
   const rows = members.data ?? [];
-  const people = await peopleFor(rows.map((row) => row.user_id));
+  const people = await peopleFor(
+    projectId,
+    rows.map((row) => row.user_id),
+  );
   return rows.map((row) => ({
     ...people.get(row.user_id)!,
     email: invitations.data?.find((invite) => invite.accepted_by === row.user_id)?.email ?? null,

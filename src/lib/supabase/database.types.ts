@@ -1152,6 +1152,7 @@ export type Database = {
           description: string | null;
           id: string;
           name: string;
+          owner_id: string;
           position: number;
           unit: string;
           unit_price: number | null;
@@ -1164,6 +1165,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           name: string;
+          owner_id?: string;
           position?: number;
           unit?: string;
           unit_price?: number | null;
@@ -1176,6 +1178,7 @@ export type Database = {
           description?: string | null;
           id?: string;
           name?: string;
+          owner_id?: string;
           position?: number;
           unit?: string;
           unit_price?: number | null;
@@ -1268,11 +1271,11 @@ export type Database = {
           email: string | null;
           iban: string | null;
           ico: string | null;
-          id: boolean;
           invoice_note: string | null;
           invoice_seq: number;
           invoice_year: number | null;
           name: string;
+          owner_id: string;
           phone: string | null;
           updated_at: string;
           vat_payer: boolean;
@@ -1286,11 +1289,11 @@ export type Database = {
           email?: string | null;
           iban?: string | null;
           ico?: string | null;
-          id?: boolean;
           invoice_note?: string | null;
           invoice_seq?: number;
           invoice_year?: number | null;
           name?: string;
+          owner_id?: string;
           phone?: string | null;
           updated_at?: string;
           vat_payer?: boolean;
@@ -1304,11 +1307,11 @@ export type Database = {
           email?: string | null;
           iban?: string | null;
           ico?: string | null;
-          id?: boolean;
           invoice_note?: string | null;
           invoice_seq?: number;
           invoice_year?: number | null;
           name?: string;
+          owner_id?: string;
           phone?: string | null;
           updated_at?: string;
           vat_payer?: boolean;
@@ -1408,6 +1411,7 @@ export type Database = {
           project_name: string;
         }[];
       };
+      runs_project: { Args: { target: string }; Returns: boolean };
       set_comment_resolved: { Args: { comment_id: string; resolved: boolean }; Returns: undefined };
       studio_is_set_up: { Args: Record<PropertyKey, never>; Returns: boolean };
     };

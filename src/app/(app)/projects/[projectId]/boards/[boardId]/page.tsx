@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { requireViewer } from "@/features/auth/session";
+import { requireProjectViewer } from "@/features/auth/session";
 import { BoardCanvasClient } from "@/features/canvas/BoardCanvasClient";
 import { getBoard, listBoards } from "@/features/projects/queries";
 
@@ -16,9 +16,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function BoardPage({ params }: Props) {
-  const viewer = await requireViewer();
   const { projectId, boardId } = await params;
   if (!UUID_PATTERN.test(projectId) || !UUID_PATTERN.test(boardId)) notFound();
+  const viewer = await requireProjectViewer(projectId);
 
   const [board, boards] = await Promise.all([getBoard(boardId), listBoards(projectId)]);
   if (!board || board.project_id !== projectId) notFound();

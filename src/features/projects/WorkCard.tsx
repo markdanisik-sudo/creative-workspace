@@ -28,9 +28,9 @@ export function WorkCard({
             {project.clientName ?? t("dashboard.projectLabel")}
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
-            {canManage && project.createdByClient ? (
+            {!canManage ? (
               <span className="rounded-full bg-ink px-2 py-0.5 text-[11px] font-semibold text-text-inverse">
-                {t("dashboard.fromClient")}
+                {t("dashboard.shared")}
               </span>
             ) : null}
             {canManage ? (
@@ -80,9 +80,9 @@ export function WorkCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           <div className="flex items-center gap-1.5">
-            {canManage && project.createdByClient ? (
+            {!canManage ? (
               <span className="rounded-full bg-ink px-2 py-0.5 text-[11px] font-semibold text-text-inverse">
-                {t("dashboard.fromClient")}
+                {t("dashboard.shared")}
               </span>
             ) : null}
             <PhaseBadge phase={project.phase} t={t} />
