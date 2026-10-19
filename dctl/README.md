@@ -63,6 +63,7 @@ Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN 
 |---|---|
 | **Push Pull** | Push/pull vyvolání (−2 až +3): push zvedá kontrast a sytost a ubírá kresbu ve stínech, pull opačně. |
 | **Color Density** | Sytost barev v denzitě negativu (1 = stock, 0 = černobílá). |
+| **Interimage** | Vzájemné ovlivňování vrstev při vyvolání (DIR efekt): modrá ujíždí do azurova, zeleň do olivova, teplé tóny a pleť jsou sytější. 1 = kalibrace podle ColorCheckeru na skutečném skenu Vision3 250D, 0 = jen data z technických listů, 2 = výraznější. |
 | **Neutral Negative Curve** | Stejná křivka pro všechny vrstvy: bez barevného crossoveru, barevnost stocku zůstane. |
 | **Negative Bleach Bypass** | Stříbro zůstane v negativu: víc kontrastu, méně barev. |
 
@@ -102,6 +103,8 @@ Barvy nevznikají odhadem, ale výpočtem z dat, která Kodak zveřejňuje v tec
 - **spektrální hustota barviv** negativu i printu: jaké barvy film skutečně vytvoří.
 
 Pro každý pixel plugin spočítá expozici vrstev negativu, hustoty a barviva negativu, světlo kopírky prošlé negativem (36 vlnových délek, 380–730 nm), expozici a barviva 2383 a nakonec světlo projektoru (xenon) prošlé printem, převedené přes CIE 1931 na barvu. Šedá 18 % se kopíruje na **laboratorní cílovou hustotu Kodaku** (LAD: Status A 1,09 / 1,06 / 1,03, vizuálně neutrální 1,0), stejně jako v laboratoři. Printer Lights jsou odchylky od tohoto nastavení.
+
+**Interimage efekt** (vzájemné ovlivňování vrstev) v technických listech není. Je nafitovaný na ColorChecker ze skutečného skenu Vision3 250D: shoda odstínů se zlepšila z 12° na 8,7° přes print 2383. Zbytek rozdílu dělá barevná matice skeneru, kterou do filmu nepřidávám.
 
 Grafy z PDF jsou digitalizované s přesností zhruba ±0,01–0,02 hustoty. Přesnou spektrální křivku densitometrů Status A/M Kodak neuvádí, proto jsou kalibrované tak, aby LAD patch vyšel neutrální. Data a skripty jsou ve složce `tools/` (`export.py` z nich tabulky v pluginu vygeneruje znovu).
 

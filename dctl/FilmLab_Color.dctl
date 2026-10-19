@@ -44,6 +44,7 @@ DEFINE_UI_PARAMS(p_Saturation, Saturation, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0
 
 DEFINE_UI_PARAMS(p_PushPull, Push Pull, DCTLUI_SLIDER_FLOAT, 0.0, -2.0, 3.0, 0.1)
 DEFINE_UI_PARAMS(p_ColorDensity, Color Density, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.5, 0.01)
+DEFINE_UI_PARAMS(p_Interimage, Interimage, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
 DEFINE_UI_PARAMS(p_NeutralNeg, Neutral Negative Curve, DCTLUI_CHECK_BOX, 0)
 DEFINE_UI_PARAMS(p_NegBleach, Negative Bleach Bypass, DCTLUI_CHECK_BOX, 0)
 
@@ -338,6 +339,18 @@ __CONSTANT__ float PROJ_B[36] = { 0.0f, 0.000477349f, 0.00425989f, 0.0190433f, 0
 #define PRINT_CURVE_G 0.05f, 4.16857f, 0.96356f, 4.0816f, 1.01577f, 1.01192f   // dmin, dmax, x0, gamma, toe, shoulder
 #define PRINT_CURVE_B 0.09f, 4.04148f, 0.7646f, 3.54111f, 0.612892f, 0.619076f   // dmin, dmax, x0, gamma, toe, shoulder
 #define PRINT_CURVE_AVG 4.12245f, 0.882371f, 0.886709f   // gamma, toe, shoulder averaged (neutral print curve)
+// interimage (DIR) effect: during development each layer is pushed away from
+// (or pulled toward) the others.  Kodak's sheets do not show it; fitted to a
+// ColorChecker on a real Vision3 250D scan (scanner tone curve fitted too),
+// scaled to 0.6 of the scan fit: the strength that matches best through the
+// 2383 print (the rest of the scan's saturation belongs to the scanner)
+#define II_RG  0.0097f
+#define II_RB  0.2045f
+#define II_GR  0.0759f
+#define II_GB  -0.0772f
+#define II_BR  0.2350f
+#define II_BG  -0.1913f
+
 #define LAD_R     1.09f         // laboratory aim density of the 18% grey on 2383 (Status A)
 #define LAD_G     1.06f
 #define LAD_B     1.03f
@@ -528,12 +541,18 @@ __DEVICE__ NegStock develop(NegStock s, float pp, int neutral)
 
 // scene light -> negative Status M densities.  Color Density scales the
 // separation between the layer exposures (1 = stock, 0 = monochrome).
-__DEVICE__ float3 neg_density(float3 E, NegStock s, float cd)
+__DEVICE__ float3 neg_density(float3 E, NegStock s, float cd, float ii)
 {
     float3 e = layer_exposure(E, s.mat);
     float xr = _log10f(_fmaxf(e.x, 1e-7f) / GREY);
     float xg = _log10f(_fmaxf(e.y, 1e-7f) / GREY);
     float xb = _log10f(_fmaxf(e.z, 1e-7f) / GREY);
+    if (ii != 0.0f && s.mat != 3) {
+        float r = xr, g = xg, b = xb;
+        xr = r + ii * (II_RG * (r - g) + II_RB * (r - b));
+        xg = g + ii * (II_GR * (g - r) + II_GB * (g - b));
+        xb = b + ii * (II_BR * (b - r) + II_BG * (b - g));
+    }
     float k = cd * s.cd;
     float xm = 0.2627f * xr + 0.6780f * xg + 0.0593f * xb;
     xr = xm + k * (xr - xm); xg = xm + k * (xg - xm); xb = xm + k * (xb - xm);
@@ -552,13 +571,13 @@ typedef struct {
 } NegOut;
 
 // the stock blended with an ideal, colour-neutral negative (Negative Strength)
-__DEVICE__ NegOut negative(float3 E, NegStock s, float cd, float strength, int bleach)
+__DEVICE__ NegOut negative(float3 E, NegStock s, float cd, float ii, float strength, int bleach)
 {
     NegStock id = neg_stock(NEG_NONE);
     float3 grey = make_float3(GREY, GREY, GREY);
     NegOut n;
-    float3 Di = neg_density(E, id, 1.0f), Dgi = neg_density(grey, id, 1.0f);
-    float3 Ds = neg_density(E, s, cd), Dgs = neg_density(grey, s, cd);
+    float3 Di = neg_density(E, id, 1.0f, 0.0f), Dgi = neg_density(grey, id, 1.0f, 0.0f);
+    float3 Ds = neg_density(E, s, cd, ii), Dgs = neg_density(grey, s, cd, ii);
     n.D = add3(Di, scale3(add3(Ds, scale3(Di, -1.0f)), strength));
     n.Dg = add3(Dgi, scale3(add3(Dgs, scale3(Dgi, -1.0f)), strength));
     n.g = add3(id.g, scale3(add3(s.g, scale3(id.g, -1.0f)), strength));
@@ -791,10 +810,10 @@ __DEVICE__ float3 encode_output(float3 L, int outSel, float peak, float grey)
 
 // the whole node after the primaries; `film` = 0 renders the neutral
 // reference used by Strength (ideal negative, neutral DRT)
-__DEVICE__ float3 render(float3 E, int film, int drt, int outSel, NegStock ns, float cd, int negBleach,
+__DEVICE__ float3 render(float3 E, int film, int drt, int outSel, NegStock ns, float cd, float ii, int negBleach,
                          float negStr, float printStr, PrintCtl pc, float peak, float grey)
 {
-    NegOut n = negative(E, ns, cd, film ? negStr : 0.0f, film ? negBleach : 0);
+    NegOut n = negative(E, ns, cd, ii, film ? negStr : 0.0f, film ? negBleach : 0);
     if (drt == DRT_CINEON) return negative_to_cineon(n);
 
     float3 scene = (film && n.mat != 3) ? negative_to_scene(n) : E;     // the ideal negative scans back exactly
@@ -846,9 +865,9 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     E = primaries(E, p_Exposure, p_Contrast, p_Pivot, p_Highlights, p_Shadows,
                   p_Temp, p_Tint, p_Saturation, p_SkinHue, p_SkinSat);
 
-    float3 res = render(E, 1, p_DRT, p_Output, ns, p_ColorDensity, p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
+    float3 res = render(E, 1, p_DRT, p_Output, ns, p_ColorDensity, p_Interimage, p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
     if (p_Strength < 1.0f) {
-        float3 ref = render(E, 0, p_DRT, p_Output, ns, p_ColorDensity, p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
+        float3 ref = render(E, 0, p_DRT, p_Output, ns, p_ColorDensity, p_Interimage, p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
         res = add3(scale3(ref, 1.0f - p_Strength), scale3(res, p_Strength));
     }
 
