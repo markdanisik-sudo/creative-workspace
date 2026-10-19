@@ -28,6 +28,8 @@ DEFINE_UI_PARAMS(p_InGamma, Input Gamma, DCTLUI_COMBO_BOX, 0, { T_DI, T_LOGC3, T
 DEFINE_UI_PARAMS(p_Stock, Negative Stock, DCTLUI_COMBO_BOX, 1, { V3_5203, V3_5207, V3_5213, V3_5219, V3_5219NR, V2_5201, V2_5205, V2_5212, V2_5217, V2_5218, V2_5229, V1_5246, V1_5274, V1_5277, V1_5279, V1_5289, E_5247, E_5294, EXR_5245, EXR_5248, EXR_5293, EXR_5296, EXR_5298, NEG_NONE }, { "Vision3 50D 5203", "Vision3 250D 5207", "Vision3 200T 5213", "Vision3 500T 5219", "Vision3 500T 5219 no rem-jet", "Vision2 50D 5201", "Vision2 250D 5205", "Vision2 100T 5212", "Vision2 200T 5217", "Vision2 500T 5218", "Vision2 Expression 500T 5229", "Vision 250D 5246", "Vision 200T 5274", "Vision 320T 5277", "Vision 500T 5279", "Vision 800T 5289", "Eastman ECN II 100T 5247", "Eastman 400T 5294", "Eastman EXR 50D 5245", "Eastman EXR 100T 5248", "Eastman EXR 200T 5293", "Eastman EXR 500T 5296", "Eastman EXR 500T 5298", "None - print only" })
 DEFINE_UI_PARAMS(p_DRT, DRT, DCTLUI_COMBO_BOX, 0, { DRT_FILM, DRT_NEUTRAL, DRT_OFF, DRT_CINEON }, { "Film Print", "Neutral", "Off - DWG / Intermediate", "Off - Cineon Log (for Resolve 2383 LUT)" })
 DEFINE_UI_PARAMS(p_Print, Print Stock, DCTLUI_COMBO_BOX, 0, { PR_2383, PR_2383D60, PR_2383D55, PR_2393 }, { "Kodak 2383 D65", "Kodak 2383 D60", "Kodak 2383 D55", "Kodak 2393" })
+DEFINE_UI_PARAMS(p_NegVersion, Negative Version, DCTLUI_COMBO_BOX, 0, { NV_NEW, NV_OLD }, { "New - calibrated on a real 250D scan", "Old - Kodak data sheets only" })
+DEFINE_UI_PARAMS(p_PrintVersion, Print Version, DCTLUI_COMBO_BOX, 0, { PV_NEW, PV_OLD }, { "New - calibrated on a real 2383 print", "Old - Kodak data sheets only" })
 DEFINE_UI_PARAMS(p_Output, Output, DCTLUI_COMBO_BOX, 0, { OUT_709, OUT_SRGB, OUT_P3, OUT_PQ, OUT_HLG }, { "Rec.709 Gamma 2.4", "sRGB / Rec.709 Gamma 2.2", "P3-D65 Gamma 2.6", "Rec.2100 PQ (HDR)", "Rec.2100 HLG (HDR)" })
 DEFINE_UI_PARAMS(p_Strength, Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
 DEFINE_UI_PARAMS(p_NegStrength, Negative Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
@@ -613,8 +615,16 @@ __DEVICE__ float3 negative_to_cineon(NegOut n)
 //  Print (2383): spectral printing, Status A characteristic curves, projection
 // -----------------------------------------------------------------------------
 
+// print cross-talk, fitted on a ColorChecker in a real 2383 print (Print Version = New)
+#define PI_RG -0.1236f
+#define PI_RB -0.0665f
+#define PI_GR  0.0655f
+#define PI_GB  0.0870f
+#define PI_BR -0.0223f
+#define PI_BG -0.0381f
+
 typedef struct {
-    int print;
+    int print, calib;
     float printExp, printR, printG, printB, contrast;
     float dyeSat, dyeC, dyeM, dyeY;
     float blackToe, shadowRoll, highlightRoll, bleach;
@@ -697,9 +707,17 @@ __DEVICE__ float3 film_print(NegOut n, PrintCtl c)
     // printer lights are offsets from there (+ = brighter / more of that colour)
     float3 H = print_exposure(n.D, n.silver);
     float3 Hg = print_exposure(n.Dg, n.silverG);
-    float ur = _log10f(H.x / Hg.x) + pcurve_inv(LAD_R, pr) + PT * (c.printExp + c.printR);
-    float ug = _log10f(H.y / Hg.y) + pcurve_inv(LAD_G, pg) + PT * (c.printExp + c.printG);
-    float ub = _log10f(H.z / Hg.z) + pcurve_inv(LAD_B, pb) + PT * (c.printExp + c.printB);
+    float er = _log10f(H.x / Hg.x), eg = _log10f(H.y / Hg.y), eb = _log10f(H.z / Hg.z);
+    if (c.calib) {
+        // fitted on a real 2383 print: layer cross-talk the data sheets don't show
+        float r = er, g = eg, b = eb;
+        er = r + PI_RG * (r - g) + PI_RB * (r - b);
+        eg = g + PI_GR * (g - r) + PI_GB * (g - b);
+        eb = b + PI_BR * (b - r) + PI_BG * (b - g);
+    }
+    float ur = er + pcurve_inv(LAD_R, pr) + PT * (c.printExp + c.printR);
+    float ug = eg + pcurve_inv(LAD_G, pg) + PT * (c.printExp + c.printG);
+    float ub = eb + pcurve_inv(LAD_B, pb) + PT * (c.printExp + c.printB);
     float Dr = pcurve(ur, pr), Dg = pcurve(ug, pg), Db = pcurve(ub, pb);
 
     // dye saturation: each layer's departure from a visual neutral of the same
@@ -834,7 +852,7 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     NegStock ns = develop(neg_stock(p_Stock), p_PushPull, p_NeutralNeg);
 
     PrintCtl pc;
-    pc.print = p_Print;
+    pc.print = p_Print; pc.calib = p_PrintVersion == PV_NEW;
     pc.printExp = p_PrintExp; pc.printR = p_PrintR; pc.printG = p_PrintG; pc.printB = p_PrintB;
     pc.contrast = p_PrintContrast;
     pc.dyeSat = p_DyeSat; pc.dyeC = p_DyeC; pc.dyeM = p_DyeM; pc.dyeY = p_DyeY;
@@ -865,9 +883,9 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p
     E = primaries(E, p_Exposure, p_Contrast, p_Pivot, p_Highlights, p_Shadows,
                   p_Temp, p_Tint, p_Saturation, p_SkinHue, p_SkinSat);
 
-    float3 res = render(E, 1, p_DRT, p_Output, ns, p_ColorDensity, p_Interimage, p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
+    float3 res = render(E, 1, p_DRT, p_Output, ns, p_ColorDensity, (p_NegVersion == NV_OLD ? 0.0f : p_Interimage), p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
     if (p_Strength < 1.0f) {
-        float3 ref = render(E, 0, p_DRT, p_Output, ns, p_ColorDensity, p_Interimage, p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
+        float3 ref = render(E, 0, p_DRT, p_Output, ns, p_ColorDensity, (p_NegVersion == NV_OLD ? 0.0f : p_Interimage), p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
         res = add3(scale3(ref, 1.0f - p_Strength), scale3(res, p_Strength));
     }
 

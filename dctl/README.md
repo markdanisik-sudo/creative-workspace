@@ -35,7 +35,7 @@ Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN 
 
 ## FilmLab Color: ovládání
 
-> **Pořadí v Resolve:** Resolve řadí ovládání DCTL podle typu, ne podle pořadí v kódu. Nahoře jsou všechny **posuvníky**, pod nimi **zaškrtávátka** a úplně dole **rozbalovací menu** (Input Color Space, Input Gamma, Negative Stock, DRT, Print Stock, Output). Tabulky níže jsou seřazené podle významu.
+> **Pořadí v Resolve:** Resolve řadí ovládání DCTL podle typu, ne podle pořadí v kódu. Nahoře jsou všechny **posuvníky**, pod nimi **zaškrtávátka** a úplně dole **rozbalovací menu** (Input Color Space, Input Gamma, Negative Stock, DRT, Print Stock, Negative Version, Print Version, Output). Tabulky níže jsou seřazené podle významu.
 
 ### Hlavička
 | Parametr | Co dělá |
@@ -44,6 +44,8 @@ Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN 
 | **Negative Stock** | 23 negativů (Vision3, Vision2, Vision, Eastman EXR / ECN II) nebo **None – print only**: obraz jde rovnou na print (samotný 2383 bez Vision3). **Vision3 50D, 250D a 500T jsou spektrální modely z technických listů Kodaku** (viz níže), ostatní stocky používají spektrální data Vision3 se svou vlastní tonalitou. |
 | **DRT** | **Film Print** (použije Print Stock) · **Neutral** (vlastní neutrální DRT: měkké rameno, zachovaný odstín, SDR i HDR) · **Off – DWG/Intermediate** (scénický výstup pro vlastní výstupní transformaci) · **Off – Cineon Log** (pro originální 2383 LUT z Resolve, viz níže). |
 | **Print Stock** | Kodak **2383 D65 / D60 / D55**: spektrální model z technického listu 2383, varianty se liší jen bílou projekce (D60 a D55 jsou teplejší) · Kodak 2393 (2383 s vyšším kontrastem a hlubšími černými). |
+| **Negative Version** | **New**: negativ s Interimage efektem kalibrovaným na skutečném skenu Vision3 250D · **Old**: jen data z technických listů Kodaku (stejné jako Interimage 0). |
+| **Print Version** | **New**: 2383 s vazbou mezi vrstvami nafitovanou na ColorChecker ze skutečného printu 2383 · **Old**: jen data z technického listu. Platí pro všechny varianty Print Stock. |
 | **Output** | Rec.709 Gamma 2.4 · sRGB 2.2 · P3-D65 2.6 · **Rec.2100 PQ** · **Rec.2100 HLG** (HDR, gamut Rec.2020). |
 | **Strength** | Síla filmu: 1 = plný film, 0 = stejný obraz přes neutrální DRT bez filmu. |
 | **Negative Strength** | Síla emulace negativu: 1 = plný charakter stocku, 0 = neutrální „ideální“ negativ (jen print). |
@@ -105,6 +107,8 @@ Barvy nevznikají odhadem, ale výpočtem z dat, která Kodak zveřejňuje v tec
 Pro každý pixel plugin spočítá expozici vrstev negativu, hustoty a barviva negativu, světlo kopírky prošlé negativem (36 vlnových délek, 380–730 nm), expozici a barviva 2383 a nakonec světlo projektoru (xenon) prošlé printem, převedené přes CIE 1931 na barvu. Šedá 18 % se kopíruje na **laboratorní cílovou hustotu Kodaku** (LAD: Status A 1,09 / 1,06 / 1,03, vizuálně neutrální 1,0), stejně jako v laboratoři. Printer Lights jsou odchylky od tohoto nastavení.
 
 **Interimage efekt** (vzájemné ovlivňování vrstev) v technických listech není. Je nafitovaný na ColorChecker ze skutečného skenu Vision3 250D: shoda odstínů se zlepšila z 12° na 8,7° přes print 2383. Zbytek rozdílu dělá barevná matice skeneru, kterou do filmu nepřidávám.
+
+**Print Version New** je nafitovaná stejně, na ColorChecker ze skutečného printu 2383. Po vyrovnání šedé se shoda odstínů zlepšila ze 7,6° na 5,5°. Žlutozelený nádech toho printu (rozdílný ve světlech a stínech) do pluginu nepatří, je to digitalizace nebo printer lights.
 
 Grafy z PDF jsou digitalizované s přesností zhruba ±0,01–0,02 hustoty. Přesnou spektrální křivku densitometrů Status A/M Kodak neuvádí, proto jsou kalibrované tak, aby LAD patch vyšel neutrální. Data a skripty jsou ve složce `tools/` (`export.py` z nich tabulky v pluginu vygeneruje znovu).
 
