@@ -26,10 +26,6 @@ export async function AppHeader({ viewer, actions }: { viewer: Viewer; actions?:
     // Below the status bar in the iOS app and full-screen web app (the inset
     // is 0 in a browser); the glass reaches up behind it.
     <header className="group/header sticky top-0 z-40 px-3 pt-[env(safe-area-inset-top)] sm:px-6">
-      <div
-        aria-hidden="true"
-        className="status-bar-shade absolute inset-x-0 top-0 z-10 h-[env(safe-area-inset-top)]"
-      />
       <div className="relative mx-auto max-w-[880px]">
         {/* Frosted like the open menu. A layer of its own (not an ancestor of
             the menu, whose glass it would flatten), hidden while the menu is open. */}

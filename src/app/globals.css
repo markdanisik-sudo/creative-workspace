@@ -272,17 +272,6 @@
   }
 }
 
-/* Behind the phone's status bar (clock, battery) in the iOS app: the bar's
- * frosted glass in light mode; the page's own black in dark mode, so the top
- * doesn't glow. */
-.status-bar-shade {
-  display: none;
-}
-:root[data-theme="dark"] .status-bar-shade {
-  display: block;
-  background-color: var(--bg);
-}
-
 /* Something waiting for attention (an open discussion note): a bold
  * outline right on the edge. */
 .attention {
