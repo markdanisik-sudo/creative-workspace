@@ -113,6 +113,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
           role="dialog"
           aria-modal="false"
           aria-label={t("nav.menu")}
+          data-closing={closing || undefined}
           onAnimationEnd={(event) => {
             if (closing && event.target === event.currentTarget) {
               setClosing(false);
@@ -125,8 +126,8 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
             // Opening has no fill: a transform held after the animation stops
             // Chrome blurring. Closing holds its end state until it unmounts.
             closing
-              ? "pointer-events-none animate-[menu-up_200ms_cubic-bezier(0.4,0,1,1)_forwards]"
-              : "animate-[menu-down_280ms_var(--ease-out)]",
+              ? "pointer-events-none animate-[menu-up_280ms_cubic-bezier(0.4,0,0.9,0.6)_forwards]"
+              : "animate-[menu-down_420ms_cubic-bezier(0.32,0.72,0,1)]",
           )}
         >
           {/* The frosted glass, its own layer so the monitor can be cut out of it. */}

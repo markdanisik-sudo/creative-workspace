@@ -11,9 +11,12 @@ import { CompactSearch } from "./SearchField";
 import { SiteMenu } from "./SiteMenu";
 import { ThemeToggle } from "./ThemeToggle";
 
-/** The bar's own parts step aside while the menu (drawn over it) is open. */
+/**
+ * The bar's own parts step aside while the menu (drawn over it) is open: once
+ * the sliding menu has covered them, and back as soon as it starts to leave.
+ */
 const UNDER_MENU =
-  "transition-opacity duration-150 group-has-[[role=dialog]]/header:invisible group-has-[[role=dialog]]/header:opacity-0";
+  "transition-[opacity,visibility] duration-150 group-has-[[role=dialog]:not([data-closing])]/header:invisible group-has-[[role=dialog]:not([data-closing])]/header:opacity-0 group-has-[[role=dialog]:not([data-closing])]/header:delay-[140ms]";
 
 /**
  * The bar from the studio site: narrow, centred and hanging from the top

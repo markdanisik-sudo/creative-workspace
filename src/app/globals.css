@@ -222,18 +222,18 @@
   }
 }
 
-/* The "+" menu sliding down from the top edge, and back up. */
+/* The "+" menu sliding down from the top edge like a shade, and back up.
+ * Movement only: fading a frosted panel makes phones redo the blur every
+ * frame, which stutters. */
 @keyframes menu-down {
   from {
-    opacity: 0;
-    transform: translateY(-16px);
+    transform: translateY(-100%);
   }
 }
 
 @keyframes menu-up {
   to {
-    opacity: 0;
-    transform: translateY(-16px);
+    transform: translateY(-100%);
   }
 }
 
