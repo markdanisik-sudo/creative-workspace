@@ -3,7 +3,7 @@
 import { Plus, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type Ref } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from "react";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { signOut } from "@/features/auth/actions";
 import { useI18n } from "@/lib/i18n/client";
@@ -27,6 +27,8 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
   const { t } = useI18n();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Still on screen while it slides away.
+  const [closing, setClosing] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const glassRef = useRef<HTMLDivElement>(null);
@@ -37,17 +39,28 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
     { href: "/settings", label: t("nav.settings") },
   ];
 
+  const close = useCallback((refocus = false) => {
+    setClosing(true);
+    if (refocus) triggerRef.current?.focus();
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     panelRef.current?.querySelector<HTMLElement>("a")?.focus();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
-      }
+      if (event.key === "Escape") close(true);
     };
-    const onPointerDown = (event: PointerEvent) => {
-      if (!panelRef.current?.contains(event.target as Node)) setOpen(false);
+    // A tap outside closes it; a swipe (scrolling) doesn't, so it no longer
+    // vanishes the moment a finger touches the page.
+    const onClick = (event: MouseEvent) => {
+      if (!panelRef.current?.contains(event.target as Node)) close();
+    };
+    // The page stays put underneath while the menu is open.
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    const onTouchMove = (event: TouchEvent) => {
+      if (!panelRef.current?.contains(event.target as Node)) event.preventDefault();
     };
     // The monitor is a window in the menu's frosted glass: cut it out.
     const panel = panelRef.current;
@@ -65,14 +78,17 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
     panel?.addEventListener("animationend", cut);
 
     document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("click", onClick);
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
     return () => {
       observer.disconnect();
       panel?.removeEventListener("animationend", cut);
       document.removeEventListener("keydown", onKeyDown);
-      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("touchmove", onTouchMove);
+      root.style.overflow = overflow;
     };
-  }, [open]);
+  }, [open, close]);
 
   return (
     <>
@@ -80,9 +96,12 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
         ref={triggerRef}
         type="button"
         aria-label={t("nav.menu")}
-        aria-expanded={open}
+        aria-expanded={open && !closing}
         aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setClosing(false);
+          setOpen(true);
+        }}
         className="flex size-8 shrink-0 items-center justify-center rounded-full text-text transition-[background-color,transform] duration-150 hover:bg-surface-muted active:scale-95"
       >
         <Plus size={20} strokeWidth={1.75} />
@@ -94,11 +113,20 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
           role="dialog"
           aria-modal="false"
           aria-label={t("nav.menu")}
+          onAnimationEnd={(event) => {
+            if (closing && event.target === event.currentTarget) {
+              setClosing(false);
+              setOpen(false);
+            }
+          }}
           className={cn(
             // Up behind the status bar too, as the bar does.
             "absolute inset-x-0 top-[calc(env(safe-area-inset-top)*-1)] z-50 isolate flex flex-col rounded-b-[18px] p-2 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-6 shadow-lg",
-            // No fill: a transform held after the animation stops Chrome blurring.
-            "origin-top animate-[pop-in_var(--duration-base)_var(--ease-out)]",
+            // Opening has no fill: a transform held after the animation stops
+            // Chrome blurring. Closing holds its end state until it unmounts.
+            closing
+              ? "pointer-events-none animate-[menu-up_200ms_cubic-bezier(0.4,0,1,1)_forwards]"
+              : "animate-[menu-down_280ms_var(--ease-out)]",
           )}
         >
           {/* The frosted glass, its own layer so the monitor can be cut out of it. */}
@@ -117,10 +145,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
               <button
                 type="button"
                 aria-label={t("nav.closeMenu")}
-                onClick={() => {
-                  setOpen(false);
-                  triggerRef.current?.focus();
-                }}
+                onClick={() => close(true)}
                 className="flex size-8 items-center justify-center rounded-full bg-surface text-text shadow-sm transition-transform active:scale-95"
               >
                 <X size={18} strokeWidth={1.75} />
@@ -135,7 +160,7 @@ export function SiteMenu({ name, email, imageUrl }: SiteMenuProps) {
                   <li key={link.href} className="border-b border-border-strong">
                     <Link
                       href={link.href}
-                      onClick={() => setOpen(false)}
+                      onClick={() => close()}
                       aria-current={pathname.startsWith(link.href) ? "page" : undefined}
                       className="group flex items-baseline justify-between gap-4 rounded-sm py-3"
                     >

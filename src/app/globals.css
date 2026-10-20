@@ -222,6 +222,21 @@
   }
 }
 
+/* The "+" menu sliding down from the top edge, and back up. */
+@keyframes menu-down {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+
+@keyframes menu-up {
+  to {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+
 @keyframes sheet-in {
   from {
     opacity: 0;
