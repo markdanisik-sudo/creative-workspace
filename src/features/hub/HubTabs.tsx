@@ -1,25 +1,25 @@
 "use client";
 
-import {
-  CalendarDays,
-  LayoutGrid,
-  ListChecks,
-  MessageCircle,
-  Wallet,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, type ComponentType, type SVGProps } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
+import {
+  BudgetIcon,
+  DiscussionIcon,
+  OverviewIcon,
+  PeopleIcon,
+  PlanIcon,
+  ScheduleIcon,
+} from "./HubIcons";
 
 interface Tab {
   segment: string;
   label: string;
   /** Short label for the phone's bottom bar. */
   short: string;
-  icon: LucideIcon;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   badge?: number;
 }
 
@@ -40,34 +40,45 @@ export function HubTabs({
   const pathname = usePathname();
   const base = `/projects/${projectId}`;
   const tabs: Tab[] = [
-    { segment: "", label: t("hub.overview"), short: t("hub.short.overview"), icon: ListChecks },
-    { segment: "plan", label: t("hub.plan"), short: t("hub.short.plan"), icon: LayoutGrid },
+    { segment: "", label: t("hub.overview"), short: t("hub.short.overview"), icon: OverviewIcon },
+    { segment: "plan", label: t("hub.plan"), short: t("hub.short.plan"), icon: PlanIcon },
     {
       segment: "schedule",
       label: t("hub.schedule"),
       short: t("hub.short.schedule"),
-      icon: CalendarDays,
+      icon: ScheduleIcon,
     },
     {
       segment: "budget",
       label: t("budget.title"),
       short: t("budget.title"),
-      icon: Wallet,
+      icon: BudgetIcon,
       badge: openRequests,
     },
     {
       segment: "discussion",
       label: t("hub.discussion"),
       short: t("hub.short.discussion"),
-      icon: MessageCircle,
+      icon: DiscussionIcon,
     },
     ...(isStudio
-      ? [{ segment: "people", label: t("hub.people"), short: t("hub.short.people"), icon: Users }]
+      ? [
+          {
+            segment: "people",
+            label: t("hub.people"),
+            short: t("hub.short.people"),
+            icon: PeopleIcon,
+          },
+        ]
       : []),
   ];
   const hrefFor = (tab: Tab) => (tab.segment ? `${base}/${tab.segment}` : base);
   const isActive = (tab: Tab) =>
     tab.segment ? pathname.startsWith(hrefFor(tab)) : pathname === base;
+  const current = Math.max(0, tabs.findIndex(isActive));
+  // The tab just tapped, highlighted at once while its page loads.
+  const [tapped, setTapped] = useState<{ index: number; from: string } | null>(null);
+  const highlighted = tapped && tapped.from === pathname ? tapped.index : current;
 
   return (
     <>
@@ -104,30 +115,41 @@ export function HubTabs({
         </ul>
       </nav>
 
+      {/* Phones: a floating glass bar in the style of iOS, with a lit pill
+          under the current tab that glides between them. */}
       <nav
         aria-label={t("hub.tabs")}
-        className="fixed inset-x-3 bottom-[max(12px,env(safe-area-inset-bottom))] z-40 rounded-[22px] bg-surface/85 px-1 shadow-md backdrop-blur-xl sm:hidden"
+        className="fixed inset-x-0 bottom-[max(14px,env(safe-area-inset-bottom))] z-40 flex justify-center px-6 sm:hidden"
       >
-        <ul className="flex">
-          {tabs.map((tab) => {
-            const active = isActive(tab);
+        <ul className="relative flex w-full max-w-[400px] rounded-full bg-surface/70 p-1 shadow-[0_8px_30px_rgb(0_0_0/0.18),inset_0_0_0_0.5px_rgb(255_255_255/0.25)] backdrop-blur-2xl backdrop-saturate-150">
+          <li
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-1 left-1 rounded-full bg-text/10 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            style={{
+              width: `calc((100% - 0.5rem) / ${tabs.length})`,
+              transform: `translateX(${highlighted * 100}%)`,
+            }}
+          />
+          {tabs.map((tab, index) => {
+            const lit = index === highlighted;
             const Icon = tab.icon;
             return (
-              <li key={tab.segment || "overview"} className="min-w-0 flex-1">
+              <li key={tab.segment || "overview"} className="relative min-w-0 flex-1">
                 <Link
                   href={hrefFor(tab)}
-                  aria-current={active ? "page" : undefined}
+                  aria-current={isActive(tab) ? "page" : undefined}
+                  onClick={() => setTapped({ index, from: pathname })}
                   className={cn(
-                    "relative flex h-[60px] flex-col items-center justify-center gap-1 transition-colors duration-200",
-                    active ? "text-text" : "text-text-tertiary",
+                    "flex h-[52px] flex-col items-center justify-center gap-0.5 rounded-full transition-[color,transform] duration-200 active:scale-95",
+                    lit ? "text-text" : "text-text-secondary",
                   )}
                 >
-                  <Icon size={21} strokeWidth={active ? 2.2 : 1.8} aria-hidden="true" />
+                  <Icon className="size-[22px]" />
                   <span className="max-w-full truncate text-[10px] font-semibold tracking-[-0.02em]">
                     {tab.short}
                   </span>
                   {tab.badge ? (
-                    <span className="absolute top-2 left-[calc(50%+6px)] min-w-4 rounded-full bg-ink px-1 text-center text-[10px] leading-4 font-semibold text-text-inverse tabular-nums">
+                    <span className="absolute top-1 left-[calc(50%+5px)] min-w-4 rounded-full bg-ink px-1 text-center text-[10px] leading-4 font-semibold text-text-inverse tabular-nums">
                       {tab.badge}
                     </span>
                   ) : null}

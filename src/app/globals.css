@@ -222,18 +222,30 @@
   }
 }
 
-/* The "+" menu sliding down from the top edge like a shade, and back up.
- * Movement only: fading a frosted panel makes phones redo the blur every
- * frame, which stutters. */
+/* The "+" menu easing down from the top as it fades in, and back. The panel
+ * only moves; its glass and contents fade each on their own (fading the
+ * panel itself would cut its glass off from the page it blurs). */
 @keyframes menu-down {
   from {
-    transform: translateY(-100%);
+    transform: translate3d(0, -14px, 0);
   }
 }
 
 @keyframes menu-up {
   to {
-    transform: translateY(-100%);
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+@keyframes menu-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes menu-fade-out {
+  to {
+    opacity: 0;
   }
 }
 
