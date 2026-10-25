@@ -121,7 +121,7 @@ export function HubTabs({
         aria-label={t("hub.tabs")}
         className="fixed inset-x-0 bottom-[max(14px,env(safe-area-inset-bottom))] z-40 flex justify-center px-6 sm:hidden"
       >
-        <ul className="relative flex w-full max-w-[400px] rounded-[24px] bg-surface/70 p-1 shadow-[0_8px_30px_rgb(0_0_0/0.18),inset_0_0_0_0.5px_rgb(255_255_255/0.25)] backdrop-blur-2xl backdrop-saturate-150">
+        <ul className="relative flex w-full max-w-[400px] rounded-[24px] bg-surface/50 p-1 shadow-[0_8px_30px_rgb(0_0_0/0.18),inset_0_0_0_0.5px_rgb(255_255_255/0.25)] backdrop-blur-2xl backdrop-saturate-150">
           <li
             aria-hidden="true"
             className="pointer-events-none absolute inset-y-1 left-1 rounded-[20px] bg-text/10 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
