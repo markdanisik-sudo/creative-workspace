@@ -115,16 +115,16 @@ export function HubTabs({
         </ul>
       </nav>
 
-      {/* Phones: a floating glass bar in the style of iOS, with a lit pill
-          under the current tab that glides between them. */}
+      {/* Phones: a floating glass bar in the shape of the studio's boxes, with
+          a lit tile under the current tab that glides between them. */}
       <nav
         aria-label={t("hub.tabs")}
         className="fixed inset-x-0 bottom-[max(14px,env(safe-area-inset-bottom))] z-40 flex justify-center px-6 sm:hidden"
       >
-        <ul className="relative flex w-full max-w-[400px] rounded-full bg-surface/70 p-1 shadow-[0_8px_30px_rgb(0_0_0/0.18),inset_0_0_0_0.5px_rgb(255_255_255/0.25)] backdrop-blur-2xl backdrop-saturate-150">
+        <ul className="relative flex w-full max-w-[400px] rounded-[24px] bg-surface/70 p-1 shadow-[0_8px_30px_rgb(0_0_0/0.18),inset_0_0_0_0.5px_rgb(255_255_255/0.25)] backdrop-blur-2xl backdrop-saturate-150">
           <li
             aria-hidden="true"
-            className="pointer-events-none absolute inset-y-1 left-1 rounded-full bg-text/10 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            className="pointer-events-none absolute inset-y-1 left-1 rounded-[20px] bg-text/10 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
             style={{
               width: `calc((100% - 0.5rem) / ${tabs.length})`,
               transform: `translateX(${highlighted * 100}%)`,
@@ -140,7 +140,7 @@ export function HubTabs({
                   aria-current={isActive(tab) ? "page" : undefined}
                   onClick={() => setTapped({ index, from: pathname })}
                   className={cn(
-                    "flex h-[52px] flex-col items-center justify-center gap-0.5 rounded-full transition-[color,transform] duration-200 active:scale-95",
+                    "flex h-[52px] flex-col items-center justify-center gap-0.5 rounded-[20px] transition-[color,transform] duration-200 active:scale-95",
                     lit ? "text-text" : "text-text-secondary",
                   )}
                 >
