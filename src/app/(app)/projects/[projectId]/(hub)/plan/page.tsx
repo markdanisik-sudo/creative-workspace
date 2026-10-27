@@ -39,9 +39,6 @@ import { getStory } from "@/features/story/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { formatEdited } from "@/lib/format";
 
-// Reading uploaded notes with Claude can take a while.
-export const maxDuration = 120;
-
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
   return { title: t("hub.plan") };

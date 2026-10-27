@@ -1068,26 +1068,23 @@ export type Database = {
       };
       project_stories: {
         Row: {
+          blocks: NonNullable<Json>;
           body: string;
           project_id: string;
-          summarized_at: string | null;
-          summary: Json | null;
           updated_at: string;
           updated_by: string | null;
         };
         Insert: {
+          blocks?: NonNullable<Json>;
           body?: string;
           project_id: string;
-          summarized_at?: string | null;
-          summary?: Json | null;
           updated_at?: string;
           updated_by?: string | null;
         };
         Update: {
+          blocks?: NonNullable<Json>;
           body?: string;
           project_id?: string;
-          summarized_at?: string | null;
-          summary?: Json | null;
           updated_at?: string;
           updated_by?: string | null;
         };

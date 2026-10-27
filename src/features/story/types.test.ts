@@ -1,32 +1,44 @@
 import { describe, expect, it } from "vitest";
-import { toStorySummary } from "./types";
+import { scriptCharacters, toBlocks } from "./types";
 
-describe("toStorySummary", () => {
-  it("keeps a well-formed summary", () => {
-    const summary = toStorySummary({
-      title: "Noční jízda",
-      logline: "Kurýrka projíždí Prahou jednu noc.",
-      synopsis: "…",
-      tone: "Neon, 16 mm",
-      scenes: [{ title: "Start", description: "Výjezd z garáže" }],
-      needs: { locations: ["Garáž"], cast: ["Kurýrka"], gear: ["FX6"], props: ["Kolo"] },
-      questions: ["Kdy svítá?"],
-    });
-    expect(summary?.scenes).toEqual([{ title: "Start", description: "Výjezd z garáže" }]);
-    expect(summary?.needs.gear).toEqual(["FX6"]);
+describe("toBlocks", () => {
+  it("keeps scene, action and dialogue blocks", () => {
+    expect(
+      toBlocks([
+        { id: "1", type: "scene", text: "INT. KUCHYNĚ – DEN" },
+        { id: "2", type: "dialogue", character: "Mari", parenthetical: "šeptem", text: "Jsme tu." },
+      ]),
+    ).toEqual([
+      { id: "1", type: "scene", text: "INT. KUCHYNĚ – DEN" },
+      { id: "2", type: "dialogue", character: "Mari", parenthetical: "šeptem", text: "Jsme tu." },
+    ]);
   });
 
-  it("drops junk and empty answers", () => {
-    expect(toStorySummary(null)).toBeNull();
-    expect(toStorySummary({ title: "Bez obsahu" })).toBeNull();
-    const summary = toStorySummary({
-      logline: "Nápad",
-      scenes: [null, { title: "" }, "x", { title: "Scéna" }],
-      needs: { gear: ["", 3, "Kamera"] },
-      questions: "not a list",
-    });
-    expect(summary?.scenes).toEqual([{ title: "Scéna", description: "" }]);
-    expect(summary?.needs).toEqual({ locations: [], cast: [], gear: ["Kamera"], props: [] });
-    expect(summary?.questions).toEqual([]);
+  it("drops unknown types, duplicates and junk", () => {
+    expect(
+      toBlocks([
+        null,
+        "x",
+        { id: "1", type: "song", text: "?" },
+        { id: "2", type: "action", text: "Prší.", character: "Ignored" },
+        { id: "2", type: "action", text: "Duplicate" },
+        { type: "action", text: "No id" },
+      ]),
+    ).toEqual([{ id: "2", type: "action", text: "Prší." }]);
+    expect(toBlocks("not a list")).toEqual([]);
+  });
+});
+
+describe("scriptCharacters", () => {
+  it("lists each speaker once, in order", () => {
+    expect(
+      scriptCharacters([
+        { id: "1", type: "dialogue", character: "Mari", text: "" },
+        { id: "2", type: "action", text: "" },
+        { id: "3", type: "dialogue", character: "Petr", text: "" },
+        { id: "4", type: "dialogue", character: "MARI", text: "" },
+        { id: "5", type: "dialogue", character: " ", text: "" },
+      ]),
+    ).toEqual(["Mari", "Petr"]);
   });
 });
