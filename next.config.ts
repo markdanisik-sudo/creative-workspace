@@ -72,6 +72,11 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "172.*.*.*", "*.local"],
   // The floating "N" badge covers the phone's bottom tab bar.
   devIndicators: false,
+  experimental: {
+    // Photos and PDFs of notes for the story box (photos are shrunk in the
+    // browser first); Vercel caps request bodies at 4.5 MB.
+    serverActions: { bodySizeLimit: "4mb" },
+  },
 };
 
 export default nextConfig;

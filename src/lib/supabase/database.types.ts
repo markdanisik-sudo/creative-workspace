@@ -1066,6 +1066,48 @@ export type Database = {
           },
         ];
       };
+      project_stories: {
+        Row: {
+          body: string;
+          project_id: string;
+          summarized_at: string | null;
+          summary: Json | null;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          body?: string;
+          project_id: string;
+          summarized_at?: string | null;
+          summary?: Json | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          body?: string;
+          project_id?: string;
+          summarized_at?: string | null;
+          summary?: Json | null;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_stories_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "project_stories_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       project_tasks: {
         Row: {
           created_at: string;

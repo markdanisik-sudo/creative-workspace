@@ -34,8 +34,13 @@ import { LIST_MODULE_IDS, type ListModuleId } from "@/features/workspace/plan";
 import { PlanEditor } from "@/features/workspace/PlanEditor";
 import { isModuleId, type ModuleId } from "@/features/workspace/types";
 import { Workspace, type WorkspaceModule } from "@/features/workspace/Workspace";
+import { StoryModule, StoryPreview } from "@/features/story/StoryModule";
+import { getStory } from "@/features/story/queries";
 import { getI18n } from "@/lib/i18n/server";
 import { formatEdited } from "@/lib/format";
+
+// Reading uploaded notes with Claude can take a while.
+export const maxDuration = 120;
 
 export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getI18n();
@@ -77,19 +82,31 @@ export default async function PlanPage({
 }: PageProps<"/projects/[projectId]/plan">) {
   const { projectId } = await params;
   const { m } = await searchParams;
-  const [viewer, i18n, events, requests, comments, summary, workspace, tasks, details, notes] =
-    await Promise.all([
-      requireProjectViewer(projectId),
-      getI18n(),
-      listEvents(projectId),
-      listRequests(projectId),
-      listComments(projectId, 1),
-      getProject(projectId),
-      getWorkspace(projectId),
-      listTasks(projectId),
-      getProjectDetails(projectId),
-      listOpenNotes(projectId),
-    ]);
+  const [
+    viewer,
+    i18n,
+    events,
+    requests,
+    comments,
+    summary,
+    workspace,
+    tasks,
+    details,
+    notes,
+    story,
+  ] = await Promise.all([
+    requireProjectViewer(projectId),
+    getI18n(),
+    listEvents(projectId),
+    listRequests(projectId),
+    listComments(projectId, 1),
+    getProject(projectId),
+    getWorkspace(projectId),
+    listTasks(projectId),
+    getProjectDetails(projectId),
+    listOpenNotes(projectId),
+    getStory(projectId),
+  ]);
   const { t, tp, locale } = i18n;
   const base = `/projects/${projectId}`;
   const currentPhase = details?.phase ?? "brief";
@@ -122,6 +139,13 @@ export default async function PlanPage({
       blurb: t("workspace.blurbs.brief"),
       preview: <BriefPreview brief={workspace.brief} t={t} />,
       content: <BriefModule projectId={projectId} brief={workspace.brief} />,
+    },
+    story: {
+      id: "story",
+      title: t("workspace.modules.story"),
+      blurb: t("workspace.blurbs.story"),
+      preview: <StoryPreview story={story} empty={t("workspace.empty.story")} />,
+      content: <StoryModule projectId={projectId} story={story} />,
     },
     moodboard: {
       id: "moodboard",

@@ -858,6 +858,25 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
         .insert({ project_id: projectId, name: "Nope" });
       expect(intoOther.error).not.toBeNull();
 
+      const story = await client.client
+        .from("project_stories")
+        .upsert({ project_id: projectId, body: "Kurýrka v noční Praze." });
+      expect(story.error).toBeNull();
+      const readByStudio = await studio.client
+        .from("project_stories")
+        .select("body")
+        .eq("project_id", projectId);
+      expect(readByStudio.data).toEqual([{ body: "Kurýrka v noční Praze." }]);
+      const readByOutsider = await outsider.client
+        .from("project_stories")
+        .select("body")
+        .eq("project_id", projectId);
+      expect(readByOutsider.data).toEqual([]);
+      const writeByOutsider = await outsider.client
+        .from("project_stories")
+        .upsert({ project_id: projectId, body: "Hacked" });
+      expect(writeByOutsider.error).not.toBeNull();
+
       await studio.client.from("projects").update({ kind: "client" }).eq("id", projectId);
     });
   });

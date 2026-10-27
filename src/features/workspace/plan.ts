@@ -20,6 +20,7 @@ export type ListModuleId = (typeof LIST_MODULE_IDS)[number];
 /** Every box a Plan can have, in the order they appear. */
 export const PLAN_MODULE_IDS = [
   "brief",
+  "story",
   "moodboard",
   "script",
   "interview",

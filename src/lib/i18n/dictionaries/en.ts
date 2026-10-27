@@ -523,6 +523,7 @@ export const en = {
     saving: "Saving…",
     modules: {
       brief: "Brief",
+      story: "Idea & script",
       moodboard: "Moodboard",
       shots: "Shot list",
       locations: "Locations",
@@ -538,6 +539,7 @@ export const en = {
     },
     blurbs: {
       brief: "What we make, for whom and why.",
+      story: "The idea, story and scenes — typed or from notes.",
       moodboard: "Images that set the mood.",
       shots: "Every shot — camera, lens, frame rate.",
       locations: "Where we shoot.",
@@ -553,6 +555,7 @@ export const en = {
     },
     empty: {
       brief: "Start with the goal of the project.",
+      story: "Write the idea or upload your notes.",
       moodboard: "Drop the first images here.",
       shots: "No shots yet. Build the list shot by shot.",
       locations: "No locations yet.",
@@ -990,6 +993,38 @@ export const en = {
     nextDate: "Next date",
     showDone: "Show",
     hideDone: "Hide",
+  },
+  story: {
+    writeTitle: "Idea and script",
+    placeholder:
+      "Write what you want to shoot: the idea, story, scenes, mood, references… Or upload a photo or PDF of your notes.",
+    saving: "Saving…",
+    upload: "Upload notes",
+    uploadHint:
+      "A photo of handwritten notes, or a PDF. Claude transcribes it and sums up the idea.",
+    summarize: "Sum up the idea",
+    resummarize: "Sum up again",
+    summaryTitle: "Summary",
+    summaryEmpty:
+      "Once you write something or upload notes, Claude sums up the idea: logline, synopsis, tone, scenes and what you'll need.",
+    reading: "Claude is reading your text…",
+    readingNotes: "Claude is reading your notes…",
+    notesRead: "Notes read and added to the text",
+    summarized: "Idea summed up",
+    summarizedAt: "Summed up {when}",
+    fromNotes: "From uploaded notes",
+    tone: "Tone and look",
+    scenes: "Scenes and shots",
+    locations: "Locations",
+    cast: "Cast and people",
+    gear: "Gear",
+    props: "Props",
+    questions: "Still to think about",
+    fileTooLarge: "That file is too large (3.5 MB max). Try a photo or a smaller PDF.",
+    fileType: "Upload a photo (JPG, PNG) or a PDF.",
+    nothingToRead: "Write something first, or upload your notes.",
+    aiOff: "Reading notes isn't switched on yet (the Claude API key is missing).",
+    readFailed: "We couldn't read the notes. Please try again.",
   },
   production: {
     rentalsTitle: "Rentals",

@@ -75,7 +75,13 @@ export async function createProject(
   const mediumValue = formData.get("medium");
   const medium = planTemplate?.medium ?? (isMedium(mediumValue) ? mediumValue : "video");
   const picked = formData.getAll("modules").filter(isPlanModuleId) as PlanModuleId[];
-  const modules = planTemplate?.modules ?? (picked.length > 0 ? picked : customDefaults(medium));
+  const chosenModules =
+    planTemplate?.modules ?? (picked.length > 0 ? picked : customDefaults(medium));
+  // A personal project starts from the idea: the story box comes first.
+  const modules: PlanModuleId[] =
+    formData.get("kind") === "personal" && !chosenModules.includes("story")
+      ? ["story", ...chosenModules]
+      : chosenModules;
   const workspace = await supabase.from("project_workspaces").upsert(
     {
       project_id: project.data.id,
