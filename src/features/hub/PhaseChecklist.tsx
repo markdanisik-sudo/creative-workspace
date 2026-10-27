@@ -144,7 +144,7 @@ export function PhaseChecklist({
   const currentIndex = PHASES.indexOf(currentPhase);
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <DeliveryCard links={deliveryLinks} />
       <div className="mb-3 flex items-end justify-between gap-4 px-1">
         <p className="text-callout text-text-secondary tabular-nums">
