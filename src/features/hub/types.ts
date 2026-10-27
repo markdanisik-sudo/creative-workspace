@@ -15,8 +15,12 @@ export interface ProjectDetails {
   clientName: string | null;
   description: string | null;
   phase: Phase;
+  /** For a client (quote, invoices) or the owner's own (production budget). */
+  kind: ProjectKind;
   updatedAt: string;
 }
+
+export type ProjectKind = "client" | "personal";
 
 export interface Person {
   id: string;

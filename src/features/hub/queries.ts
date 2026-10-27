@@ -23,7 +23,7 @@ export const getProjectDetails = cache(
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from("projects")
-      .select("id, name, client_name, description, phase, updated_at")
+      .select("id, name, client_name, description, phase, kind, updated_at")
       .eq("id", projectId)
       .maybeSingle();
     if (error) logError("hub.project", error, { projectId });
@@ -34,6 +34,7 @@ export const getProjectDetails = cache(
       clientName: data.client_name,
       description: data.description,
       phase: isPhase(data.phase) ? data.phase : "brief",
+      kind: data.kind === "personal" ? "personal" : "client",
       updatedAt: data.updated_at,
     };
   },

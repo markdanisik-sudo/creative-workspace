@@ -539,6 +539,72 @@ export type Database = {
           },
         ];
       };
+      production_items: {
+        Row: {
+          category: string | null;
+          created_at: string;
+          created_by: string | null;
+          days: number;
+          done: boolean;
+          id: string;
+          kind: string;
+          name: string;
+          position: number;
+          project_id: string;
+          quantity: number;
+          supplier: string | null;
+          unit_price: number;
+          updated_at: string;
+        };
+        Insert: {
+          category?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          days?: number;
+          done?: boolean;
+          id?: string;
+          kind?: string;
+          name: string;
+          position?: number;
+          project_id: string;
+          quantity?: number;
+          supplier?: string | null;
+          unit_price?: number;
+          updated_at?: string;
+        };
+        Update: {
+          category?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          days?: number;
+          done?: boolean;
+          id?: string;
+          kind?: string;
+          name?: string;
+          position?: number;
+          project_id?: string;
+          quantity?: number;
+          supplier?: string | null;
+          unit_price?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "production_items_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "project_summaries";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "production_items_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           avatar_url: string | null;
@@ -1115,6 +1181,7 @@ export type Database = {
           created_at: string;
           description: string | null;
           id: string;
+          kind: string;
           name: string;
           owner_id: string;
           phase: string;
@@ -1126,6 +1193,7 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           id?: string;
+          kind?: string;
           name: string;
           owner_id?: string;
           phase?: string;
@@ -1137,10 +1205,41 @@ export type Database = {
           created_at?: string;
           description?: string | null;
           id?: string;
+          kind?: string;
           name?: string;
           owner_id?: string;
           phase?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      rental_catalog: {
+        Row: {
+          category: string | null;
+          created_at: string;
+          id: string;
+          name: string;
+          owner_id: string;
+          price_per_day: number;
+          supplier: string;
+        };
+        Insert: {
+          category?: string | null;
+          created_at?: string;
+          id?: string;
+          name: string;
+          owner_id?: string;
+          price_per_day: number;
+          supplier?: string;
+        };
+        Update: {
+          category?: string | null;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          owner_id?: string;
+          price_per_day?: number;
+          supplier?: string;
         };
         Relationships: [];
       };

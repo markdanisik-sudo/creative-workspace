@@ -6,6 +6,8 @@ import { payableIban, spaydString } from "@/features/budget/payment";
 import { getBudget, getStudioBilling } from "@/features/budget/queries";
 import { budgetTotals } from "@/features/budget/totals";
 import { getProjectDetails, listRequests, listServices } from "@/features/hub/queries";
+import { ProductionBudget } from "@/features/production/ProductionBudget";
+import { listProductionItems, listRentalCatalog } from "@/features/production/queries";
 import { getProject } from "@/features/projects/queries";
 import { RequestsView } from "@/features/hub/RequestsView";
 import { getI18n } from "@/lib/i18n/server";
@@ -24,6 +26,22 @@ export default async function BudgetPage({ params }: PageProps<"/projects/[proje
     getProjectDetails(projectId),
     getProject(projectId),
   ]);
+  // A personal project: what the shoot needs and what it comes to.
+  if (project?.kind === "personal") {
+    const [items, catalog] = await Promise.all([
+      listProductionItems(projectId),
+      viewer.isStudio ? listRentalCatalog(viewer.id) : Promise.resolve([]),
+    ]);
+    return (
+      <ProductionBudget
+        projectId={projectId}
+        items={items}
+        catalog={catalog}
+        canPrice={viewer.isStudio}
+      />
+    );
+  }
+
   // Prices and billing details are those of whoever runs the project.
   const ownerId = summary?.ownerId ?? viewer.id;
   const [services, studio] = await Promise.all([

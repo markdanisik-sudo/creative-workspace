@@ -808,6 +808,60 @@ describe.skipIf(!publishableKey || !secretKey)("row level security", () => {
     await admin.auth.admin.deleteUser(userId);
   });
 
+  describe("personal projects", () => {
+    it("keep the production list to the project and price lists to their owner", async () => {
+      const kind = await studio.client
+        .from("projects")
+        .update({ kind: "personal" })
+        .eq("id", projectId)
+        .select("kind");
+      expect(kind.data).toEqual([{ kind: "personal" }]);
+
+      const offer = await studio.client
+        .from("rental_catalog")
+        .insert({ supplier: "Biofilms", category: "Kamery", name: "Sony FX6", price_per_day: 2500 })
+        .select("id, owner_id")
+        .single();
+      expect(offer.data?.owner_id).toBe(studio.id);
+      for (const other of [client, outsider]) {
+        const seen = await other.client
+          .from("rental_catalog")
+          .select("id")
+          .eq("id", offer.data!.id);
+        expect(seen.data).toEqual([]);
+      }
+
+      const item = await client.client
+        .from("production_items")
+        .insert({
+          project_id: projectId,
+          kind: "rental",
+          name: "Sony FX6",
+          days: 2,
+          unit_price: 2500,
+        })
+        .select("id")
+        .single();
+      expect(item.error).toBeNull();
+      const seenByStudio = await studio.client
+        .from("production_items")
+        .select("name")
+        .eq("id", item.data!.id);
+      expect(seenByStudio.data).toEqual([{ name: "Sony FX6" }]);
+      const seenByOutsider = await outsider.client
+        .from("production_items")
+        .select("id")
+        .eq("project_id", projectId);
+      expect(seenByOutsider.data).toEqual([]);
+      const intoOther = await outsider.client
+        .from("production_items")
+        .insert({ project_id: projectId, name: "Nope" });
+      expect(intoOther.error).not.toBeNull();
+
+      await studio.client.from("projects").update({ kind: "client" }).eq("id", projectId);
+    });
+  });
+
   it("cascades project deletion", async () => {
     const remove = await studio.client.from("projects").delete().eq("id", projectId);
     expect(remove.error).toBeNull();

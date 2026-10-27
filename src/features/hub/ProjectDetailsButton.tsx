@@ -7,6 +7,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { TextField } from "@/components/ui/Input";
 import { TextArea } from "@/components/ui/TextArea";
 import { useI18n } from "@/lib/i18n/client";
+import { ProjectKindPicker } from "@/features/projects/ProjectKindPicker";
 import { updateProjectDetails } from "./actions";
 import type { ProjectDetails } from "./types";
 
@@ -16,6 +17,7 @@ export function ProjectDetailsButton({ project }: { project: ProjectDetails }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string>();
   const [pending, setPending] = useState(false);
+  const [kind, setKind] = useState(project.kind);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -25,6 +27,7 @@ export function ProjectDetailsButton({ project }: { project: ProjectDetails }) {
       name: String(form.get("name") ?? ""),
       clientName: String(form.get("client") ?? ""),
       description: String(form.get("description") ?? ""),
+      kind,
     });
     setPending(false);
     if (!result.ok) return setError(result.error);
@@ -46,6 +49,7 @@ export function ProjectDetailsButton({ project }: { project: ProjectDetails }) {
             maxLength={120}
             required
           />
+          <ProjectKindPicker value={kind} onChange={setKind} />
           <TextField
             label={t("hub.client")}
             name="client"

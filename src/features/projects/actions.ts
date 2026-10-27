@@ -58,7 +58,11 @@ export async function createProject(
 
   const project = await supabase
     .from("projects")
-    .insert({ name, client_name: clientName })
+    .insert({
+      name,
+      client_name: clientName,
+      kind: formData.get("kind") === "personal" ? "personal" : "client",
+    })
     .select("id")
     .single();
   if (project.error) {

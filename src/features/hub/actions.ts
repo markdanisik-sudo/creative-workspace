@@ -58,7 +58,7 @@ export async function setPhase(projectId: string, phase: Phase): Promise<ActionR
 
 export async function updateProjectDetails(
   projectId: string,
-  input: { name: string; clientName: string; description: string },
+  input: { name: string; clientName: string; description: string; kind: string },
 ): Promise<ActionResult> {
   const { t } = await getI18n();
   const name = clean(input.name, LIMITS.name);
@@ -70,6 +70,7 @@ export async function updateProjectDetails(
       name,
       client_name: cleanOptional(input.clientName, LIMITS.name),
       description: cleanOptional(input.description, 2000),
+      kind: input.kind === "personal" ? "personal" : "client",
     })
     .eq("id", projectId);
   if (error) return fail("hub.details", error, { projectId });

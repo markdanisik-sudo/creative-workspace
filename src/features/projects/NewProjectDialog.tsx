@@ -17,7 +17,9 @@ import {
 } from "@/features/workspace/plan";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/cn";
+import type { ProjectKind } from "@/features/hub/types";
 import { createProject, type CreateProjectState } from "./actions";
+import { ProjectKindPicker } from "./ProjectKindPicker";
 
 const MEDIUM_ICON = { video: Clapperboard, photo: Camera, both: Layers } as const;
 
@@ -26,6 +28,7 @@ function NewProjectForm({ onCancel, askClient }: { onCancel: () => void; askClie
   const [state, action, pending] = useActionState<CreateProjectState, FormData>(createProject, {});
   const [step, setStep] = useState<1 | 2>(1);
   const [medium, setMedium] = useState<Medium>("video");
+  const [kind, setKind] = useState<ProjectKind>("client");
   const [template, setTemplate] = useState<TemplateId>("custom");
   const [custom, setCustom] = useState<PlanModuleId[]>(customDefaults("video"));
   const templates = templatesFor(medium);
@@ -49,6 +52,7 @@ function NewProjectForm({ onCancel, askClient }: { onCancel: () => void; askClie
       className="flex flex-col gap-5"
     >
       <input type="hidden" name="medium" value={medium} />
+      <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="planTemplate" value={template} />
 
       {/* Step 1 stays mounted so its fields are submitted with step 2. */}
@@ -62,7 +66,8 @@ function NewProjectForm({ onCancel, askClient }: { onCancel: () => void; askClie
           maxLength={120}
           error={state.error}
         />
-        {askClient ? (
+        <ProjectKindPicker value={kind} onChange={setKind} />
+        {askClient && kind === "client" ? (
           <TextField
             label={t("project.clientName")}
             name="client"
