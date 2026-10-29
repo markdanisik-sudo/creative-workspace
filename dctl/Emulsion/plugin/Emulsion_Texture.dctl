@@ -1,0 +1,136 @@
+// =============================================================================
+//  EMULSION TEXTURE  |  film MTF, halation, bloom, grain and motion
+//  v1.0
+//
+//  The node after Emulsion_Film: it works on its SDR output (Rec.709 / sRGB /
+//  P3, set Display Gamma to match).
+//
+//    MTF (softness, acutance, red layer) -> bloom -> halation -> vignette
+//    -> film breath -> grain                          Emulsion_lib/texture.h
+//
+//  Keep the Emulsion_lib folder next to this file.  Requires DaVinci Resolve Studio.
+// =============================================================================
+
+DEFINE_UI_PARAMS(p_Strength, Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_MtfSoft, MTF Softness, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_Acutance, Acutance, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_AcuRadius, Acutance Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.3, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_RedSoft, Red Layer Softness, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+
+DEFINE_UI_PARAMS(p_HalAmount, Halation Amount, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 4.0, 0.01)
+DEFINE_UI_PARAMS(p_HalRadius, Halation Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.2, 4.0, 0.01)
+DEFINE_UI_PARAMS(p_HalThreshold, Halation Threshold, DCTLUI_SLIDER_FLOAT, 0.8, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_HalWarmth, Halation Warmth, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_BloomAmount, Bloom Amount, DCTLUI_SLIDER_FLOAT, 0.15, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_BloomRadius, Bloom Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.1, 6.0, 0.01)
+DEFINE_UI_PARAMS(p_BloomThreshold, Bloom Threshold, DCTLUI_SLIDER_FLOAT, 0.6, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_GrainAmount, Grain Amount, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 4.0, 0.01)
+DEFINE_UI_PARAMS(p_GrainSize, Grain Size, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_GrainChroma, Grain Color, DCTLUI_SLIDER_FLOAT, 0.6, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Seed, Grain Seed, DCTLUI_SLIDER_INT, 0, 0, 100, 1)
+
+DEFINE_UI_PARAMS(p_Breath, Film Breath, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Weave, Gate Weave, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Vignette, Vignette, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 2.0, 0.01)
+
+DEFINE_UI_PARAMS(p_Animate, Animate Grain, DCTLUI_CHECK_BOX, 1)
+
+DEFINE_UI_PARAMS(p_GrainStock, Grain Stock, DCTLUI_COMBO_BOX, 3, { GS_50D, GS_200T, GS_250D, GS_V3_500T, GS_V2_500T, GS_V1_500T, GS_800T, GS_5294 }, { "50D (finest)", "200T", "250D", "Vision3 500T", "Vision2 500T", "Vision / EXR 500T", "800T", "Eastman 5294 400T (coarse)" })
+DEFINE_UI_PARAMS(p_Format, Film Format, DCTLUI_COMBO_BOX, 1, { FMT_65, FMT_35, FMT_S16, FMT_S8 }, { "65 mm", "35 mm", "Super 16", "Super 8" })
+DEFINE_UI_PARAMS(p_Display, Display Gamma, DCTLUI_COMBO_BOX, 0, { DG_24, DG_22, DG_26 }, { "Rec.709 Gamma 2.4", "sRGB / Gamma 2.2", "P3 Gamma 2.6" })
+DEFINE_UI_PARAMS(p_Quality, Quality, DCTLUI_COMBO_BOX, 1, { Q_LOW, Q_MED, Q_HIGH }, { "Low (fast)", "Medium", "High" })
+
+#include "Emulsion_lib/core.h"
+#include "Emulsion_lib/texture.h"
+
+// grain per stock: amplitude (code values) and size (relative)
+__CONSTANT__ float GRAIN_AMP[8]  = { 0.0055f, 0.0080f, 0.0085f, 0.0130f, 0.0160f, 0.0190f, 0.0250f, 0.0240f };
+__CONSTANT__ float GRAIN_SIZE[8] = { 0.80f, 0.95f, 0.95f, 1.20f, 1.25f, 1.30f, 1.45f, 1.45f };
+// frame width in mm: 65 mm, 35 mm, Super 16, Super 8
+__CONSTANT__ float FRAME_MM[4] = { 52.48f, 24.89f, 12.52f, 5.79f };
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
+{
+    const float W = (float)p_Width, H = (float)p_Height;
+    const float dg = p_Display == DG_22 ? 2.2f : (p_Display == DG_26 ? 2.6f : 2.4f);
+    float3 orig = make_float3(_tex2D(p_TexR, p_X, p_Y), _tex2D(p_TexG, p_X, p_Y), _tex2D(p_TexB, p_X, p_Y));
+
+    unsigned int seed = frame_seed(p_TexR, p_TexG, p_TexB, p_Width, p_Height, p_Seed, p_Animate);
+    float frameMM = FRAME_MM[clampi(p_Format, 0, 3)];
+    float pxPerMM = W / frameMM;
+    int nSamples = p_Quality == Q_LOW ? 32 : (p_Quality == Q_HIGH ? 128 : 64);
+
+    // ---- gate weave: sub-pixel image shift per frame
+    float cx = (float)p_X, cy = (float)p_Y;
+    float3 c = orig;
+    if (p_Weave > 0.0f && p_Animate) {
+        cx += seed_sf(seed, 0x68e31da4U) * p_Weave * 0.0006f * W;
+        cy += seed_sf(seed, 0xb5297a4dU) * p_Weave * 0.0010f * W;
+        c = fetch_bilinear(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height);
+    }
+
+    // ---- MTF (code values ~ density)
+    float sm = 0.006f * p_MtfSoft * pxPerMM;
+    float sredx = 0.006f * p_RedSoft * pxPerMM;
+    float sr = _sqrtf(sm * sm + sredx * sredx);
+    float sa = 0.02f * p_AcuRadius * pxPerMM;
+    c = film_mtf(p_TexR, p_TexG, p_TexB, (int)(cx + 0.5f), (int)(cy + 0.5f), p_Width, p_Height, c, sm, sr, sa, p_Acutance);
+
+    // ---- light effects; a random rotation per pixel hides the sampling pattern
+    float3 L = to_light(c, dg);
+    float rot = (float)(hash3u(p_X, p_Y, 0x5bd1e995U) & 0xFFFFU) * (6.2831853f / 65535.0f);
+    float rj = 0.15f + 0.7f * (float)(hash3u(p_X, p_Y, 0x8da6b343U) & 0xFFFFU) / 65535.0f;
+
+    // bloom / diffusion: redistributes highlight light (energy conserving)
+    if (p_BloomAmount > 0.0f) {
+        float thr = _powf(p_BloomThreshold, dg);
+        float sigma = _fmaxf(p_BloomRadius * 0.01f * W, 0.5f);
+        float3 b = bloom_blur(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, sigma, thr, nSamples, rot, rj, dg);
+        float y = luma709(L);
+        float3 hl = scale3(L, knee(y, thr) / _fmaxf(y, 1e-6f));
+        L = add3(L, scale3(sub3(b, hl), p_BloomAmount));
+    }
+
+    // halation: added to red and some green
+    if (p_HalAmount > 0.0f) {
+        float thr = _powf(p_HalThreshold, dg);
+        float sigma = _fmaxf(0.09f * p_HalRadius * pxPerMM, 0.5f);
+        float hv = 3.5f * p_HalAmount * halation_blur(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, sigma, thr, nSamples, rot + 1.7f, 1.0f - rj, dg);
+        L = add3(L, make_float3(hv, hv * 0.30f * p_HalWarmth, hv * 0.02f));
+    }
+
+    if (p_Vignette > 0.0f) L = scale3(L, vignette((float)p_X, (float)p_Y, W, H, p_Vignette));
+
+    // film breath: tiny per-frame exposure and colour drift
+    if (p_Breath > 0.0f && p_Animate) {
+        float e = p_Breath * 0.035f * seed_sf(seed, 0x1b56c4e9U);
+        float t1 = p_Breath * 0.02f * seed_sf(seed, 0x7f4a7c15U);
+        float t2 = p_Breath * 0.02f * seed_sf(seed, 0x2545f491U);
+        L = make_float3(L.x * _exp2f(e + t1), L.y * _exp2f(e + t2), L.z * _exp2f(e - t1));
+    }
+    c = to_code(L, dg);
+
+    // ---- grain: dye clouds per layer, strongest in the midtones (where the
+    // print curve is steepest), finer and weaker in deep blacks and whites
+    if (p_GrainAmount > 0.0f) {
+        int gs = clampi(p_GrainStock, 0, 7);
+        float gsize = _fmaxf(0.012f * pxPerMM * GRAIN_SIZE[gs] * p_GrainSize, 0.6f);
+        float px = (float)p_X, py = (float)p_Y;
+        unsigned int s = hash_u(seed ^ 0x27d4eb2fU);
+        float nm = grain_noise(px, py, gsize, s);
+        float ch = p_GrainChroma;
+        float norm = 1.0f / _sqrtf((1.0f - ch) * (1.0f - ch) + ch * ch);
+        float nr = (nm * (1.0f - ch) + grain_noise(px, py, gsize, s ^ 0x165667b1U) * ch) * norm;
+        float ng = (nm * (1.0f - ch) + grain_noise(px, py, gsize * 0.9f, s ^ 0xd3a2646cU) * ch) * norm;
+        float nb = (nm * (1.0f - ch) + grain_noise(px, py, gsize * 1.15f, s ^ 0xfd7046c5U) * ch) * norm;
+        float amp = 1.25f * GRAIN_AMP[gs] * p_GrainAmount * _sqrtf(24.89f / frameMM);
+        c = make_float3(c.x + nr * amp * grain_weight(c.x),
+                        c.y + ng * amp * 0.90f * grain_weight(c.y),
+                        c.z + nb * amp * 1.35f * grain_weight(c.z));
+    }
+
+    return mix3(orig, c, p_Strength);
+}
