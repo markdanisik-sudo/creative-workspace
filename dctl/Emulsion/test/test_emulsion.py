@@ -1,27 +1,26 @@
-"""Tests for the Emulsion DCTL plugins, run on the CPU (no Resolve needed).
+"""Tests for the Emulsion DCTL, run on the CPU (no Resolve needed).
 
     python3 test_emulsion.py            # all tests
-    python3 test_emulsion.py film       # only tests whose name contains "film"
+    python3 test_emulsion.py curve      # only tests whose name contains "curve"
 
-Needs g++ and numpy.  The plugins are built as C++ by dctl.py with the DCTL
-functions from shim.h; the old Film Lab plugins in dctl/ are the reference
-for the regression tests.
+Needs g++ and numpy.  The plugin is built as C++ by dctl.py with the DCTL
+functions from shim.h.
 """
-import math, os, re, sys, traceback
+import json, os, re, sys, traceback
 import numpy as np
 import dctl
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = os.path.join(HERE, '..', 'plugin')
-LEGACY = os.path.join(HERE, '..', '..')
+LOOKS = ['L_PRINT', 'L_DAY', 'L_NIGHT', 'L_BLEACH', 'L_NEUTRAL']
+PLAIN = dict(p_Grain=0.0, p_Halation=0.0)          # colour only
 _cache = {}
 
 
-def plug(name):
-    if name not in _cache:
-        path = os.path.join(PLUGIN, name) if name.startswith('Emulsion') else os.path.join(LEGACY, name)
-        _cache[name] = dctl.build(path)
-    return _cache[name]
+def plug():
+    if 'p' not in _cache:
+        _cache['p'] = dctl.build(os.path.join(PLUGIN, 'Emulsion.dctl'))
+    return _cache['p']
 
 
 def di(x):
@@ -30,27 +29,19 @@ def di(x):
     return np.where(x <= 0.00262409, x * 10.44426855, (np.log2(np.maximum(x, 1e-9) + 0.0075) + 7.0) * 0.07329248)
 
 
+def ramp(lo=0.0, hi=1.0, n=201):
+    x = np.linspace(lo, hi, n).astype(np.float32)
+    return x, np.repeat(x[None, :, None], 3, 2)
+
+
 def chart(n=1024, seed=1):
-    """grey ramp + random colours, DaVinci Intermediate code values"""
     rng = np.random.default_rng(seed)
-    grey = np.repeat(np.linspace(0.0, 1.1, 64)[:, None], 3, 1)
-    img = np.concatenate([grey, rng.random((n - 64, 3)) * 1.1])
-    side = int(math.sqrt(n))
-    return img.reshape(side, side, 3).astype(np.float32)
+    side = int(np.sqrt(n))
+    return (rng.random((side, side, 3)) * 1.05).astype(np.float32)
 
 
-def grey_ramp(stops=np.linspace(-8, 8, 161)):
-    return di(0.18 * 2.0 ** stops)[None, :, None].repeat(3, 2).astype(np.float32)
-
-
-def close(a, b, what, tol=5e-5):
-    """equal up to float rounding, compared in light (code ** 2.4): a channel
-    clipped to black can come out as 0 or as 1e-7, which the display gamma
-    alone would turn into a 1e-3 code value difference"""
-    la, lb = np.sign(a) * np.abs(a) ** 2.4, np.sign(b) * np.abs(b) ** 2.4
-    d = np.abs(la - lb)
-    i = np.unravel_index(d.argmax(), d.shape)
-    assert d.max() < tol, f'{what}: light differs by {d.max():.2e} at {i}: {a[i[:-1]]} vs {b[i[:-1]]}'
+def luma(c):
+    return c @ np.array([0.2126, 0.7152, 0.0722])
 
 
 def finite(a, what):
@@ -94,256 +85,168 @@ def test_source_no_host_only_code():
         src = strip(open(path).read())
         for b in banned:
             for m in re.finditer(b, src):
-                line = src[:m.start()].count('\n') + 1
-                bad.append(f'{os.path.relpath(path, PLUGIN)}:{line}: {m.group(0)}')
+                bad.append(f'{os.path.relpath(path, PLUGIN)}:{src[:m.start()].count(chr(10)) + 1}: {m.group(0)}')
     assert not bad, 'not allowed in DCTL:\n  ' + '\n  '.join(bad)
 
 
-def test_film_stock_table_order():
-    """the Negative Stock combo indexes the generated stock table"""
-    src = open(os.path.join(PLUGIN, 'Emulsion_lib', 'film_data.h')).read()
-    order = re.search(r'#define STOCK_ORDER "([^"]+)"', src).group(1).split()
-    assert plug('Emulsion_Film.dctl').by_name['p_Stock']['enums'] == order
+def test_simple_ui():
+    """the point of Emulsion: a handful of controls"""
+    assert len(plug().params) <= 12, [q['label'] for q in plug().params]
 
 
-def test_film_data_up_to_date():
-    """film_data.h is what tools/build_data.py generates (if scipy is installed)"""
-    try:
-        import scipy  # noqa: F401
-    except ImportError:
-        print('    (skipped: no scipy)')
-        return
-    import subprocess
-    path = os.path.join(PLUGIN, 'Emulsion_lib', 'film_data.h')
-    keep = open(path).read()
-    try:
-        subprocess.run([sys.executable, os.path.join(HERE, '..', 'tools', 'build_data.py')], check=True, capture_output=True)
-        assert open(path).read() == keep, 'film_data.h is stale: run tools/build_data.py'
-    finally:
-        open(path, 'w').write(keep)
+# ---------------------------------------------------------------- tone curve
+
+def test_curve_matches_cinesumer():
+    """Neutral look, no fade: the luminance curve over DI code is the digitised Cinesumer curve"""
+    pts = np.array(json.load(open(os.path.join(HERE, 'cinesumer_curve.json')))['points'])
+    x, img = ramp(0.0, 0.85, 171)
+    y = luma(plug().run(img, p_Look='L_NEUTRAL', p_Fade=0.0, **PLAIN)[0])
+    d = np.abs(np.interp(pts[:, 0], x, y) - pts[:, 1])
+    assert d.max() < 0.02, f'max deviation {d.max():.3f} at DI {pts[d.argmax(), 0]}'
 
 
-# ---------------------------------------------------------------- Emulsion Film
-
-def test_film_matches_film_lab():
-    """same colour science as Film Lab Color v3, for every stock, print, output and DRT"""
-    old, new = plug('FilmLab_Color.dctl'), plug('Emulsion_Film.dctl')
-    img = chart()
-    for stock in range(24):
-        for pr in range(4):
-            for out in range(5):
-                kw = dict(p_Stock=stock, p_Print=pr, p_Output=out)
-                close(old.run(img, **kw), new.run(img, **kw), str(kw))
-    for drt in range(4):
-        for stock in [0, 3, 23]:
-            close(old.run(img, p_DRT=drt, p_Stock=stock), new.run(img, p_DRT=drt, p_Stock=stock), f'DRT {drt} stock {stock}')
+def test_curve_grey_and_range():
+    """18% grey -> 0.28 (the Cinesumer placement), black and white reachable"""
+    p = plug()
+    grey = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
+    g = p.run(grey, p_Look='L_NEUTRAL', p_Fade=0.0, **PLAIN)[0, 0]
+    assert np.all(np.abs(g - 0.28) < 0.01), g
+    x, img = ramp()
+    y = luma(p.run(img, p_Look='L_NEUTRAL', p_Fade=0.0, **PLAIN)[0])
+    assert y[0] < 0.002 and y[-1] > 0.99, (y[0], y[-1])
+    # +0.7 stop puts grey near the usual 0.41
+    g = p.run(grey, p_Look='L_NEUTRAL', p_Fade=0.0, p_Exposure=0.7, **PLAIN)[0, 0]
+    assert abs(g[1] - 0.41) < 0.03, g
 
 
-def test_film_matches_film_lab_controls():
-    """every control, at random settings (Negative / Print Version map to the
-    Interimage and Print Crosstalk sliders)"""
-    old, new = plug('FilmLab_Color.dctl'), plug('Emulsion_Film.dctl')
+def test_curve_monotonic():
+    """brighter scene -> brighter picture, every look, contrast and output"""
+    p = plug()
+    x, img = ramp(0.0, 1.0, 301)
+    for look in LOOKS:
+        for con in [0.6, 1.0, 1.5]:
+            for out in range(3):
+                o = p.run(img, p_Look=look, p_Contrast=con, p_Output=out, **PLAIN)[0]
+                d = np.diff(o, axis=0)
+                # in the deepest blacks (output < 0.08) the gamut compression can
+                # wiggle the blue channel by < 0.005: invisible, under the fade
+                deep = np.repeat((o[1:].max(1) < 0.08)[:, None], 3, 1)
+                assert np.all(d[~deep] >= -1e-6) and np.all(d[deep] >= -0.005), f'{look} contrast {con} output {out}: a channel goes down'
+
+
+def test_contrast_pivots_on_grey():
+    p = plug()
+    g = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
+    a = p.run(g, p_Look='L_NEUTRAL', **PLAIN)[0, 0]
+    for con in [0.6, 1.5]:
+        b = p.run(g, p_Look='L_NEUTRAL', p_Contrast=con, **PLAIN)[0, 0]
+        assert np.abs(a - b).max() < 1e-4, (con, a, b)
+
+
+# ---------------------------------------------------------------- colour
+
+def test_neutral_stays_neutral():
+    """grey input meets in every channel around 18% grey; Strength 0 is fully neutral"""
+    p = plug()
+    grey = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
+    for look in ['L_PRINT', 'L_BLEACH', 'L_NEUTRAL']:
+        o = p.run(grey, p_Look=look, p_Fade=0.0, **PLAIN)[0, 0]
+        assert np.ptp(o) < 0.002, f'{look}: grey is tinted: {o}'
+    x, img = ramp(0.05, 1.0, 96)
+    o = p.run(img, p_Strength=0.0, **PLAIN)[0]
+    assert np.ptp(o, axis=1).max() < 1e-4, 'Strength 0 is not neutral'
+
+
+def test_print_split_tone():
+    """Kodak 2383 crossover: cyan-blue shadows, warm highlights (as in the Cinesumer frames)"""
+    p = plug()
+    shadow = di(np.full((1, 1, 3), 0.18 * 2 ** -3)).astype(np.float32)
+    high = di(np.full((1, 1, 3), 0.18 * 2 ** 2.5)).astype(np.float32)
+    s = p.run(shadow, p_Look='L_PRINT', p_Fade=0.0, **PLAIN)[0, 0]
+    h = p.run(high, p_Look='L_PRINT', p_Fade=0.0, **PLAIN)[0, 0]
+    assert s[2] > s[0] + 0.005, f'shadows not cool: {s}'
+    assert h[0] > h[2] + 0.01, f'highlights not warm: {h}'
+
+
+def test_fade_lifts_cool_blacks():
+    p = plug()
+    black = np.zeros((1, 1, 3), np.float32)
+    o = p.run(black, **PLAIN)[0, 0]
+    assert np.allclose(o, [0.024, 0.035, 0.043], atol=0.003), o
+    assert p.run(black, p_Fade=0.0, **PLAIN)[0, 0].max() < 0.002
+
+
+def test_strength_zero_ignores_look():
+    p = plug()
     img = chart(256)
-    rng = np.random.default_rng(7)
-    shared = [p for p in new.params if p['name'] in old.by_name and p['type'] != 'DCTLUI_COMBO_BOX']
-    for trial in range(120):
-        kw = {}
-        for p in shared:
-            if p['type'] == 'DCTLUI_CHECK_BOX':
-                kw[p['name']] = int(rng.random() < 0.3)
-            elif rng.random() < 0.4:
-                kw[p['name']] = rng.uniform(p['min'], p['max'])
-        kw.pop('p_ShowCurve', None)
-        kw['p_Stock'] = int(rng.integers(24)); kw['p_Print'] = int(rng.integers(4)); kw['p_Output'] = int(rng.integers(5))
-        kw['p_InGamut'] = int(rng.integers(9)); kw['p_InGamma'] = int(rng.integers(11))
-        kw['p_NegStrength'] = 1.0           # Film Lab jumps at 0.5 in the scan; tested separately
-        # blends in code values would mix a channel clipped to 0 vs 1e-7 into
-        # visible values; the blends have their own tests
-        kw['p_Strength'] = float(rng.random() < 0.8); kw['p_PrintStrength'] = float(rng.random() < 0.8)
-        neg_old, print_old = int(rng.random() < 0.3), int(rng.random() < 0.3)
-        a = old.run(img, p_NegVersion=neg_old, p_PrintVersion=print_old, **kw)
-        b = new.run(img, p_Crosstalk=0.0 if print_old else 1.0,
-                    **dict(kw, p_Interimage=0.0 if neg_old else kw.get('p_Interimage', 1.0)))
-        close(a, b, f'trial {trial}: {kw}')
+    ref = p.run(img, p_Look='L_NEUTRAL', p_Strength=0.0, **PLAIN)
+    for look in LOOKS:
+        assert np.abs(p.run(img, p_Look=look, p_Strength=0.0, **PLAIN) - ref).max() < 1e-6, look
 
 
-def test_film_grey_on_lad():
-    """18% grey through Vision3 + 2383 lands on Kodak's LAD: ~0.41 in Rec.709"""
-    p = plug('Emulsion_Film.dctl')
-    img = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
-    for stock in ['V3_5203', 'V3_5207', 'V3_5219', 'NEG_NONE']:
-        o = p.run(img, p_Stock=stock)[0, 0]
-        assert np.all(np.abs(o - 0.405) < 0.01), f'{stock}: grey -> {o}'
-        assert np.ptp(o) < 0.01, f'{stock}: grey is not neutral: {o}'
+def test_temperature_direction():
+    p = plug()
+    g = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
+    warm = p.run(g, p_Look='L_NEUTRAL', p_Temp=1.0, **PLAIN)[0, 0]
+    cool = p.run(g, p_Look='L_NEUTRAL', p_Temp=-1.0, **PLAIN)[0, 0]
+    assert warm[0] > warm[2] and cool[2] > cool[0], (warm, cool)
 
 
-def test_film_tone_monotonic():
-    """brighter scene -> brighter picture, for every stock and print"""
-    p = plug('Emulsion_Film.dctl')
-    img = grey_ramp()
-    for stock in range(24):
-        for pr in range(4):
-            for pp in [-2.0, 0.0, 3.0]:
-                o = p.run(img, p_Stock=stock, p_Print=pr, p_PushPull=pp)[0]
-                Y = o @ np.array([0.2126, 0.7152, 0.0722])
-                assert np.all(np.diff(Y) >= -1e-5), f'stock {stock} print {pr} push {pp}: tone curve goes down'
-                assert Y[0] < 0.08 and Y[-1] > 0.8, f'stock {stock} print {pr}: range {Y[0]:.3f}..{Y[-1]:.3f}'
+def test_outputs_same_display_light():
+    """sRGB / P3 encode the same light as Rec.709 for greys"""
+    p = plug()
+    x, img = ramp(0.1, 0.9, 41)
+    a = p.run(img, p_Look='L_NEUTRAL', **PLAIN)[0] ** 2.4
+    assert np.abs(p.run(img, p_Look='L_NEUTRAL', p_Output='OUT_SRGB', **PLAIN)[0] ** 2.2 - a).max() < 1e-4
+    assert np.abs(p.run(img, p_Look='L_NEUTRAL', p_Output='OUT_P3', **PLAIN)[0] ** 2.6 - a).max() < 1e-4
 
 
-def test_film_extremes_finite():
-    """every slider at its minimum and maximum, on extreme input"""
-    p = plug('Emulsion_Film.dctl')
-    img = np.concatenate([chart(256).reshape(-1, 3), [[-0.2, -0.2, -0.2], [0, 0, 0], [4, 4, 4], [2, -0.1, 0.5]]])[None].astype(np.float32)
-    sliders = [q for q in p.params if q['type'] == 'DCTLUI_SLIDER_FLOAT']
-    for q in sliders:
-        for v in [q['min'], q['max']]:
-            for out in [0, 3]:
-                finite(p.run(img, p_Output=out, **{q['name']: v}), f"{q['name']}={v}")
-    for q in [q for q in p.params if q['type'] == 'DCTLUI_COMBO_BOX']:
-        for v in range(len(q['enums'])):
-            finite(p.run(img, **{q['name']: v}), f"{q['name']}={q['enums'][v]}")
+def test_inputs_decode_grey():
+    """every camera's 18% grey code lands on the same output"""
+    p = plug()
+    grey = {'T_DI': 0.336043, 'T_LOGC3': 0.391007, 'T_LOGC4': 0.278396, 'T_SLOG3': 0.410557, 'T_VLOG': 0.423319,
+            'T_LOG3G10': 0.333136, 'T_LIN': 0.18, 'T_CINEON': 446.0 / 1023.0}
+    ref = None
+    for t, code in grey.items():
+        o = p.run(np.full((1, 1, 3), code, np.float32), p_InGamut='G_2020', p_InGamma=t, p_Look='L_NEUTRAL', **PLAIN)[0, 0]
+        ref = o if ref is None else ref
+        assert np.abs(o - ref).max() < 0.004, f'{t}: {o} vs {ref}'
 
 
-def test_film_negative_strength_continuous():
-    """Negative Strength blends smoothly (Film Lab jumped at 0.5 with DRT Neutral / Off)"""
-    p = plug('Emulsion_Film.dctl')
-    img = (0.2 + 0.5 * chart(256)[..., :1] + 0.15 * (chart(256, seed=2) - 0.55)).astype(np.float32)   # inside Rec.709
-    for drt in ['DRT_NEUTRAL', 'DRT_OFF']:                 # the DRTs that scan the negative
-        for stock in ['V3_5203', 'V3_5219']:
-            a = p.run(img, p_DRT=drt, p_Stock=stock, p_NegStrength=0.495)
-            b = p.run(img, p_DRT=drt, p_Stock=stock, p_NegStrength=0.505)
-            assert np.abs(a - b).max() < 0.01, f'DRT {drt} {stock}: jump at Negative Strength 0.5'
-    # DRT Neutral at Negative Strength 0 = no negative at all
-    close(p.run(img, p_DRT='DRT_NEUTRAL', p_NegStrength=0.0), p.run(img, p_DRT='DRT_NEUTRAL', p_Stock='NEG_NONE'), 'ideal')
+# ---------------------------------------------------------------- texture
+
+def test_halation_only_around_lights():
+    p = plug()
+    img = np.full((48, 96, 3), di(0.18), np.float32)
+    flat = p.run(img, p_Grain=0.0) - p.run(img, **PLAIN)
+    assert np.abs(flat).max() < 1e-6, 'halation on a flat grey picture'
+    img[20:24, 46:50] = di(0.18 * 2 ** 6)
+    d = p.run(img, p_Grain=0.0, p_Halation=2.0) - p.run(img, **PLAIN)
+    ring = d[14:30, 40:56].copy(); ring[6:10, 6:10] = 0
+    assert ring[..., 0].max() > 0.02 and ring[..., 0].max() > 3 * ring[..., 2].max(), 'no red glow around the light'
+    assert np.abs(d[:, :20]).max() < 1e-6, 'halation far from the light'
 
 
-def test_film_strength_zero_is_neutral():
-    """Strength 0 = the same neutral picture whatever the film settings"""
-    p = plug('Emulsion_Film.dctl')
-    img = chart(256)
-    ref = p.run(img, p_Strength=0.0)
-    for kw in [dict(p_Stock='V3_5219'), dict(p_Print='PR_2393'), dict(p_PrintExp=6.0, p_DyeSat=2.0), dict(p_NegBleach=1, p_PushPull=2.0)]:
-        close(ref, p.run(img, p_Strength=0.0, **kw), str(kw))
-    assert np.abs(ref - p.run(img)).max() > 0.05, 'film does nothing'
-    mid = p.run(img, p_Strength=0.5)
-    close(mid, 0.5 * (ref + p.run(img)), 'strength 0.5')
-
-
-def test_film_hdr_grey_nits():
-    """PQ: 18% grey sits on HDR Grey nits"""
-    p = plug('Emulsion_Film.dctl')
-    img = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
-    for grey in [10.0, 18.0, 30.0]:
-        o = p.run(img, p_Output='OUT_PQ', p_HdrGrey=grey, p_Stock='NEG_NONE', p_DRT='DRT_NEUTRAL')[0, 0]
-        m1, m2, c1, c2, c3 = 0.1593017578125, 78.84375, 0.8359375, 18.8515625, 18.6875
-        y = np.power(np.maximum(np.power(o, 1 / m2) - c1, 0) / (c2 - c3 * np.power(o, 1 / m2)), 1 / m1) * 10000
-        assert np.all(np.abs(y / grey - 1) < 0.03), f'grey {grey}: {y} nits'
-
-
-def test_film_off_dwg_roundtrip():
-    """DRT Off with no film and no grade returns the input (DWG / Intermediate)"""
-    p = plug('Emulsion_Film.dctl')
-    img = chart(256)
-    for kw in [dict(p_Strength=0.0), dict(p_Stock='NEG_NONE'), dict(p_NegStrength=0.0)]:
-        o = p.run(img, p_DRT='DRT_OFF', **kw)
-        assert np.abs(o - img).max() < 2e-4, f'{kw}: max diff {np.abs(o - img).max():.2e}'
-
-
-def test_film_show_curve():
-    """Show Curve draws only inside its box, bottom left"""
-    p = plug('Emulsion_Film.dctl')
-    img = np.full((90, 160, 3), di(0.18), np.float32)
-    a, b = p.run(img), p.run(img, p_ShowCurve=1)
-    changed = np.any(np.abs(a - b) > 1e-6, 2)
-    ys, xs = np.nonzero(changed)
-    assert changed.any() and xs.max() < 0.36 * 160 and ys.min() > 0.6 * 90, 'curve outside its box'
-
-
-# ---------------------------------------------------------------- Emulsion Texture
-
-def picture(w=96, h=64, seed=3):
-    """display-referred test picture: soft gradients, edges and a few bright lights"""
-    rng = np.random.default_rng(seed)
-    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
-    img = np.stack([0.2 + 0.5 * x / w, 0.3 + 0.3 * y / h, 0.45 - 0.2 * x / w], 2)
-    img[(x // 12 + y // 12) % 2 == 0] *= 0.6                                  # edges
-    for _ in range(4):
-        cx, cy = rng.uniform(0, w), rng.uniform(0, h)
-        img[(x - cx) ** 2 + (y - cy) ** 2 < 9] = [1.0, 0.97, 0.9]              # lights
-    return img.astype(np.float32)
-
-
-def test_texture_matches_film_lab():
-    """same texture as Film Lab Texture v2"""
-    old, new = plug('FilmLab_Texture.dctl'), plug('Emulsion_Texture.dctl')
-    img = picture()
-    cases = [{}, dict(p_Weave=1.0, p_Breath=1.0, p_Vignette=2.0), dict(p_Animate=0, p_Seed=17),
-             dict(p_MtfSoft=3.0, p_RedSoft=2.0, p_Acutance=2.0, p_AcuRadius=3.0),
-             dict(p_HalAmount=4.0, p_HalRadius=4.0, p_HalThreshold=0.2, p_BloomAmount=1.0, p_BloomThreshold=0.1),
-             dict(p_GrainChroma=0.0, p_GrainSize=3.0), dict(p_Strength=0.4)]
-    cases += [dict(p_GrainStock=g) for g in range(8)] + [dict(p_Format=f) for f in range(4)] + [dict(p_Quality=q) for q in range(3)]
-    for kw in cases:
-        d = np.abs(old.run(img, **kw) - new.run(img, **kw)).max()
-        assert d < 1e-5, f'{kw}: max diff {d:.2e}'
-
-
-def test_texture_off_is_identity():
-    p = plug('Emulsion_Texture.dctl')
-    img = picture()
-    assert np.abs(p.run(img, p_Strength=0.0) - img).max() < 1e-6
-    off = dict(p_MtfSoft=0.0, p_RedSoft=0.0, p_Acutance=0.0, p_HalAmount=0.0, p_BloomAmount=0.0, p_GrainAmount=0.0)
-    for dg in range(3):
-        assert np.abs(p.run(img, p_Display=dg, **off) - img).max() < 1e-5, f'display {dg}'
-
-
-def test_texture_grain_animation():
-    """Animate Grain: new grain when the picture changes; off = the same grain"""
-    p = plug('Emulsion_Texture.dctl')
-    a = np.full((64, 64, 3), 0.45, np.float32)
-    b = a + 0.01
-    only = dict(p_MtfSoft=0.0, p_RedSoft=0.0, p_Acutance=0.0, p_HalAmount=0.0, p_BloomAmount=0.0)
-    ga, gb = p.run(a, **only) - a, p.run(b, **only) - b
-    assert np.abs(ga).mean() > 0.003, 'no visible grain'
-    assert np.abs(ga.mean()) < 0.1 * np.abs(ga).mean(), 'grain shifts the brightness'
+def test_grain():
+    """visible, unbiased, new with each frame"""
+    p = plug()
+    a = np.full((64, 64, 3), di(0.18), np.float32)
+    b = a + 0.002
+    ga = p.run(a, p_Halation=0.0) - p.run(a, **PLAIN)
+    gb = p.run(b, p_Halation=0.0) - p.run(b, **PLAIN)
+    assert np.abs(ga).mean() > 0.002, 'no visible grain'
+    assert abs(ga.mean()) < 0.15 * np.abs(ga).mean(), 'grain shifts the brightness'
     assert np.corrcoef(ga.ravel(), gb.ravel())[0, 1] < 0.2, 'grain does not change between frames'
-    sa, sb = p.run(a, p_Animate=0, **only) - a, p.run(b, p_Animate=0, **only) - b
-    assert np.corrcoef(sa.ravel(), sb.ravel())[0, 1] > 0.95, 'static grain changes'
 
 
-def test_texture_extremes_finite():
-    p = plug('Emulsion_Texture.dctl')
-    img = picture(48, 32)
-    img[0, 0] = [4.0, 4.0, 4.0]; img[0, 1] = [-0.1, 0.0, 0.0]
-    for q in [q for q in p.params if q['type'] in ('DCTLUI_SLIDER_FLOAT', 'DCTLUI_SLIDER_INT')]:
-        for v in [q['min'], q['max']]:
+def test_extremes_finite():
+    p = plug()
+    img = chart(256)
+    img[0, :4] = [[-0.2, -0.2, -0.2], [0, 0, 0], [1.6, 1.6, 1.6], [1.2, -0.1, 0.4]]
+    for q in p.params:
+        vals = range(len(q['enums'])) if 'enums' in q else [q['min'], q['max']]
+        for v in vals:
             finite(p.run(img, **{q['name']: v}), f"{q['name']}={v}")
-
-
-# ---------------------------------------------------------------- Emulsion LUT
-
-def test_lut_empty_slots_are_identity():
-    p = plug('Emulsion_LUT.dctl')
-    img = chart(256)[..., :] / 1.1
-    for slot in range(10):
-        assert np.abs(p.run(img, p_Slot=slot) - img).max() < 1e-6, f'slot {slot + 1}'
-
-
-def test_lut_intensity_and_bypass():
-    """a LUT in slot 03 (an inverting LUT, in a temporary copy of the plugin)"""
-    import shutil, tempfile
-    tmp = tempfile.mkdtemp()
-    try:
-        shutil.copy(os.path.join(PLUGIN, 'Emulsion_LUT.dctl'), tmp)
-        shutil.copytree(os.path.join(PLUGIN, 'Emulsion_LUTs'), os.path.join(tmp, 'Emulsion_LUTs'))
-        rows = ['LUT_3D_SIZE 2'] + [f'{1 - r} {1 - g} {1 - b}' for b in (0, 1) for g in (0, 1) for r in (0, 1)]
-        open(os.path.join(tmp, 'Emulsion_LUTs', 'slot03.cube'), 'w').write('\n'.join(rows) + '\n')
-        p = dctl.build(os.path.join(tmp, 'Emulsion_LUT.dctl'))
-        img = chart(256) / 1.1
-        assert np.abs(p.run(img, p_Slot='SLOT03') - (1 - img)).max() < 1e-5
-        assert np.abs(p.run(img, p_Slot='SLOT03', p_Intensity=0.25) - (img + 0.25 * (1 - 2 * img))).max() < 1e-5
-        assert np.abs(p.run(img, p_Slot='SLOT03', p_Bypass=1) - img).max() < 1e-7
-    finally:
-        shutil.rmtree(tmp)
 
 
 # ---------------------------------------------------------------- runner

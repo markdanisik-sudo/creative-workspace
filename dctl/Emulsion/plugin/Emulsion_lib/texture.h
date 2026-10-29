@@ -1,9 +1,8 @@
 // =============================================================================
-//  Emulsion: film texture on the displayed picture
+//  Emulsion: halation (on scene light, before the curve, as in the camera
+//  negative) and grain (on the finished picture)
 //
-//  MTF (emulsion softness, softer red layer, acutance) -> bloom -> halation
-//  -> vignette -> film breath -> grain.  Sizes are in millimetres of film,
-//  so the look holds at any resolution and changes with the film format.
+//  Needs input.h (camera_to_scene).
 // =============================================================================
 
 #define GOLDEN 2.39996322973f   // golden angle: even spiral sampling
@@ -35,12 +34,6 @@ __DEVICE__ float hash_gauss(int x, int y, unsigned int s)
     return hash_sf(x, y, s) + hash_sf(x, y, s + 0x9e3779b9U) + hash_sf(x, y, s + 0x3c6ef372U);
 }
 
-// uniform in [-1, 1] from a frame seed
-__DEVICE__ float seed_sf(unsigned int seed, unsigned int k)
-{
-    return (float)(hash_u(seed ^ k) & 0xFFFFU) / 32767.5f - 1.0f;
-}
-
 // smooth value noise on a lattice of `size` pixels
 __DEVICE__ float value_noise(float px, float py, float size, unsigned int s)
 {
@@ -65,38 +58,11 @@ __DEVICE__ float grain_noise(float px, float py, float size, unsigned int s)
     return n * 0.85f;
 }
 
-// ---- display code values <-> light
-
-__DEVICE__ float3 to_light(float3 c, float g) { return make_float3(_powf(_fmaxf(c.x, 0.0f), g), _powf(_fmaxf(c.y, 0.0f), g), _powf(_fmaxf(c.z, 0.0f), g)); }
-__DEVICE__ float3 to_code(float3 c, float g) { return to_light(c, 1.0f / g); }
-__DEVICE__ float luma709(float3 c) { return 0.2126f * c.x + 0.7152f * c.y + 0.0722f * c.z; }
-
-// ---- sampling
-
-__DEVICE__ float3 fetch(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int x, int y, int w, int h)
+// new grain whenever the picture changes (DCTL has no frame number):
+// hash a sparse grid of source pixels
+__DEVICE__ unsigned int frame_seed(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int w, int h)
 {
-    x = clampi(x, 0, w - 1);
-    y = clampi(y, 0, h - 1);
-    return make_float3(_tex2D(tR, x, y), _tex2D(tG, x, y), _tex2D(tB, x, y));
-}
-
-__DEVICE__ float3 fetch_bilinear(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, float x, float y, int w, int h)
-{
-    float fx = _floorf(x), fy = _floorf(y);
-    float tx = x - fx, ty = y - fy;
-    int x0 = (int)fx, y0 = (int)fy;
-    float3 top = mix3(fetch(tR, tG, tB, x0, y0, w, h), fetch(tR, tG, tB, x0 + 1, y0, w, h), tx);
-    float3 bot = mix3(fetch(tR, tG, tB, x0, y0 + 1, w, h), fetch(tR, tG, tB, x0 + 1, y0 + 1, w, h), tx);
-    return mix3(top, bot, ty);
-}
-
-// ---- per-frame seed: a sparse grid of source pixels, so grain, breath and
-// weave change whenever the picture changes (DCTL has no frame number)
-
-__DEVICE__ unsigned int frame_seed(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int w, int h, int user, int animate)
-{
-    unsigned int seed = hash_u(0x1234567U + (unsigned int)user * 0x9e3779b9U);
-    if (!animate) return seed;
+    unsigned int seed = 0x1234567U;
     for (int j = 0; j < 4; j++) {
         for (int i = 0; i < 4; i++) {
             int sx = (int)(((float)i + 0.5f) * (float)w * 0.25f);
@@ -108,109 +74,51 @@ __DEVICE__ unsigned int frame_seed(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ t
     return seed;
 }
 
-// ---- MTF: emulsion softness (gaussian), a softer red layer (deepest in the
-// emulsion), and the development adjacency effect (acutance)
-
-__DEVICE__ float3 film_mtf(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int cx, int cy, int w, int h,
-                           float3 c, float sm, float sr, float sa, float acut)
-{
-    if (sr > 0.3f) {
-        int R = clampi((int)(3.0f * sr + 0.999f), 1, 4);
-        float3 acc = f3(0.0f);
-        float accR = 0.0f, ws = 0.0f, wr = 0.0f;
-        float im = sm > 0.3f ? 0.5f / (sm * sm) : 1e4f;
-        float ir = 0.5f / (sr * sr);
-        for (int dy = -R; dy <= R; dy++) {
-            for (int dx = -R; dx <= R; dx++) {
-                float d2 = (float)(dx * dx + dy * dy);
-                float3 s = fetch(tR, tG, tB, cx + dx, cy + dy, w, h);
-                float a = _expf(-d2 * im), b = _expf(-d2 * ir);
-                acc = add3(acc, scale3(s, a)); ws += a;
-                accR += s.x * b; wr += b;
-            }
-        }
-        c = scale3(acc, 1.0f / ws);
-        c.x = accR / wr;
-    }
-
-    // acutance: unsharp mask on luma (code values ~ density), wide and sparse
-    if (acut > 0.0f && sa > 0.3f) {
-        float acc = 0.0f, ws = 0.0f;
-        for (int i = 0; i < 24; i++) {
-            float r = _sqrtf(((float)i + 0.5f) / 24.0f) * 2.5f;
-            float a = (float)i * GOLDEN;
-            int sx = (int)((float)cx + _cosf(a) * r * sa + 0.5f);
-            int sy = (int)((float)cy + _sinf(a) * r * sa + 0.5f);
-            float wt = _expf(-0.5f * r * r);
-            acc += luma709(fetch(tR, tG, tB, sx, sy, w, h)) * wt;
-            ws += wt;
-        }
-        float d = acut * (luma709(c) - acc / ws);
-        d = d / (1.0f + _fabs(d) * 4.0f);           // no hard halos on strong edges
-        c = add3(c, f3(d));
-    }
-    return c;
-}
-
-// ---- light effects (display light)
-
-// soft threshold: 0 below thr, then the light above it
-__DEVICE__ float knee(float v, float thr)
-{
-    float k = 0.5f * _fmaxf(thr, 1e-3f);
-    if (v <= thr - k) return 0.0f;
-    if (v < thr + k) return (v - thr + k) * (v - thr + k) / (4.0f * k);
-    return v - thr;
-}
-
-// bloom / diffusion: the light above the threshold, spread with a gaussian
-__DEVICE__ float3 bloom_blur(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, float cx, float cy, int w, int h,
-                             float sigma, float thr, int n, float rot, float rj, float dg)
-{
-    float3 acc = f3(0.0f);
-    float wsum = 0.0f;
-    for (int i = 0; i < n; i++) {
-        float r = _sqrtf(((float)i + rj) / (float)n) * 2.6f;
-        float a = (float)i * GOLDEN + rot;
-        float3 c = to_light(fetch(tR, tG, tB, (int)(cx + _cosf(a) * r * sigma + 0.5f), (int)(cy + _sinf(a) * r * sigma + 0.5f), w, h), dg);
-        float y = luma709(c);
-        float wt = _expf(-0.5f * r * r);
-        acc = add3(acc, scale3(c, knee(y, thr) / _fmaxf(y, 1e-6f) * wt));
-        wsum += wt;
-    }
-    return scale3(acc, 1.0f / wsum);
-}
-
-// halation: light reflected from the film base back into the red (and some
-// green) layer; exponential profile, driven by the red-band light
-__DEVICE__ float halation_blur(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, float cx, float cy, int w, int h,
-                               float sigma, float thr, int n, float rot, float rj, float dg)
-{
-    float acc = 0.0f, wsum = 0.0f;
-    for (int i = 0; i < n; i++) {
-        float r = _sqrtf(((float)i + rj) / (float)n) * 4.0f;
-        float a = (float)i * GOLDEN + rot;
-        float3 c = to_light(fetch(tR, tG, tB, (int)(cx + _cosf(a) * r * sigma + 0.5f), (int)(cy + _sinf(a) * r * sigma + 0.5f), w, h), dg);
-        float wt = _expf(-r);
-        acc += knee(0.75f * c.x + 0.25f * c.y, thr) * wt;
-        wsum += wt;
-    }
-    return acc / wsum;
-}
-
-// lens falloff, in stops at the corners
-__DEVICE__ float vignette(float x, float y, float W, float H, float amount)
-{
-    float dx = (x - 0.5f * W) / (0.5f * W);
-    float dy = (y - 0.5f * H) / (0.5f * W);
-    float r2 = (dx * dx + dy * dy) / (1.0f + (H * H) / (W * W));
-    return _exp2f(-amount * r2 * r2 * 0.6f - amount * r2 * 0.4f);
-}
-
 // how visible negative grain is after printing, by output code value:
 // strongest in the upper midtones, fading into deep blacks and clean whites
 __DEVICE__ float grain_weight(float v)
 {
     v = clampf(v, 0.0f, 1.0f);
     return _powf(v, 1.2f) * _powf(1.0f - v, 0.8f) * (1.0f / 0.26f) + 0.04f;
+}
+
+// 35 mm Vision3 250D-like grain on display code values; `amount` 1 = normal
+__DEVICE__ float3 add_grain(float3 c, float amount, int x, int y, float width, unsigned int seed)
+{
+    float size = _fmaxf(0.012f * 0.95f * width / 24.89f, 0.6f);      // grain clouds, mm of 35 mm film -> pixels
+    float px = (float)x, py = (float)y;
+    unsigned int s = hash_u(seed ^ 0x27d4eb2fU);
+    float nm = grain_noise(px, py, size, s);                          // shared by the three layers
+    float nr = 0.5f * nm + 0.5f * grain_noise(px, py, size, s ^ 0x165667b1U);
+    float ng = 0.5f * nm + 0.5f * grain_noise(px, py, size * 0.9f, s ^ 0xd3a2646cU);
+    float nb = 0.5f * nm + 0.5f * grain_noise(px, py, size * 1.15f, s ^ 0xfd7046c5U);
+    float amp = 0.015f * amount;
+    return make_float3(c.x + nr * amp * grain_weight(c.x),
+                       c.y + ng * amp * 0.90f * grain_weight(c.y),
+                       c.z + nb * amp * 1.35f * grain_weight(c.z));
+}
+
+// halation: bright scene light bleeds back from the film base into the red
+// (and a little green) layer.  Samples the source around the pixel on an
+// exponential profile; returns the light to add (Rec.2020 scene linear).
+__DEVICE__ float3 halation(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int cx, int cy, int w, int h,
+                           int gamut, int gamma, float gain)
+{
+    const int n = 32;
+    float sigma = 0.0035f * (float)w;
+    float rot = (float)(hash3u(cx, cy, 0x5bd1e995U) & 0xFFFFU) * (6.2831853f / 65535.0f);
+    float acc = 0.0f, wsum = 0.0f;
+    for (int i = 0; i < n; i++) {
+        float r = _sqrtf(((float)i + 0.5f) / (float)n) * 4.0f;
+        float a = (float)i * GOLDEN + rot;
+        int sx = clampi((int)((float)cx + _cosf(a) * r * sigma + 0.5f), 0, w - 1);
+        int sy = clampi((int)((float)cy + _sinf(a) * r * sigma + 0.5f), 0, h - 1);
+        float3 e = scale3(camera_to_scene(make_float3(_tex2D(tR, sx, sy), _tex2D(tG, sx, sy), _tex2D(tB, sx, sy)), gamut, gamma), gain);
+        float v = 0.75f * e.x + 0.25f * e.y;
+        float wt = _expf(-r);
+        acc += _fmaxf(v - 1.4f, 0.0f) * wt;                            // above ~3 stops over grey
+        wsum += wt;
+    }
+    float hv = 0.6f * acc / wsum;
+    return make_float3(hv, hv * 0.22f, hv * 0.02f);
 }

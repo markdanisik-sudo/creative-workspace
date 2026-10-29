@@ -1,0 +1,55 @@
+// =============================================================================
+//  EMULSION  |  a simple film look for DaVinci Resolve
+//  v2.0
+//
+//    camera log -> scene light (Rec.2020)            Emulsion_lib/input.h
+//    -> exposure, halation, temperature, saturation  Emulsion_lib/texture.h, grade.h
+//    -> S curve per channel with the 2383 crossover  Emulsion_lib/look.h
+//    -> output gamut, fade, grain
+//
+//  One node, straight from camera log to the display.  Keep the Emulsion_lib
+//  folder next to this file.  Requires DaVinci Resolve Studio.
+// =============================================================================
+
+DEFINE_UI_PARAMS(p_Exposure, Exposure, DCTLUI_SLIDER_FLOAT, 0.0, -3.0, 3.0, 0.05)
+DEFINE_UI_PARAMS(p_Temp, Temperature, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Contrast, Contrast, DCTLUI_SLIDER_FLOAT, 1.0, 0.6, 1.5, 0.01)
+DEFINE_UI_PARAMS(p_Saturation, Saturation, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_Fade, Fade, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_Halation, Halation, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_Grain, Grain, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 3.0, 0.01)
+DEFINE_UI_PARAMS(p_Strength, Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_Look, Look, DCTLUI_COMBO_BOX, 0, { L_PRINT, L_DAY, L_NIGHT, L_BLEACH, L_NEUTRAL }, { "Kodak 2383 Print", "Day - 250D warm", "Night - 500T cool", "Bleach Bypass", "Neutral (curve only)" })
+DEFINE_UI_PARAMS(p_InGamut, Input Color Space, DCTLUI_COMBO_BOX, 0, { G_DWG, G_AWG3, G_AWG4, G_SG3C, G_VG, G_RWG, G_CCG, G_709, G_2020 }, { "DaVinci Wide Gamut", "ARRI Wide Gamut 3", "ARRI Wide Gamut 4", "Sony S-Gamut3.Cine", "Panasonic V-Gamut", "RED Wide Gamut RGB", "Canon Cinema Gamut", "Rec.709", "Rec.2020" })
+DEFINE_UI_PARAMS(p_InGamma, Input Gamma, DCTLUI_COMBO_BOX, 0, { T_DI, T_LOGC3, T_LOGC4, T_SLOG3, T_VLOG, T_LOG3G10, T_CLOG2, T_CLOG3, T_G24, T_LIN, T_CINEON }, { "DaVinci Intermediate", "ARRI LogC3", "ARRI LogC4", "Sony S-Log3", "Panasonic V-Log", "RED Log3G10", "Canon Log 2", "Canon Log 3", "Gamma 2.4", "Linear", "Cineon Log (film scan)" })
+DEFINE_UI_PARAMS(p_Output, Output, DCTLUI_COMBO_BOX, 0, { OUT_709, OUT_SRGB, OUT_P3 }, { "Rec.709 Gamma 2.4", "sRGB / Gamma 2.2", "P3-D65 Gamma 2.6" })
+
+#include "Emulsion_lib/core.h"
+#include "Emulsion_lib/input.h"
+#include "Emulsion_lib/grade.h"
+#include "Emulsion_lib/look.h"
+#include "Emulsion_lib/texture.h"
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
+{
+    Look look = make_look(p_Look);
+    float k = p_Strength;                       // how much of the look's colour (0 = only the curve)
+    float gain = _exp2f(p_Exposure);
+
+    float3 code = make_float3(_tex2D(p_TexR, p_X, p_Y), _tex2D(p_TexG, p_X, p_Y), _tex2D(p_TexB, p_X, p_Y));
+    float3 E = scale3(camera_to_scene(code, p_InGamut, p_InGamma), gain);
+    if (p_Halation > 0.0f)
+        E = add3(E, scale3(halation(p_TexR, p_TexG, p_TexB, p_X, p_Y, p_Width, p_Height, p_InGamut, p_InGamma, gain), p_Halation));
+
+    E = white_balance(E, temperature_k(p_Temp + k * look.warmth));
+    E = saturate(E, p_Saturation * (1.0f + k * (look.saturation - 1.0f)));
+
+    float contrast = p_Contrast * (1.0f + k * (look.contrast - 1.0f));
+    float3 L = tone_map(E, contrast, k * look.crossover);
+    float3 res = encode_output(L, p_Output, p_Fade * k);
+
+    if (p_Grain > 0.0f)
+        res = add_grain(res, p_Grain, p_X, p_Y, (float)p_Width, frame_seed(p_TexR, p_TexG, p_TexB, p_Width, p_Height));
+    return res;
+}
