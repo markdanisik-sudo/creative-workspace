@@ -1,11 +1,13 @@
 // =============================================================================
-//  EMULSION  |  a simple film look for DaVinci Resolve
-//  v2.0
+//  EMULSION  |  digital to film for DaVinci Resolve
+//  v3.0
 //
-//    camera log -> scene light (Rec.2020)            Emulsion_lib/input.h
-//    -> exposure, halation, temperature, saturation  Emulsion_lib/texture.h, grade.h
-//    -> S curve per channel with the 2383 crossover  Emulsion_lib/look.h
-//    -> output gamut, fade, grain
+//    camera log -> scene light (Rec.2020)              Emulsion_lib/input.h
+//    -> exposure, halation, temperature, saturation    Emulsion_lib/texture.h, grade.h
+//    -> negative (layer sensitivity, interimage)       Emulsion_lib/look.h
+//    -> print: per-layer curve with the system
+//       crossover, roll-offs -> output, fade
+//    -> grain                                          Emulsion_lib/texture.h
 //
 //  One node, straight from camera log to the display.  Keep the Emulsion_lib
 //  folder next to this file.  Requires DaVinci Resolve Studio.
@@ -13,17 +15,31 @@
 
 DEFINE_UI_PARAMS(p_Exposure, Exposure, DCTLUI_SLIDER_FLOAT, 0.0, -3.0, 3.0, 0.05)
 DEFINE_UI_PARAMS(p_Temp, Temperature, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
-DEFINE_UI_PARAMS(p_Contrast, Contrast, DCTLUI_SLIDER_FLOAT, 1.0, 0.6, 1.5, 0.01)
-DEFINE_UI_PARAMS(p_Saturation, Saturation, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
-DEFINE_UI_PARAMS(p_Fade, Fade, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 3.0, 0.01)
-DEFINE_UI_PARAMS(p_Halation, Halation, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 3.0, 0.01)
-DEFINE_UI_PARAMS(p_Grain, Grain, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 3.0, 0.01)
-DEFINE_UI_PARAMS(p_Strength, Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Contrast, Contrast, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 1.5, 0.001)
+DEFINE_UI_PARAMS(p_Pivot, Contrast Pivot, DCTLUI_SLIDER_FLOAT, 0.336, 0.1, 0.6, 0.001)
+DEFINE_UI_PARAMS(p_Split, Split Mix, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(p_ShadowRoll, Shadow Roll-off, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(p_HighlightRoll, Highlight Roll-off, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(p_DensityR, Red Density, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 1.5, 0.001)
+DEFINE_UI_PARAMS(p_DensityG, Green Density, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 1.5, 0.001)
+DEFINE_UI_PARAMS(p_DensityB, Blue Density, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 1.5, 0.001)
+DEFINE_UI_PARAMS(p_Saturation, Film Saturation, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.001)
+DEFINE_UI_PARAMS(p_Fade, Fade, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 3.0, 0.001)
+DEFINE_UI_PARAMS(p_GrainStrength, Grain Strength, DCTLUI_SLIDER_FLOAT, 0.25, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(p_GrainColor, Grain Color, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.001)
+DEFINE_UI_PARAMS(p_HalStrength, Halation Strength, DCTLUI_SLIDER_FLOAT, 3.0, 0.0, 10.0, 0.01)
 
-DEFINE_UI_PARAMS(p_Look, Look, DCTLUI_COMBO_BOX, 0, { L_PRINT, L_DAY, L_NIGHT, L_BLEACH, L_NEUTRAL }, { "Kodak 2383 Print", "Day - 250D warm", "Night - 500T cool", "Bleach Bypass", "Neutral (curve only)" })
-DEFINE_UI_PARAMS(p_InGamut, Input Color Space, DCTLUI_COMBO_BOX, 0, { G_DWG, G_AWG3, G_AWG4, G_SG3C, G_VG, G_RWG, G_CCG, G_709, G_2020 }, { "DaVinci Wide Gamut", "ARRI Wide Gamut 3", "ARRI Wide Gamut 4", "Sony S-Gamut3.Cine", "Panasonic V-Gamut", "RED Wide Gamut RGB", "Canon Cinema Gamut", "Rec.709", "Rec.2020" })
+DEFINE_UI_PARAMS(p_Grain, Enable Grain, DCTLUI_CHECK_BOX, 0)
+DEFINE_UI_PARAMS(p_Halation, Enable Halation, DCTLUI_CHECK_BOX, 0)
+
+DEFINE_UI_PARAMS(p_GrainSize, Grain Size, DCTLUI_COMBO_BOX, 1, { GS_65, GS_35, GS_16, GS_8 }, { "65mm", "35mm", "Super 16", "Super 8" })
+DEFINE_UI_PARAMS(p_HalPreset, Halation Preset, DCTLUI_COMBO_BOX, 1, { HP_65, HP_35, HP_16, HP_8 }, { "65mm", "35mm", "Super 16", "Super 8" })
+DEFINE_UI_PARAMS(p_Weave, Gate Weave Preset, DCTLUI_COMBO_BOX, 0, { GW_OFF, GW_SUBTLE, GW_STRONG }, { "OFF", "Subtle", "Strong" })
+DEFINE_UI_PARAMS(p_Neg, Negative Stock, DCTLUI_COMBO_BOX, 1, { NEG_50D, NEG_250D, NEG_500T, NEG_CS50, NEG_CS800, NEG_NONE }, { "Kodak Vision3 50D 5203", "Kodak Vision3 250D 5207", "Kodak Vision3 500T 5219", "CineStill 50D", "CineStill 800T", "None" })
+DEFINE_UI_PARAMS(p_Print, Print Stock, DCTLUI_COMBO_BOX, 0, { PR_2383, PR_2393, PR_NONE }, { "Kodak Vision Color 2383", "Kodak Vision Premier 2393", "None" })
+DEFINE_UI_PARAMS(p_InGamut, Input Colorspace, DCTLUI_COMBO_BOX, 0, { G_DWG, G_AWG3, G_AWG4, G_SG3C, G_VG, G_RWG, G_CCG, G_709, G_2020 }, { "DaVinci Wide Gamut", "ARRI Wide Gamut 3", "ARRI Wide Gamut 4", "Sony S-Gamut3.Cine", "Panasonic V-Gamut", "RED Wide Gamut RGB", "Canon Cinema Gamut", "Rec.709", "Rec.2020" })
 DEFINE_UI_PARAMS(p_InGamma, Input Gamma, DCTLUI_COMBO_BOX, 0, { T_DI, T_LOGC3, T_LOGC4, T_SLOG3, T_VLOG, T_LOG3G10, T_CLOG2, T_CLOG3, T_G24, T_LIN, T_CINEON }, { "DaVinci Intermediate", "ARRI LogC3", "ARRI LogC4", "Sony S-Log3", "Panasonic V-Log", "RED Log3G10", "Canon Log 2", "Canon Log 3", "Gamma 2.4", "Linear", "Cineon Log (film scan)" })
-DEFINE_UI_PARAMS(p_Output, Output, DCTLUI_COMBO_BOX, 0, { OUT_709, OUT_SRGB, OUT_P3 }, { "Rec.709 Gamma 2.4", "sRGB / Gamma 2.2", "P3-D65 Gamma 2.6" })
+DEFINE_UI_PARAMS(p_Output, Output, DCTLUI_COMBO_BOX, 0, { OUT_709, OUT_SRGB, OUT_P3 }, { "Rec709 Gamma 2.4", "sRGB / Gamma 2.2", "P3-D65 Gamma 2.6" })
 
 #include "Emulsion_lib/core.h"
 #include "Emulsion_lib/input.h"
@@ -33,23 +49,39 @@ DEFINE_UI_PARAMS(p_Output, Output, DCTLUI_COMBO_BOX, 0, { OUT_709, OUT_SRGB, OUT
 
 __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTURE__ p_TexR, __TEXTURE__ p_TexG, __TEXTURE__ p_TexB)
 {
-    Look look = make_look(p_Look);
-    float k = p_Strength;                       // how much of the look's colour (0 = only the curve)
+    NegStock neg = neg_stock(p_Neg);
+    PrintStock print = print_stock(p_Print);
     float gain = _exp2f(p_Exposure);
+    unsigned int seed = (p_Grain || p_Weave != GW_OFF) ? frame_seed(p_TexR, p_TexG, p_TexB, p_Width, p_Height) : 0U;
 
-    float3 code = make_float3(_tex2D(p_TexR, p_X, p_Y), _tex2D(p_TexG, p_X, p_Y), _tex2D(p_TexB, p_X, p_Y));
+    // gate weave moves the whole frame
+    float cx = (float)p_X, cy = (float)p_Y;
+    float3 code;
+    if (p_Weave != GW_OFF) {
+        float2 d = gate_weave(seed, p_Weave == GW_STRONG ? 0.0012f : 0.0004f, (float)p_Width);
+        cx += d.x; cy += d.y;
+        code = fetch_bilinear(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height);
+    } else {
+        code = make_float3(_tex2D(p_TexR, p_X, p_Y), _tex2D(p_TexG, p_X, p_Y), _tex2D(p_TexB, p_X, p_Y));
+    }
+
     float3 E = scale3(camera_to_scene(code, p_InGamut, p_InGamma), gain);
-    if (p_Halation > 0.0f)
-        E = add3(E, scale3(halation(p_TexR, p_TexG, p_TexB, p_X, p_Y, p_Width, p_Height, p_InGamut, p_InGamma, gain), p_Halation));
+    if (p_Halation && p_HalStrength > 0.0f) {
+        float warmth = neg.halation > 1.0f ? 1.6f : 1.0f;           // no rem-jet: redder, wider glow
+        float3 h = halation(p_TexR, p_TexG, p_TexB, cx, cy, p_Width, p_Height, p_InGamut, p_InGamma, gain,
+                            frame_mm(p_HalPreset) / (neg.halation > 1.0f ? 1.5f : 1.0f), warmth);
+        E = add3(E, scale3(h, p_HalStrength * neg.halation));
+    }
+    E = white_balance(E, temperature_k(p_Temp));
+    E = saturate(E, p_Saturation);
 
-    E = white_balance(E, temperature_k(p_Temp + k * look.warmth));
-    E = saturate(E, p_Saturation * (1.0f + k * (look.saturation - 1.0f)));
+    Tone t;
+    t.contrast = p_Contrast; t.pivot = p_Pivot; t.split = p_Split;
+    t.shadowRoll = p_ShadowRoll; t.highlightRoll = p_HighlightRoll;
+    t.density = make_float3(p_DensityR, p_DensityG, p_DensityB);
+    float3 res = encode_output(develop_and_print(E, neg, print, t), p_Output, p_Fade * print.black);
 
-    float contrast = p_Contrast * (1.0f + k * (look.contrast - 1.0f));
-    float3 L = tone_map(E, contrast, k * look.crossover);
-    float3 res = encode_output(L, p_Output, p_Fade * k);
-
-    if (p_Grain > 0.0f)
-        res = add_grain(res, p_Grain, p_X, p_Y, (float)p_Width, frame_seed(p_TexR, p_TexG, p_TexB, p_Width, p_Height));
+    if (p_Grain && p_GrainStrength > 0.0f)
+        res = add_grain(res, p_GrainStrength, p_GrainColor, frame_mm(p_GrainSize), p_X, p_Y, (float)p_Width, seed);
     return res;
 }

@@ -12,8 +12,7 @@ import dctl
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = os.path.join(HERE, '..', 'plugin')
-LOOKS = ['L_PRINT', 'L_DAY', 'L_NIGHT', 'L_BLEACH', 'L_NEUTRAL']
-PLAIN = dict(p_Grain=0.0, p_Halation=0.0)          # colour only
+PLAIN = dict(p_Grain=0, p_Halation=0, p_Weave='GW_OFF')   # colour only
 _cache = {}
 
 
@@ -89,106 +88,154 @@ def test_source_no_host_only_code():
     assert not bad, 'not allowed in DCTL:\n  ' + '\n  '.join(bad)
 
 
-def test_simple_ui():
-    """the point of Emulsion: a handful of controls"""
-    assert len(plug().params) <= 12, [q['label'] for q in plug().params]
+def test_ui_layout():
+    """SumerFade-style layout: neutral defaults, film character from the stock menus"""
+    p = plug()
+    assert len(p.params) <= 26, [q['label'] for q in p.params]
+    for q in p.params:
+        if q['name'] in ('p_Contrast', 'p_DensityR', 'p_DensityG', 'p_DensityB', 'p_Saturation'):
+            assert q['default'] == 1.0, q['name']
+        if q['name'] in ('p_Split', 'p_ShadowRoll', 'p_HighlightRoll', 'p_Grain', 'p_Halation'):
+            assert q['default'] == 0.0, q['name']
+    assert abs(p.by_name['p_Pivot']['default'] - 0.336) < 1e-9
 
 
 # ---------------------------------------------------------------- tone curve
 
+NEUTRAL = dict(p_Neg='NEG_NONE', p_Print='PR_NONE')   # no film colour: just the curve
+
+
+def run_grey(p, stops=0.0, **kw):
+    return p.run(di(np.full((1, 1, 3), 0.18 * 2.0 ** stops)).astype(np.float32), **dict(PLAIN, **kw))[0, 0]
+
+
 def test_curve_matches_cinesumer():
-    """Neutral look, no fade: the luminance curve over DI code is the digitised Cinesumer curve"""
+    """no film colour, no fade: the luminance curve over DI code is the digitised Cinesumer curve"""
     pts = np.array(json.load(open(os.path.join(HERE, 'cinesumer_curve.json')))['points'])
     x, img = ramp(0.0, 0.85, 171)
-    y = luma(plug().run(img, p_Look='L_NEUTRAL', p_Fade=0.0, **PLAIN)[0])
+    y = luma(plug().run(img, p_Fade=0.0, **NEUTRAL, **PLAIN)[0])
     d = np.abs(np.interp(pts[:, 0], x, y) - pts[:, 1])
     assert d.max() < 0.02, f'max deviation {d.max():.3f} at DI {pts[d.argmax(), 0]}'
 
 
 def test_curve_grey_and_range():
-    """18% grey -> 0.28 (the Cinesumer placement), black and white reachable"""
+    """18% grey -> 0.28 (Cinesumer: pivot 0.336 = DI grey), black and white reachable"""
     p = plug()
-    grey = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
-    g = p.run(grey, p_Look='L_NEUTRAL', p_Fade=0.0, **PLAIN)[0, 0]
-    assert np.all(np.abs(g - 0.28) < 0.01), g
+    for neg in range(6):
+        for pr in range(3):
+            g = run_grey(p, p_Neg=neg, p_Print=pr, p_Fade=0.0)
+            assert np.all(np.abs(g - 0.28) < 0.01), (neg, pr, g)
     x, img = ramp()
-    y = luma(p.run(img, p_Look='L_NEUTRAL', p_Fade=0.0, **PLAIN)[0])
+    y = luma(p.run(img, p_Fade=0.0, **NEUTRAL, **PLAIN)[0])
     assert y[0] < 0.002 and y[-1] > 0.99, (y[0], y[-1])
-    # +0.7 stop puts grey near the usual 0.41
-    g = p.run(grey, p_Look='L_NEUTRAL', p_Fade=0.0, p_Exposure=0.7, **PLAIN)[0, 0]
-    assert abs(g[1] - 0.41) < 0.03, g
+    assert abs(run_grey(p, p_Exposure=0.7, p_Fade=0.0, **NEUTRAL)[1] - 0.41) < 0.03
 
 
 def test_curve_monotonic():
-    """brighter scene -> brighter picture, every look, contrast and output"""
+    """brighter scene -> brighter picture: every stock, print, contrast, roll-off and output"""
     p = plug()
     x, img = ramp(0.0, 1.0, 301)
-    for look in LOOKS:
-        for con in [0.6, 1.0, 1.5]:
-            for out in range(3):
-                o = p.run(img, p_Look=look, p_Contrast=con, p_Output=out, **PLAIN)[0]
-                d = np.diff(o, axis=0)
-                # in the deepest blacks (output < 0.08) the gamut compression can
-                # wiggle the blue channel by < 0.005: invisible, under the fade
-                deep = np.repeat((o[1:].max(1) < 0.08)[:, None], 3, 1)
-                assert np.all(d[~deep] >= -1e-6) and np.all(d[deep] >= -0.005), f'{look} contrast {con} output {out}: a channel goes down'
+    cases = [dict(p_Neg=n, p_Print=pr) for n in range(6) for pr in range(3)]
+    cases += [dict(p_Contrast=c) for c in [0.5, 1.5]] + [dict(p_Output=o) for o in [1, 2]]
+    cases += [dict(p_ShadowRoll=a, p_HighlightRoll=b) for a in [-1.0, 1.0] for b in [-1.0, 1.0]]
+    cases += [dict(p_Split=sp) for sp in [-1.0, 1.0]] + [dict(p_DensityR=1.5, p_DensityB=0.5), dict(p_DensityR=0.5, p_DensityB=1.5)]
+    for kw in cases:
+        o = p.run(img, **kw, **PLAIN)[0]
+        d = np.diff(o, axis=0)
+        # in the deepest blacks (output < 0.08) the gamut compression can
+        # wiggle the blue channel by < 0.005: invisible, under the fade
+        deep = np.repeat((o[1:].max(1) < 0.08)[:, None], 3, 1)
+        assert np.all(d[~deep] >= -1e-4) and np.all(d[deep] >= -0.005), f'{kw}: a channel goes down'
 
 
 def test_contrast_pivots_on_grey():
     p = plug()
-    g = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
-    a = p.run(g, p_Look='L_NEUTRAL', **PLAIN)[0, 0]
-    for con in [0.6, 1.5]:
-        b = p.run(g, p_Look='L_NEUTRAL', p_Contrast=con, **PLAIN)[0, 0]
-        assert np.abs(a - b).max() < 1e-4, (con, a, b)
+    a = run_grey(p, **NEUTRAL)
+    for con in [0.5, 1.5]:
+        assert np.abs(run_grey(p, p_Contrast=con, **NEUTRAL) - a).max() < 1e-4, con
+    # a pivot above grey: more contrast darkens grey
+    assert run_grey(p, p_Contrast=1.4, p_Pivot=0.5, **NEUTRAL)[1] < a[1] - 0.02
 
 
 # ---------------------------------------------------------------- colour
 
-def test_neutral_stays_neutral():
-    """grey input meets in every channel around 18% grey; Strength 0 is fully neutral"""
+def test_neutral_without_film():
     p = plug()
-    grey = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
-    for look in ['L_PRINT', 'L_BLEACH', 'L_NEUTRAL']:
-        o = p.run(grey, p_Look=look, p_Fade=0.0, **PLAIN)[0, 0]
-        assert np.ptp(o) < 0.002, f'{look}: grey is tinted: {o}'
-    x, img = ramp(0.05, 1.0, 96)
-    o = p.run(img, p_Strength=0.0, **PLAIN)[0]
-    assert np.ptp(o, axis=1).max() < 1e-4, 'Strength 0 is not neutral'
+    x, img = ramp(0.0, 1.0, 96)
+    o = p.run(img, **NEUTRAL, **PLAIN)[0]
+    assert np.ptp(o, axis=1).max() < 0.02, 'None / None is not neutral (only the cool fade may tint)'
+    o = p.run(img, p_Fade=0.0, **NEUTRAL, **PLAIN)[0]
+    assert np.ptp(o, axis=1).max() < 1e-4, 'None / None tints greys'
 
 
 def test_print_split_tone():
-    """Kodak 2383 crossover: cyan-blue shadows, warm highlights (as in the Cinesumer frames)"""
+    """negative x 2383 crossover: blue shadows, warm highlights (as in the Cinesumer frames)"""
     p = plug()
-    shadow = di(np.full((1, 1, 3), 0.18 * 2 ** -3)).astype(np.float32)
-    high = di(np.full((1, 1, 3), 0.18 * 2 ** 2.5)).astype(np.float32)
-    s = p.run(shadow, p_Look='L_PRINT', p_Fade=0.0, **PLAIN)[0, 0]
-    h = p.run(high, p_Look='L_PRINT', p_Fade=0.0, **PLAIN)[0, 0]
-    assert s[2] > s[0] + 0.005, f'shadows not cool: {s}'
-    assert h[0] > h[2] + 0.01, f'highlights not warm: {h}'
+    for neg in ['NEG_50D', 'NEG_250D', 'NEG_500T']:
+        for pr in ['PR_2383', 'PR_2393']:
+            s = run_grey(p, -3.0, p_Neg=neg, p_Print=pr, p_Fade=0.0)
+            h = run_grey(p, 2.5, p_Neg=neg, p_Print=pr, p_Fade=0.0)
+            assert s[2] > s[0] + 0.005, f'{neg} {pr}: shadows not cool: {s}'
+            assert h[0] > h[2] + 0.02, f'{neg} {pr}: highlights not warm: {h}'
+
+
+def test_split_mix():
+    p = plug()
+    for stops, ch in [(-3.0, 2), (2.5, 0)]:
+        a = run_grey(p, stops, p_Fade=0.0)
+        b = run_grey(p, stops, p_Fade=0.0, p_Split=1.0)
+        warm_cool = (b[0] - b[2]) - (a[0] - a[2])
+        assert (warm_cool < -0.003) if ch == 2 else (warm_cool > 0.01), f'{stops} stops: {a} -> {b}'
+    assert np.abs(run_grey(p, p_Split=1.0, p_Fade=0.0) - run_grey(p, p_Fade=0.0)).max() < 1e-4, 'grey moved'
+
+
+def test_layer_density():
+    """Red Density: steeper red layer -> less red in shadows, more in highlights, grey unchanged"""
+    p = plug()
+    for stops, sign in [(-3.0, -1), (2.5, 1)]:
+        a, b = run_grey(p, stops, **NEUTRAL), run_grey(p, stops, p_DensityR=1.3, **NEUTRAL)
+        # green moves a little: a redder Rec.2020 red has a negative green in Rec.709
+        assert sign * (b[0] - a[0]) > 0.005 and abs(b[1] - a[1]) < 0.02, (stops, a, b)
+    assert np.abs(run_grey(p, p_DensityR=1.3, p_DensityB=0.7, **NEUTRAL) - run_grey(p, **NEUTRAL)).max() < 1e-4
+
+
+def test_roll_offs():
+    """+ = softer: lifted shadows, lower highlights; grey and the end points stay"""
+    p = plug()
+    kw = dict(p_Fade=0.0, **NEUTRAL)
+    assert run_grey(p, -3.0, p_ShadowRoll=1.0, **kw)[1] > run_grey(p, -3.0, **kw)[1] + 0.005
+    assert run_grey(p, -3.0, p_ShadowRoll=-1.0, **kw)[1] < run_grey(p, -3.0, **kw)[1] - 0.005
+    assert run_grey(p, 2.5, p_HighlightRoll=1.0, **kw)[1] < run_grey(p, 2.5, **kw)[1] - 0.01
+    assert run_grey(p, 2.5, p_HighlightRoll=-1.0, **kw)[1] > run_grey(p, 2.5, **kw)[1] + 0.01
+    for k in ['p_ShadowRoll', 'p_HighlightRoll']:
+        assert np.abs(run_grey(p, **{k: 1.0}, **kw) - run_grey(p, **kw)).max() < 1e-4, k
 
 
 def test_fade_lifts_cool_blacks():
     p = plug()
     black = np.zeros((1, 1, 3), np.float32)
-    o = p.run(black, **PLAIN)[0, 0]
+    o = p.run(black, **NEUTRAL, **PLAIN)[0, 0]
     assert np.allclose(o, [0.024, 0.035, 0.043], atol=0.003), o
     assert p.run(black, p_Fade=0.0, **PLAIN)[0, 0].max() < 0.002
+    deep = p.run(black, p_Print='PR_2393', **PLAIN)[0, 0]
+    assert np.all(deep < o - 0.005), f'2393 blacks not deeper: {deep}'
 
 
-def test_strength_zero_ignores_look():
+def test_stocks_differ():
+    """each negative has its own colour (spectral sensitivity, layer gamma)"""
     p = plug()
     img = chart(256)
-    ref = p.run(img, p_Look='L_NEUTRAL', p_Strength=0.0, **PLAIN)
-    for look in LOOKS:
-        assert np.abs(p.run(img, p_Look=look, p_Strength=0.0, **PLAIN) - ref).max() < 1e-6, look
+    outs = [p.run(img, p_Neg=n, **PLAIN) for n in ['NEG_50D', 'NEG_250D', 'NEG_500T', 'NEG_NONE']]
+    for i in range(4):
+        for j in range(i + 1, 4):
+            assert np.abs(outs[i] - outs[j]).mean() > 0.002, (i, j)
+    # CineStill = the same emulsion, colour unchanged without halation
+    assert np.abs(p.run(img, p_Neg='NEG_CS50', **PLAIN) - outs[0]).max() < 1e-6
 
 
 def test_temperature_direction():
     p = plug()
-    g = di(np.full((1, 1, 3), 0.18)).astype(np.float32)
-    warm = p.run(g, p_Look='L_NEUTRAL', p_Temp=1.0, **PLAIN)[0, 0]
-    cool = p.run(g, p_Look='L_NEUTRAL', p_Temp=-1.0, **PLAIN)[0, 0]
+    warm, cool = run_grey(p, p_Temp=1.0, **NEUTRAL), run_grey(p, p_Temp=-1.0, **NEUTRAL)
     assert warm[0] > warm[2] and cool[2] > cool[0], (warm, cool)
 
 
@@ -196,9 +243,9 @@ def test_outputs_same_display_light():
     """sRGB / P3 encode the same light as Rec.709 for greys"""
     p = plug()
     x, img = ramp(0.1, 0.9, 41)
-    a = p.run(img, p_Look='L_NEUTRAL', **PLAIN)[0] ** 2.4
-    assert np.abs(p.run(img, p_Look='L_NEUTRAL', p_Output='OUT_SRGB', **PLAIN)[0] ** 2.2 - a).max() < 1e-4
-    assert np.abs(p.run(img, p_Look='L_NEUTRAL', p_Output='OUT_P3', **PLAIN)[0] ** 2.6 - a).max() < 1e-4
+    a = p.run(img, **NEUTRAL, **PLAIN)[0] ** 2.4
+    assert np.abs(p.run(img, p_Output='OUT_SRGB', **NEUTRAL, **PLAIN)[0] ** 2.2 - a).max() < 1e-4
+    assert np.abs(p.run(img, p_Output='OUT_P3', **NEUTRAL, **PLAIN)[0] ** 2.6 - a).max() < 1e-4
 
 
 def test_inputs_decode_grey():
@@ -208,45 +255,73 @@ def test_inputs_decode_grey():
             'T_LOG3G10': 0.333136, 'T_LIN': 0.18, 'T_CINEON': 446.0 / 1023.0}
     ref = None
     for t, code in grey.items():
-        o = p.run(np.full((1, 1, 3), code, np.float32), p_InGamut='G_2020', p_InGamma=t, p_Look='L_NEUTRAL', **PLAIN)[0, 0]
+        o = p.run(np.full((1, 1, 3), code, np.float32), p_InGamut='G_2020', p_InGamma=t, **PLAIN)[0, 0]
         ref = o if ref is None else ref
         assert np.abs(o - ref).max() < 0.004, f'{t}: {o} vs {ref}'
 
 
 # ---------------------------------------------------------------- texture
 
+def light_picture():
+    """a small, very bright light in the middle of a 4K-wide strip"""
+    img = np.full((40, 4096 // 8, 3), di(0.18), np.float32)
+    img[18:22, 254:258] = di(0.18 * 2 ** 6)
+    return img
+
+
 def test_halation_only_around_lights():
     p = plug()
-    img = np.full((48, 96, 3), di(0.18), np.float32)
-    flat = p.run(img, p_Grain=0.0) - p.run(img, **PLAIN)
-    assert np.abs(flat).max() < 1e-6, 'halation on a flat grey picture'
-    img[20:24, 46:50] = di(0.18 * 2 ** 6)
-    d = p.run(img, p_Grain=0.0, p_Halation=2.0) - p.run(img, **PLAIN)
-    ring = d[14:30, 40:56].copy(); ring[6:10, 6:10] = 0
-    assert ring[..., 0].max() > 0.02 and ring[..., 0].max() > 3 * ring[..., 2].max(), 'no red glow around the light'
-    assert np.abs(d[:, :20]).max() < 1e-6, 'halation far from the light'
+    flat = np.full((24, 96, 3), di(0.18), np.float32)
+    assert np.abs(p.run(flat, p_Halation=1) - p.run(flat, **PLAIN)).max() < 1e-6, 'halation on a flat picture'
+    img = light_picture()
+    base = p.run(img, **PLAIN)
+    assert np.abs(p.run(img, p_HalStrength=10.0, **PLAIN) - base).max() == 0, 'halation while disabled'
+    d = p.run(img, p_Halation=1) - base
+    near = d[20, 259:264]                                      # just right of the light
+    assert near[:, 0].max() > 0.02 and near[:, 0].max() > 3 * near[:, 2].max(), f'no red glow: {near}'
+    assert np.abs(d[:, :150]).max() < 1e-6, 'halation far from the light'
+    soft = p.run(img, p_Halation=1, p_HalStrength=0.5) - base
+    cs = p.run(img, p_Halation=1, p_HalStrength=0.5, p_Neg='NEG_CS50') - p.run(img, p_Neg='NEG_CS50', **PLAIN)
+    assert cs[20, 260:270, 0].mean() > 2 * soft[20, 260:270, 0].mean(), 'CineStill (no rem-jet) not stronger / wider'
 
 
 def test_grain():
-    """visible, unbiased, new with each frame"""
+    """off by default, visible when on, unbiased, new each frame, size by format"""
     p = plug()
     a = np.full((64, 64, 3), di(0.18), np.float32)
     b = a + 0.002
-    ga = p.run(a, p_Halation=0.0) - p.run(a, **PLAIN)
-    gb = p.run(b, p_Halation=0.0) - p.run(b, **PLAIN)
+    assert np.abs(p.run(a) - p.run(a, **PLAIN)).max() == 0, 'grain while disabled'
+    ga = p.run(a, p_Grain=1) - p.run(a, **PLAIN)
+    gb = p.run(b, p_Grain=1) - p.run(b, **PLAIN)
     assert np.abs(ga).mean() > 0.002, 'no visible grain'
     assert abs(ga.mean()) < 0.15 * np.abs(ga).mean(), 'grain shifts the brightness'
     assert np.corrcoef(ga.ravel(), gb.ravel())[0, 1] < 0.2, 'grain does not change between frames'
+    s8 = p.run(a, p_Grain=1, p_GrainSize='GS_8') - p.run(a, **PLAIN)
+    g65 = p.run(a, p_Grain=1, p_GrainSize='GS_65') - p.run(a, **PLAIN)
+    assert np.abs(s8).mean() > 2 * np.abs(g65).mean(), 'Super 8 not grainier than 65 mm'
+    mono = p.run(a, p_Grain=1, p_GrainColor=0.0) - p.run(a, **PLAIN)
+    assert np.corrcoef(mono[..., 0].ravel(), mono[..., 2].ravel())[0, 1] > 0.99, 'Grain Color 0 is not monochrome'
+
+
+def test_gate_weave():
+    p = plug()
+    y, x = np.mgrid[0:48, 0:96].astype(np.float32)
+    img = np.stack([0.2 + 0.4 * x / 96, 0.3 + 0.0 * x, 0.2 + 0.4 * y / 48], 2).astype(np.float32)
+    base = p.run(img, **PLAIN)
+    moved = p.run(img, **dict(PLAIN, p_Weave='GW_STRONG'))
+    assert np.abs(moved - base).max() > 0.002, 'no weave'
+    assert np.abs(p.run(img, **dict(PLAIN, p_Weave='GW_SUBTLE')) - base).max() < np.abs(moved - base).max()
 
 
 def test_extremes_finite():
     p = plug()
     img = chart(256)
     img[0, :4] = [[-0.2, -0.2, -0.2], [0, 0, 0], [1.6, 1.6, 1.6], [1.2, -0.1, 0.4]]
+    on = dict(p_Grain=1, p_Halation=1, p_Weave='GW_STRONG')
     for q in p.params:
-        vals = range(len(q['enums'])) if 'enums' in q else [q['min'], q['max']]
+        vals = range(len(q['enums'])) if 'enums' in q else ([0, 1] if 'min' not in q else [q['min'], q['max']])
         for v in vals:
-            finite(p.run(img, **{q['name']: v}), f"{q['name']}={v}")
+            finite(p.run(img, **dict(on, **{q['name']: v})), f"{q['name']}={v}")
 
 
 # ---------------------------------------------------------------- runner

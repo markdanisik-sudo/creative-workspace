@@ -16,6 +16,8 @@
 
 struct float3 { float x, y, z; };
 static inline float3 make_float3(float x, float y, float z) { return float3{x, y, z}; }
+struct float2 { float x, y; };
+static inline float2 make_float2(float x, float y) { return float2{x, y}; }
 
 static inline float _fabs(float x) { return std::fabs(x); }
 static inline float _powf(float x, float y) { return std::pow(x, y); }
