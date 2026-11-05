@@ -74,6 +74,16 @@ def test_source_generated_block_up_to_date():
     assert r.returncode == 0, 'FilmLab_Color.dctl data block is stale: run tools/export.py'
 
 
+def test_source_ui_params_only_in_transform():
+    """Resolve hands the UI parameters to transform(); helpers must get them as arguments"""
+    for name in ['FilmLab_Color.dctl', 'FilmLab_Texture.dctl']:
+        s = open(os.path.join(ROOT, name)).read()
+        pre = s[:s.index('__DEVICE__ float3 transform')]
+        pre = strip(re.sub(r'DEFINE_UI_PARAMS\([^\n]*\n', '', pre))
+        used = sorted(set(re.findall(r'\bp_\w+', pre)))
+        assert not used, f'{name}: {used} used outside transform()'
+
+
 def test_source_stock_order():
     src = open(os.path.join(ROOT, 'FilmLab_Color.dctl')).read()
     order = re.search(r'#define STOCK_ORDER "([^"]+)"', src).group(1).split()

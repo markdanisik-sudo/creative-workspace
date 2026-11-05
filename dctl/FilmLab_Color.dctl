@@ -476,9 +476,9 @@ __DEVICE__ unsigned int frame_seed(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ t
 // light moves from bright areas into their surroundings, flat areas stay.
 // Returns the change of layer exposure.
 __DEVICE__ float3 halation(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int cx, int cy, int w, int h,
-                           float3 redRow, float pxPerMM, float gain)
+                           float3 redRow, float pxPerMM, float gain, int gamut, int gamma, int levels)
 {
-    float3 c0 = camera_to_scene(make_float3(_tex2D(tR, cx, cy), _tex2D(tG, cx, cy), _tex2D(tB, cx, cy)), p_InGamut, p_InGamma, p_Levels);
+    float3 c0 = camera_to_scene(make_float3(_tex2D(tR, cx, cy), _tex2D(tG, cx, cy), _tex2D(tB, cx, cy)), gamut, gamma, levels);
     float centre = _fmaxf(redRow.x * c0.x + redRow.y * c0.y + redRow.z * c0.z, 0.0f);
     const int n = 32;
     float sigma = _fmaxf(0.09f * pxPerMM, 0.5f);
@@ -489,7 +489,7 @@ __DEVICE__ float3 halation(__TEXTURE__ tR, __TEXTURE__ tG, __TEXTURE__ tB, int c
         float a = (float)i * GOLDEN + rot;
         int sx = clampi((int)((float)cx + _cosf(a) * r * sigma + 0.5f), 0, w - 1);
         int sy = clampi((int)((float)cy + _sinf(a) * r * sigma + 0.5f), 0, h - 1);
-        float3 e = camera_to_scene(make_float3(_tex2D(tR, sx, sy), _tex2D(tG, sx, sy), _tex2D(tB, sx, sy)), p_InGamut, p_InGamma, p_Levels);
+        float3 e = camera_to_scene(make_float3(_tex2D(tR, sx, sy), _tex2D(tG, sx, sy), _tex2D(tB, sx, sy)), gamut, gamma, levels);
         float wt = _expf(-r);
         acc += _fmaxf(redRow.x * e.x + redRow.y * e.y + redRow.z * e.z, 0.0f) * wt;
         wsum += wt;
@@ -724,7 +724,8 @@ __DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, __TEXTU
         float3 red = make_float3(row.x * r0.x + row.y * r0.y + row.z * r0.z,
                                  row.x * r1.x + row.y * r1.y + row.z * r1.z,
                                  row.x * r2.x + row.y * r2.y + row.z * r2.z);
-        float3 dh = halation(p_TexR, p_TexG, p_TexB, p_X, p_Y, p_Width, p_Height, red, pxPerMM, 0.02f * p_Halation * s.halation);
+        float3 dh = halation(p_TexR, p_TexG, p_TexB, p_X, p_Y, p_Width, p_Height, red, pxPerMM, 0.02f * p_Halation * s.halation,
+                             p_InGamut, p_InGamma, p_Levels);
         e = make_float3(_fmaxf(e.x + dh.x, 0.02f * e.x), _fmaxf(e.y + dh.y, 0.02f * e.y), e.z);
     }
     float3 x = log_exposure(e);
