@@ -11,7 +11,7 @@ the full sheet are in char_500t.json.  See digitize_5213.py for accuracy.
 """
 import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from digitize_5213 import load, to_pairs, grid_lines, guided, remove_text, overlay, HERE  # noqa: E402
+from digitize_5213 import load, to_pairs, grid_lines, guided, refine, remove_text, overlay, HERE  # noqa: E402
 
 
 def spectral_sensitivity(path, ov=None):
@@ -66,6 +66,16 @@ def dye_density(path, ov=None):
     for k, g in guides.items():
         pts = guided(m, g, fxi, fyi, steep.get(k, ()))
         out[k] = to_pairs(pts, fx, fy); tr.append({int(round(x)): y for x, y in pts})
+    # stretches where two lines run close (crossings measured in the pixel columns)
+    out = refine(m, out, {
+        'C': [(430, 0.076), (440, 0.045), (455, 0.017), (465, 0.012), (470, 0.012), (480, 0.012)],
+        'M': [(410, -0.025), (420, -0.027), (430, -0.018), (447, -0.04), (455, -0.013), (465, 0.051), (470, 0.097), (480, 0.213)]},
+        fx, fy, fxi, fyi)
+    out = refine(m, out, {
+        'C': [(712, 0.9), (715, 0.881), (720, 0.841), (725, 0.796), (730, 0.747)],
+        'N': [(712, 0.83), (715, 0.812), (720, 0.777), (725, 0.74), (730, 0.701)],
+        'M': [(715, 0.046), (730, 0.039), (745, 0.035), (750, 0.031), (755, 0.03), (760, 0.028), (775, 0.022)]},
+        fx, fy, fxi, fyi)
     if ov: overlay(im, tr, os.path.join(ov, 'dyes_500t.png'))
     return out
 

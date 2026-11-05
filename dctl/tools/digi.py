@@ -158,3 +158,22 @@ def trace_guided(mask, guide, tol=18, max_thick=40, along='x'):
 def merge_xy(*parts):
     a = np.concatenate([p for p in parts if len(p)])
     return a[np.argsort(a[:, 0], kind='stable')]
+
+def clean_curve(pts, bins=700, window=7, floor=0.015):
+    """Remove stray digitising points from a traced curve y(x).
+    Points are binned along x (median per bin), then a Hampel filter drops bins
+    that sit more than max(3 MAD, floor * y-range) from the median of their
+    neighbours.  Steep flanks survive: on a monotonic run the window median is
+    the centre point itself."""
+    a = np.array(sorted(pts), float)
+    if len(a) < 2 * window: return a.tolist()
+    w = (a[-1, 0] - a[0, 0]) / bins or 1.0
+    k = np.floor((a[:, 0] - a[0, 0]) / w).astype(int)
+    b = np.array([[a[k == i, 0].mean(), np.median(a[k == i, 1])] for i in np.unique(k)])
+    y = b[:, 1]; h = window // 2; keep = np.ones(len(b), bool)
+    tol0 = floor * (y.max() - y.min())
+    for i in range(len(b)):
+        nb = np.concatenate([y[max(i - h, 0):i], y[i + 1:i + 1 + h]])
+        med = np.median(nb); mad = 1.4826 * np.median(np.abs(nb - med))
+        if abs(y[i] - med) > max(3.0 * mad, tol0): keep[i] = False
+    return b[keep].tolist()

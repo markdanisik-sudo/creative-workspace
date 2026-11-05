@@ -82,6 +82,19 @@ def guided(m, guide, fx_inv, fy_inv, steep=()):
     return keep
 
 
+def refine(m, out, fixes, fx, fy, fxi, fyi, tol=5):
+    """re-trace short stretches where two lines run within ~0.05 D of each other and
+    the main trace took the neighbour; guides are the line crossings measured in the
+    pixel columns (see the column listing in FILMLAB_V4.md).  Replaces the points of
+    `out[k]` inside the guide's wavelength range."""
+    for k, g in fixes.items():
+        lo, hi = g[0][0], g[-1][0]
+        pts = trace_guided(m, [(fxi(a_), fyi(b_)) for a_, b_ in g], tol=tol, max_thick=12)
+        new = [p_ for p_ in out[k] if not (lo <= p_[0] <= hi)] + to_pairs(pts, fx, fy)
+        out[k] = sorted(new)
+    return out
+
+
 def spectral_sensitivity(path, ov=None):
     """log sensitivity vs wavelength; grid every 50 nm (250-750) and 1.0 (0-4)"""
     m, im = load(path)
@@ -148,6 +161,11 @@ def dye_density(path, ov=None):
         pts = guided(m, g, fxi, fyi, steep.get(k, ()))
         out[k] = to_pairs(pts, fx, fy)
         tr.append({int(round(x)): y for x, y in pts})
+    # cyan and the yellow tail cross at ~530 nm
+    out = refine(m, out, {'C': [(505, 0.042), (515, 0.049), (520, 0.053), (525, 0.061), (530, 0.074), (535, 0.083), (540, 0.097),
+                                (545, 0.111), (550, 0.129)],
+                          'Y': [(515, 0.153), (520, 0.123), (525, 0.097), (530, 0.074), (535, 0.058), (540, 0.047), (545, 0.037),
+                                (550, 0.03)]}, fx, fy, fxi, fyi)
     if ov: overlay(im, tr, os.path.join(ov, 'dyes.png'))
     return out
 

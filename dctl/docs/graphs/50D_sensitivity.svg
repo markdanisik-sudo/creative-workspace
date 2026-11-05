@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 470" width="720" height="470" role="img" aria-labelledby="t d">
+<title id="t">Vision3 50D 5203: spectral sensitivity</title><desc id="d">Log sensitivity per layer (density 0.2 above D-min); blue layer forms yellow dye, green magenta, red cyan. Data digitised from Kodak 5203 technical data (5203) for Film Lab</desc>
+
+<style>
+  svg { --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781; --grid:#e1e0d9; --axis:#c3c2b7;
+        --red:#e34948; --green:#008300; --blue:#2a78d6; --magenta:#e87ba4; --yellow:#eda100;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  @media (prefers-color-scheme: dark) {
+    svg { --surface:#1a1a19; --ink:#f0efec; --ink2:#c3c2b7; --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+          --red:#e66767; --green:#008300; --blue:#3987e5; --magenta:#d55181; --yellow:#c98500; }
+  }
+  .bg { fill: var(--surface); }
+  .grid { stroke: var(--grid); stroke-width: 1; }
+  .axis { stroke: var(--axis); stroke-width: 1; }
+  .tick { fill: var(--muted); font-size: 12px; }
+  .axlabel { fill: var(--ink2); font-size: 13px; }
+  .title { fill: var(--ink); font-size: 17px; font-weight: 600; }
+  .sub { fill: var(--ink2); font-size: 12.5px; }
+  .src { fill: var(--muted); font-size: 11px; }
+  .lab { fill: var(--ink); font-size: 12.5px; }
+  .curve { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .curve:hover { stroke-width: 3.5; }
+  .ref { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 4; }
+</style>
+<rect class="bg" width="720" height="470" rx="8"/>
+<text class="title" x="64" y="26">Vision3 50D 5203: spectral sensitivity</text>
+<text class="sub" x="64" y="44">Log sensitivity per layer (density 0.2 above D-min); blue layer forms yellow dye, green magenta, red cyan</text>
+<line class="grid" x1="64" x2="570" y1="414.0" y2="414.0"/>
+<text class="tick" x="56" y="418.0" text-anchor="end">0</text>
+<line class="grid" x1="64" x2="570" y1="363.1" y2="363.1"/>
+<text class="tick" x="56" y="367.1" text-anchor="end">0.5</text>
+<line class="grid" x1="64" x2="570" y1="312.3" y2="312.3"/>
+<text class="tick" x="56" y="316.3" text-anchor="end">1</text>
+<line class="grid" x1="64" x2="570" y1="261.4" y2="261.4"/>
+<text class="tick" x="56" y="265.4" text-anchor="end">1.5</text>
+<line class="grid" x1="64" x2="570" y1="210.6" y2="210.6"/>
+<text class="tick" x="56" y="214.6" text-anchor="end">2</text>
+<line class="grid" x1="64" x2="570" y1="159.7" y2="159.7"/>
+<text class="tick" x="56" y="163.7" text-anchor="end">2.5</text>
+<line class="grid" x1="64" x2="570" y1="108.9" y2="108.9"/>
+<text class="tick" x="56" y="112.9" text-anchor="end">3</text>
+<line class="grid" x1="64" x2="570" y1="58.0" y2="58.0"/>
+<text class="tick" x="56" y="62.0" text-anchor="end">3.5</text>
+<line class="grid" x1="64.0" x2="64.0" y1="58" y2="414"/>
+<text class="tick" x="64.0" y="432" text-anchor="middle">350</text>
+<line class="grid" x1="136.3" x2="136.3" y1="58" y2="414"/>
+<text class="tick" x="136.3" y="432" text-anchor="middle">400</text>
+<line class="grid" x1="208.6" x2="208.6" y1="58" y2="414"/>
+<text class="tick" x="208.6" y="432" text-anchor="middle">450</text>
+<line class="grid" x1="280.9" x2="280.9" y1="58" y2="414"/>
+<text class="tick" x="280.9" y="432" text-anchor="middle">500</text>
+<line class="grid" x1="353.1" x2="353.1" y1="58" y2="414"/>
+<text class="tick" x="353.1" y="432" text-anchor="middle">550</text>
+<line class="grid" x1="425.4" x2="425.4" y1="58" y2="414"/>
+<text class="tick" x="425.4" y="432" text-anchor="middle">600</text>
+<line class="grid" x1="497.7" x2="497.7" y1="58" y2="414"/>
+<text class="tick" x="497.7" y="432" text-anchor="middle">650</text>
+<line class="grid" x1="570.0" x2="570.0" y1="58" y2="414"/>
+<text class="tick" x="570.0" y="432" text-anchor="middle">700</text>
+<line class="axis" x1="64" x2="570" y1="414" y2="414"/>
+<line class="axis" x1="64" x2="64" y1="58" y2="414"/>
+<text class="axlabel" x="317.0" y="452" text-anchor="middle">Wavelength (nm)</text>
+<text class="axlabel" transform="translate(18 236.0) rotate(-90)" text-anchor="middle">Log sensitivity</text>
+<text class="src" x="708" y="464" text-anchor="end">Data digitised from Kodak 5203 technical data (5203) for Film Lab</text>
+<clipPath id="plot"><rect x="64" y="58" width="506" height="356"/></clipPath>
+<path class="curve" clip-path="url(#plot)" d="M79.2,399.8 L81.1,396.9 L83.1,394.1 L85.0,391.3 L86.9,388.4 L88.9,385.6 L90.8,382.8 L92.5,379.9 L94.1,376.9 L95.8,374.0 L97.2,371.0 L98.5,368.0 L100.0,365.0 L101.4,361.9 L102.7,358.6 L104.0,355.6 L105.1,352.4 L106.3,349.4 L107.3,346.3 L108.6,343.4 L109.7,340.4 L110.8,337.2 L112.0,334.1 L113.0,331.0 L113.9,327.8 L115.1,324.8 L116.4,321.8 L117.5,318.8 L118.5,315.6 L120.3,311.7 L121.4,307.1 L122.2,304.0 L122.9,300.8 L123.6,297.6 L124.3,294.5 L125.0,291.3 L125.8,288.2 L126.8,285.0 L127.9,281.9 L129.0,278.7 L130.1,275.6 L131.2,272.5 L132.6,268.3 L137.9,264.0 L139.7,261.1 L141.6,258.2 L144.4,256.6 L148.4,255.8 L152.6,254.8 L156.7,255.3 L161.1,256.3 L165.3,256.8 L169.6,256.9 L173.5,256.7 L177.3,255.3 L181.4,254.2 L185.4,253.0 L189.3,251.6 L193.3,250.4 L197.2,249.5 L201.2,250.5 L205.1,251.0 L210.3,250.8 L214.3,249.9 L217.4,247.7 L220.1,245.1 L222.9,242.5 L225.8,239.8 L228.2,237.0 L230.2,234.3 L232.5,231.6 L234.9,228.9 L235.6,230.3 L237.5,233.2 L239.5,236.0 L241.4,238.8 L243.3,241.7 L245.3,244.5 L246.9,247.4 L247.9,250.4 L248.8,253.3 L249.9,256.6 L250.6,259.9 L251.3,263.0 L251.8,266.2 L252.4,269.3 L253.2,272.4 L253.8,277.1 L254.6,281.9 L255.2,286.6 L255.8,293.0 L256.3,297.7 L256.7,300.9 L257.2,305.6 L257.7,310.1 L258.2,315.2 L258.8,319.8 L259.3,324.6 L259.8,329.3 L260.2,332.5 L260.7,337.2 L261.2,341.9 L261.8,346.7 L262.3,351.4 L262.7,354.6 L263.2,359.3 L263.7,364.0 L264.2,368.8 L264.9,373.5 L265.2,376.6 L265.8,379.8 L266.5,383.0 L267.2,386.2 L268.0,389.3 L268.9,392.4 L269.8,395.6 L271.0,398.7 L272.1,401.8 L273.5,405.0 L274.7,408.2" style="stroke:var(--blue)"><title>Blue layer</title></path>
+<path class="curve" clip-path="url(#plot)" d="M249.0,408.7 L250.2,405.6 L251.4,402.6 L252.5,399.4 L253.5,396.3 L254.6,393.2 L255.7,390.3 L256.7,387.1 L257.3,383.9 L258.1,380.8 L258.8,377.6 L259.5,374.5 L260.2,371.3 L260.9,368.1 L261.6,365.0 L262.3,361.8 L263.0,358.7 L263.7,355.5 L264.4,352.3 L265.1,349.2 L265.8,346.0 L266.6,342.9 L267.8,339.9 L269.0,336.8 L270.5,334.0 L272.1,331.0 L273.9,328.1 L275.7,325.3 L277.3,322.5 L278.6,320.0 L282.8,318.4 L284.8,315.7 L286.8,313.6 L288.8,310.3 L291.1,307.7 L293.4,305.0 L296.1,302.5 L298.6,299.8 L301.0,297.2 L303.6,294.6 L306.2,292.2 L308.8,289.7 L311.5,287.1 L314.1,284.5 L316.7,282.1 L319.3,279.6 L321.9,277.0 L324.6,274.5 L327.2,272.0 L329.9,269.4 L332.4,266.8 L334.9,264.2 L337.3,261.6 L339.8,258.9 L342.3,256.3 L344.9,253.9 L348.2,251.8 L351.2,250.5 L355.6,250.6 L358.6,252.9 L360.9,255.4 L363.0,258.0 L364.8,260.9 L367.3,263.4 L369.6,266.1 L372.1,268.7 L374.7,271.3 L377.2,273.8 L379.7,276.5 L382.2,279.0 L384.8,281.6 L387.2,284.2 L389.8,286.8 L392.0,289.5 L394.0,292.3 L395.6,295.0 L397.1,298.2 L398.2,301.2 L398.7,304.5 L399.4,307.7 L400.1,310.3 L400.8,313.7 L401.5,316.6 L402.2,321.4 L402.6,326.1 L403.3,330.9 L403.9,335.6 L404.4,338.8 L404.7,341.9 L405.2,345.1 L405.6,348.2 L406.3,353.0 L406.8,357.7 L407.3,360.9 L407.7,364.0 L408.2,367.2 L408.8,371.9 L409.4,376.7 L409.8,379.8 L410.3,383.0 L410.7,386.2 L411.1,389.3 L411.7,392.5 L412.2,395.7 L412.6,398.8 L413.1,402.0 L413.8,405.1" style="stroke:var(--green)"><title>Green layer</title></path>
+<path class="curve" clip-path="url(#plot)" d="M387.8,408.7 L389.0,405.6 L390.2,402.6 L391.3,399.4 L392.0,396.3 L392.7,393.1 L393.4,390.0 L394.1,386.7 L394.8,383.4 L395.5,380.2 L396.2,377.1 L396.9,373.9 L397.6,370.8 L398.3,367.6 L399.0,364.4 L399.7,361.3 L400.4,358.1 L401.3,355.0 L402.3,351.9 L403.2,348.6 L404.0,345.6 L404.7,342.4 L405.4,339.2 L406.1,336.2 L407.7,333.3 L408.9,330.3 L410.1,327.1 L411.6,324.0 L413.0,320.9 L414.6,318.0 L416.0,315.0 L419.2,313.4 L420.6,310.0 L422.0,304.0 L422.0,307.2 L427.3,300.5 L429.0,297.5 L430.7,294.7 L432.7,291.9 L434.6,289.1 L436.8,286.3 L440.7,285.0 L444.4,283.6 L448.2,282.6 L452.6,282.6 L456.8,281.6 L460.6,280.5 L464.2,278.7 L467.6,276.7 L470.2,274.1 L473.4,271.9 L475.9,269.3 L478.7,266.7 L481.5,264.2 L484.3,261.8 L487.1,259.5 L490.0,257.1 L493.5,255.5 L500.2,255.3 L503.7,257.1 L506.2,259.6 L509.3,261.8 L511.8,264.4 L513.7,267.0 L514.3,270.3 L515.9,273.3 L516.4,276.6 L517.2,279.6 L517.8,282.9 L518.5,286.1 L519.2,289.2 L519.9,292.4 L520.3,310.3 L520.6,295.5 L521.3,306.2 L521.8,306.4 L522.4,308.2 L522.7,319.9 L523.4,323.0 L524.1,326.1 L524.8,329.2 L525.5,332.4 L526.2,335.6 L526.7,338.8 L527.3,341.9 L527.9,345.1 L528.6,348.3 L529.3,351.4 L530.0,354.6 L530.7,357.7 L531.4,360.9 L532.2,364.0 L532.9,367.2 L533.3,370.3 L533.6,373.5 L534.3,376.7 L534.9,379.9 L535.1,383.0 L535.7,386.2 L536.3,390.9 L536.9,395.7 L537.3,398.8 L537.8,402.0 L538.2,405.2" style="stroke:var(--red)"><title>Red layer</title></path>
+<line x1="574" x2="586" y1="378.0" y2="378.0" style="stroke:var(--green);stroke-width:3;stroke-linecap:round"/>
+<text class="lab" x="591" y="382.0">Green layer</text>
+<line x1="574" x2="586" y1="394.0" y2="394.0" style="stroke:var(--red);stroke-width:3;stroke-linecap:round"/>
+<text class="lab" x="591" y="398.0">Red layer</text>
+<line x1="574" x2="586" y1="410.0" y2="410.0" style="stroke:var(--blue);stroke-width:3;stroke-linecap:round"/>
+<text class="lab" x="591" y="414.0">Blue layer</text>
+</svg>

@@ -95,6 +95,10 @@ def load_data():
     # negative spectral sensitivities (log), layers ordered R, G, B (= C, M, Y forming)
     # 500T: full technical data sheet (digitize_5219.py); v_500t.json (brochure) is superseded
     s50, s250, s500, s200 = J('sens_50d.json'), J('sens_250d.json'), J('sens_500t.json'), J('sens_200t.json')
+    # the 200T / 500T sheets were digitised in this round: drop stray tracing points
+    from digi import clean_curve
+    for s_ in (s500, s200):
+        for k_ in 'YMC': s_[k_] = clean_curve(s_[k_])
     for name, s in [('50D', s50), ('250D', s250), ('500T', s500), ('200T', s200)]:
         d['sens_' + name] = np.stack([10 ** _logsens(s['C']), 10 ** _logsens(s['M']), 10 ** _logsens(s['Y'])], 1)
     # negative dyes (Vision3 family, from 250D): C, M, Y and base (orange mask)
@@ -106,10 +110,12 @@ def load_data():
     # 500T: its own dyes and base from the full technical data sheet (the brochure graph
     # digitised earlier had a ~-0.1 D offset); 50D uses the 250D set (no 50D dye graph digitised)
     v5 = J('dye_500t.json')
+    for k_ in ['C', 'M', 'Y', 'Dmin']: v5[k_] = clean_curve(v5[k_])
     d['neg_dye_500T'] = np.maximum(np.stack([_resample(v5['C']), _resample(v5['M']), _resample(v5['Y'])], 1), 0.0)
     d['neg_dmin_500T'] = np.maximum(_resample(v5['Dmin']), 0.0)
     # 200T (H-1-5213, digitised by digitize_5213.py): its own dyes and base
     d2 = J('dye_200t.json')
+    for k_ in ['C', 'M', 'Y', 'Dmin']: d2[k_] = clean_curve(d2[k_])
     d['neg_dye_200T'] = np.maximum(np.stack([_resample(d2['C']), _resample(d2['M']), _resample(d2['Y'])], 1), 0.0)
     d['neg_dmin_200T'] = np.maximum(_resample(d2['Dmin']), 0.0)
     # characteristic curves (Status M), stops relative to the normal grey exposure
