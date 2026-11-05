@@ -1,0 +1,61 @@
+{
+ "note": "Fitted by fit_calibration.py on the ColorChecker scan / print: calibration data, not independent validation (leave-one-out numbers in report).  The print cannot separate interimage strength from cross-talk; default = scan interimage + cross-talk fitted with it.",
+ "interimage": [
+  -0.08436,
+  0.20147,
+  0.07961,
+  -0.13071,
+  0.23612,
+  -0.12396
+ ],
+ "print_crosstalk": [
+  -0.00908,
+  -0.14643,
+  -0.02876,
+  0.17064,
+  -0.13388,
+  -0.04249
+ ],
+ "report": {
+  "scan_dE00_insample_no_ii_vs_ii": [
+   6.67,
+   3.91
+  ],
+  "scan_dE00_loo_no_ii_vs_ii": [
+   7.05,
+   4.97
+  ],
+  "print_dE00_by_interimage_strength": {
+   "0.0": {
+    "no_crosstalk_insample_loo": [
+     3.22,
+     3.39
+    ],
+    "crosstalk_insample_loo": [
+     2.65,
+     3.16
+    ]
+   },
+   "0.6": {
+    "no_crosstalk_insample_loo": [
+     5.27,
+     5.56
+    ],
+    "crosstalk_insample_loo": [
+     2.63,
+     3.12
+    ]
+   },
+   "1.0": {
+    "no_crosstalk_insample_loo": [
+     6.97,
+     7.36
+    ],
+    "crosstalk_insample_loo": [
+     2.61,
+     3.1
+    ]
+   }
+  }
+ }
+}

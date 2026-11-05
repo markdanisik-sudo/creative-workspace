@@ -1,0 +1,906 @@
+// =============================================================================
+//  FILM LAB COLOR v3 (BACKUP)  |  Kodak / Eastman negative + print emulation for DaVinci Resolve
+//  v3.0 (spectral)
+//
+//  Pipeline (per pixel):
+//    camera log -> scene linear (Rec.2020 primaries)
+//    -> primaries: white balance (CAT02), exposure, contrast, highlights,
+//       shadows, saturation, skin
+//    -> negative: layer exposure from the stock's spectral sensitivity,
+//       Status M characteristic curves, push/pull, bleach bypass
+//    -> print: light of the printer lamp through the negative's dyes, seen by
+//       the 2383 layers (spectral), timed so 18% grey hits the laboratory aim
+//       density; 2383 characteristic curves; projection through the print dyes
+//       with a xenon lamp -> CIE 1931 -> Rec.2020
+//    -> output encoding (Rec.709, sRGB, P3-D65, Rec.2100 PQ / HLG, DWG/DI, Cineon)
+//
+//  Grain, halation, bloom and MTF live in FilmLab_Texture.dctl (next node).
+//
+//  Vision3 50D, 250D, 500T and 2383 use spectral sensitivities, characteristic
+//  curves and dye densities digitised from Kodak's published data sheets.  The
+//  other stocks use the Vision3 spectral data with their own tone character.
+//
+//  Requires DaVinci Resolve Studio.
+// =============================================================================
+
+DEFINE_UI_PARAMS(p_InGamut, Input Color Space, DCTLUI_COMBO_BOX, 0, { G_DWG, G_AWG3, G_AWG4, G_SG3C, G_VG, G_RWG, G_CCG, G_709, G_2020 }, { "DaVinci Wide Gamut", "ARRI Wide Gamut 3", "ARRI Wide Gamut 4", "Sony S-Gamut3.Cine", "Panasonic V-Gamut", "RED Wide Gamut RGB", "Canon Cinema Gamut", "Rec.709", "Rec.2020" })
+DEFINE_UI_PARAMS(p_InGamma, Input Gamma, DCTLUI_COMBO_BOX, 0, { T_DI, T_LOGC3, T_LOGC4, T_SLOG3, T_VLOG, T_LOG3G10, T_CLOG2, T_CLOG3, T_G24, T_LIN, T_CINEON }, { "DaVinci Intermediate", "ARRI LogC3", "ARRI LogC4", "Sony S-Log3", "Panasonic V-Log", "RED Log3G10", "Canon Log 2", "Canon Log 3", "Gamma 2.4", "Linear", "Cineon Log (film scan)" })
+DEFINE_UI_PARAMS(p_Stock, Negative Stock, DCTLUI_COMBO_BOX, 1, { V3_5203, V3_5207, V3_5213, V3_5219, V3_5219NR, V2_5201, V2_5205, V2_5212, V2_5217, V2_5218, V2_5229, V1_5246, V1_5274, V1_5277, V1_5279, V1_5289, E_5247, E_5294, EXR_5245, EXR_5248, EXR_5293, EXR_5296, EXR_5298, NEG_NONE }, { "Vision3 50D 5203", "Vision3 250D 5207", "Vision3 200T 5213", "Vision3 500T 5219", "Vision3 500T 5219 no rem-jet", "Vision2 50D 5201", "Vision2 250D 5205", "Vision2 100T 5212", "Vision2 200T 5217", "Vision2 500T 5218", "Vision2 Expression 500T 5229", "Vision 250D 5246", "Vision 200T 5274", "Vision 320T 5277", "Vision 500T 5279", "Vision 800T 5289", "Eastman ECN II 100T 5247", "Eastman 400T 5294", "Eastman EXR 50D 5245", "Eastman EXR 100T 5248", "Eastman EXR 200T 5293", "Eastman EXR 500T 5296", "Eastman EXR 500T 5298", "None - print only" })
+DEFINE_UI_PARAMS(p_DRT, DRT, DCTLUI_COMBO_BOX, 0, { DRT_FILM, DRT_NEUTRAL, DRT_OFF, DRT_CINEON }, { "Film Print", "Neutral", "Off - DWG / Intermediate", "Off - Cineon Log (for Resolve 2383 LUT)" })
+DEFINE_UI_PARAMS(p_Print, Print Stock, DCTLUI_COMBO_BOX, 0, { PR_2383, PR_2383D60, PR_2383D55, PR_2393 }, { "Kodak 2383 D65", "Kodak 2383 D60", "Kodak 2383 D55", "Kodak 2393" })
+DEFINE_UI_PARAMS(p_NegVersion, Negative Version, DCTLUI_COMBO_BOX, 0, { NV_NEW, NV_OLD }, { "New - calibrated on a real 250D scan", "Old - Kodak data sheets only" })
+DEFINE_UI_PARAMS(p_PrintVersion, Print Version, DCTLUI_COMBO_BOX, 0, { PV_NEW, PV_OLD }, { "New - calibrated on a real 2383 print", "Old - Kodak data sheets only" })
+DEFINE_UI_PARAMS(p_Output, Output, DCTLUI_COMBO_BOX, 0, { OUT_709, OUT_SRGB, OUT_P3, OUT_PQ, OUT_HLG }, { "Rec.709 Gamma 2.4", "sRGB / Rec.709 Gamma 2.2", "P3-D65 Gamma 2.6", "Rec.2100 PQ (HDR)", "Rec.2100 HLG (HDR)" })
+DEFINE_UI_PARAMS(p_Strength, Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_NegStrength, Negative Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_PrintStrength, Print Strength, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_Exposure, Exposure, DCTLUI_SLIDER_FLOAT, 0.0, -4.0, 4.0, 0.05)
+DEFINE_UI_PARAMS(p_Contrast, Contrast, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 1.5, 0.01)
+DEFINE_UI_PARAMS(p_Pivot, Pivot, DCTLUI_SLIDER_FLOAT, 0.0, -2.0, 2.0, 0.05)
+DEFINE_UI_PARAMS(p_Highlights, Highlights, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Shadows, Shadows, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Temp, Temperature K, DCTLUI_SLIDER_FLOAT, 6500.0, 2000.0, 15000.0, 50.0)
+DEFINE_UI_PARAMS(p_Tint, Tint, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_Saturation, Saturation, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+
+DEFINE_UI_PARAMS(p_PushPull, Push Pull, DCTLUI_SLIDER_FLOAT, 0.0, -2.0, 3.0, 0.1)
+DEFINE_UI_PARAMS(p_ColorDensity, Color Density, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.5, 0.01)
+DEFINE_UI_PARAMS(p_Interimage, Interimage, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_NeutralNeg, Neutral Negative Curve, DCTLUI_CHECK_BOX, 0)
+DEFINE_UI_PARAMS(p_NegBleach, Negative Bleach Bypass, DCTLUI_CHECK_BOX, 0)
+
+DEFINE_UI_PARAMS(p_PrintExp, Print Exposure, DCTLUI_SLIDER_FLOAT, 0.0, -12.0, 12.0, 0.5)
+DEFINE_UI_PARAMS(p_PrintR, Printer Light R, DCTLUI_SLIDER_FLOAT, 0.0, -12.0, 12.0, 0.5)
+DEFINE_UI_PARAMS(p_PrintG, Printer Light G, DCTLUI_SLIDER_FLOAT, 0.0, -12.0, 12.0, 0.5)
+DEFINE_UI_PARAMS(p_PrintB, Printer Light B, DCTLUI_SLIDER_FLOAT, 0.0, -12.0, 12.0, 0.5)
+DEFINE_UI_PARAMS(p_PrintContrast, Print Contrast, DCTLUI_SLIDER_FLOAT, 1.0, 0.6, 1.4, 0.01)
+DEFINE_UI_PARAMS(p_DyeSat, Dye Saturation, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_DyeC, Dye Sat Cyan, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_DyeM, Dye Sat Magenta, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_DyeY, Dye Sat Yellow, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_BlackToe, Black Toe, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_ShadowRoll, Shadow Roll-off, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_HighlightRoll, Highlight Roll-off, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_NeutralPrint, Neutral Print Curve, DCTLUI_CHECK_BOX, 0)
+DEFINE_UI_PARAMS(p_PrintBleach, Print Bleach Bypass, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.01)
+
+DEFINE_UI_PARAMS(p_SkinHue, Skin Hue, DCTLUI_SLIDER_FLOAT, 0.0, -1.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_SkinSat, Skin Saturation, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
+
+DEFINE_UI_PARAMS(p_Flare, Projection Flare, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 2.0, 0.01)
+DEFINE_UI_PARAMS(p_FlareHue, Flare Tint Hue, DCTLUI_SLIDER_FLOAT, 30.0, 0.0, 360.0, 1.0)
+DEFINE_UI_PARAMS(p_FlareTint, Flare Tint Amount, DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 1.0, 0.01)
+DEFINE_UI_PARAMS(p_HdrPeak, HDR Peak Luminance, DCTLUI_SLIDER_FLOAT, 1000.0, 100.0, 4000.0, 10.0)
+DEFINE_UI_PARAMS(p_HdrGrey, HDR Grey nits, DCTLUI_SLIDER_FLOAT, 18.0, 5.0, 40.0, 0.5)
+DEFINE_UI_PARAMS(p_ShowCurve, Show Curve, DCTLUI_CHECK_BOX, 0)
+
+#define GREY      0.18f
+#define PT        0.025f        // one printer point in log exposure
+#define SDR_GREY  0.115f        // mid grey on an SDR display (linear): the 2383 LAD grey, visual density 1.0
+#define SKIN_HUE  -0.91f        // typical skin, angle in the (R-Y, B-Y)/Y plane
+
+// -----------------------------------------------------------------------------
+//  Small helpers
+// -----------------------------------------------------------------------------
+
+__DEVICE__ float clampf(float x, float a, float b) { return _fminf(_fmaxf(x, a), b); }
+__DEVICE__ float exp10_f(float x) { return _powf(10.0f, x); }
+
+// log10(1 + 10^z) without overflow
+__DEVICE__ float softplus10(float z)
+{
+    if (z > 0.0f) return z + _log10f(1.0f + exp10_f(-z));
+    return _log10f(1.0f + exp10_f(z));
+}
+
+__DEVICE__ float3 mul3(float3 c, float a, float b, float d, float e, float f, float g, float h, float i, float j)
+{
+    return make_float3(a * c.x + b * c.y + d * c.z,
+                       e * c.x + f * c.y + g * c.z,
+                       h * c.x + i * c.y + j * c.z);
+}
+
+__DEVICE__ float3 add3(float3 a, float3 b) { return make_float3(a.x + b.x, a.y + b.y, a.z + b.z); }
+__DEVICE__ float3 scale3(float3 a, float s) { return make_float3(a.x * s, a.y * s, a.z * s); }
+__DEVICE__ float luma2020(float3 c) { return 0.2627f * c.x + 0.6780f * c.y + 0.0593f * c.z; }
+
+__DEVICE__ float smooth01(float a, float b, float x)
+{
+    float t = clampf((x - a) / (b - a), 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+
+// ln(1 + e^z) without overflow
+__DEVICE__ float softplus_e(float z)
+{
+    if (z > 0.0f) return z + _logf(1.0f + _expf(-z));
+    return _logf(1.0f + _expf(z));
+}
+
+// -----------------------------------------------------------------------------
+//  Input: transfer functions and gamuts -> scene linear, Rec.2020 primaries
+// -----------------------------------------------------------------------------
+
+__DEVICE__ float di_to_lin(float x)
+{
+    if (x <= 0.02740668f) return x / 10.44426855f;
+    return _exp2f(x / 0.07329248f - 7.0f) - 0.0075f;
+}
+
+__DEVICE__ float lin_to_di(float x)
+{
+    if (x <= 0.00262409f) return x * 10.44426855f;
+    return (_log2f(x + 0.0075f) + 7.0f) * 0.07329248f;
+}
+
+__DEVICE__ float logc3_to_lin(float x)
+{
+    if (x > 0.149658f) return (exp10_f((x - 0.385537f) / 0.247190f) - 0.052272f) / 5.555556f;
+    return (x - 0.092809f) / 5.367655f;
+}
+
+__DEVICE__ float logc4_to_lin(float x)
+{
+    const float a = 2231.82630906f;      // (2^18 - 16) / 117.45
+    const float b = 0.90713587f;         // (1023 - 95) / 1023
+    const float c = 0.09286413f;         // 95 / 1023
+    const float s = 0.11384993f;
+    const float t = -0.01805699f;
+    if (x >= 0.0f) return (_exp2f(14.0f * (x - c) / b + 6.0f) - 64.0f) / a;
+    return x * s + t;
+}
+
+__DEVICE__ float slog3_to_lin(float x)
+{
+    if (x >= 171.2102946929f / 1023.0f) return exp10_f((x * 1023.0f - 420.0f) / 261.5f) * 0.19f - 0.01f;
+    return (x * 1023.0f - 95.0f) * 0.01125f / (171.2102946929f - 95.0f);
+}
+
+__DEVICE__ float vlog_to_lin(float x)
+{
+    if (x < 0.181f) return (x - 0.125f) / 5.6f;
+    return exp10_f((x - 0.598206f) / 0.241514f) - 0.00873f;
+}
+
+__DEVICE__ float log3g10_to_lin(float x)
+{
+    if (x < 0.0f) return x / 15.1927f - 0.01f;
+    return (exp10_f(x / 0.224282f) - 1.0f) / 155.975327f - 0.01f;
+}
+
+// Canon Log 2 / 3 (full-range code values, as Resolve passes them)
+__DEVICE__ float clog2_to_lin(float x)
+{
+    float ire = (x * 1023.0f - 64.0f) / 876.0f;
+    float v;
+    if (ire < 0.092864125f) v = -(exp10_f((0.092864125f - ire) / 0.24136077f) - 1.0f) / 87.09937546f;
+    else v = (exp10_f((ire - 0.092864125f) / 0.24136077f) - 1.0f) / 87.09937546f;
+    return v * 0.9f;
+}
+
+__DEVICE__ float clog3_to_lin(float x)
+{
+    float ire = (x * 1023.0f - 64.0f) / 876.0f;
+    float v;
+    if (ire < 0.097465473f) v = -(exp10_f((0.12783901f - ire) / 0.36726845f) - 1.0f) / 14.98325f;
+    else if (ire <= 0.15277891f) v = (ire - 0.12512219f) / 1.9754798f;
+    else v = (exp10_f((ire - 0.12240537f) / 0.36726845f) - 1.0f) / 14.98325f;
+    return v * 0.9f;
+}
+
+__DEVICE__ float decode_gamma(float x, int t)
+{
+    if (t == T_DI) return di_to_lin(x);
+    if (t == T_LOGC3) return logc3_to_lin(x);
+    if (t == T_LOGC4) return logc4_to_lin(x);
+    if (t == T_SLOG3) return slog3_to_lin(x);
+    if (t == T_VLOG) return vlog_to_lin(x);
+    if (t == T_LOG3G10) return log3g10_to_lin(x);
+    if (t == T_CLOG2) return clog2_to_lin(x);
+    if (t == T_CLOG3) return clog3_to_lin(x);
+    if (t == T_G24) return _powf(_fmaxf(x, 0.0f), 2.4f);
+    if (t == T_CINEON) return GREY * exp10_f((x * 1023.0f - 446.0f) * 0.002f / 0.6f);   // ideal negative, grey at 446
+    return x;
+}
+
+__DEVICE__ float3 gamut_to_2020(float3 c, int g)
+{
+    if (g == G_DWG)  return mul3(c, 1.13030218f, -0.02039285f, -0.10990933f, -0.02554706f, 1.31084932f, -0.28530226f, -0.09259861f, -0.16465302f, 1.25725163f);
+    if (g == G_AWG3) return mul3(c, 0.99068812f, 0.09253966f, -0.08322777f, 0.04663223f, 1.18752685f, -0.23415909f, 0.00140359f, -0.09460200f, 1.09319842f);
+    if (g == G_AWG4) return mul3(c, 1.11946906f, -0.05519563f, -0.06427343f, -0.05848446f, 1.17673493f, -0.11825048f, 0.00154745f, -0.03113533f, 1.02958788f);
+    if (g == G_SG3C) return mul3(c, 0.96004634f, 0.11953298f, -0.07957932f, -0.05223948f, 1.26430575f, -0.21206627f, -0.02884051f, -0.05952097f, 1.08836147f);
+    if (g == G_VG)   return mul3(c, 1.07635314f, -0.01314478f, -0.06320837f, -0.03186184f, 1.15105266f, -0.11919082f, -0.00793202f, -0.03480314f, 1.04273516f);
+    if (g == G_RWG)  return mul3(c, 1.18043085f, -0.09403956f, -0.08639129f, -0.02801732f, 1.31144204f, -0.28342472f, -0.07435952f, -0.36207760f, 1.43643712f);
+    if (g == G_CCG)  return mul3(c, 1.13873610f, -0.02676853f, -0.11196757f, -0.05520759f, 1.31557329f, -0.26036570f, -0.00765941f, -0.25769762f, 1.26535703f);
+    if (g == G_709)  return mul3(c, 0.62740390f, 0.32928304f, 0.04331307f, 0.06909729f, 0.91954040f, 0.01136232f, 0.01639144f, 0.08801331f, 0.89559525f);
+    return c;
+}
+
+__DEVICE__ float3 lin2020_to_di(float3 c)
+{
+    c = mul3(c, 0.89211212f, 0.02436918f, 0.08351870f, 0.03261660f, 0.78613752f, 0.18124588f, 0.06997705f, 0.10474949f, 0.82527346f);
+    return make_float3(lin_to_di(c.x), lin_to_di(c.y), lin_to_di(c.z));
+}
+
+// -----------------------------------------------------------------------------
+//  Primaries (scene linear)
+// -----------------------------------------------------------------------------
+
+// CIE 1960 uv of a blackbody (Krystek approximation, 1000 - 15000 K)
+__DEVICE__ float3 planck_uv(float T)
+{
+    float u = (0.860117757f + 1.54118254e-4f * T + 1.28641212e-7f * T * T) / (1.0f + 8.42420235e-4f * T + 7.08145163e-7f * T * T);
+    float v = (0.317398726f + 4.22806245e-5f * T + 4.20481691e-8f * T * T) / (1.0f - 2.89741816e-5f * T + 1.61456053e-7f * T * T);
+    return make_float3(u, v, 0.0f);
+}
+
+// white point (uv) -> CAT02 LMS cone response
+__DEVICE__ float3 uv_to_lms(float3 uv)
+{
+    float d = 2.0f * uv.x - 8.0f * uv.y + 4.0f;
+    float x = 3.0f * uv.x / d, y = 2.0f * uv.y / d;
+    float3 xyz = make_float3(x / y, 1.0f, (1.0f - x - y) / y);
+    return mul3(xyz, 0.7328f, 0.4296f, -0.1624f, -0.7036f, 1.6975f, 0.0061f, 0.0030f, 0.0136f, 0.9834f);
+}
+
+// white balance by chromatic adaptation (CAT02): the scene was lit by a
+// `T` kelvin source (+ tint); adapt it to the 6500 K reference
+__DEVICE__ float3 white_balance(float3 c, float T, float tint)
+{
+    if (T == 6500.0f && tint == 0.0f) return c;
+    // tint moves the source white across the blackbody locus (green <-> magenta)
+    float3 src = planck_uv(T);
+    float3 t0 = planck_uv(T - 50.0f);
+    float3 t1 = planck_uv(T + 50.0f);
+    float tu = t1.x - t0.x, tv = t1.y - t0.y, tl = _sqrtf(tu * tu + tv * tv);
+    src.x += 0.015f * tint * tv / tl;
+    src.y -= 0.015f * tint * tu / tl;
+    float3 ls = uv_to_lms(src);
+    float3 lr = uv_to_lms(planck_uv(6500.0f));
+    float3 lms = mul3(c, 0.57961887f, 0.39268423f, -0.02307198f, -0.00223007f, 1.04932052f, -0.01168798f, 0.00548360f, 0.03726131f, 1.04468585f);
+    lms = make_float3(lms.x * lr.x / ls.x, lms.y * lr.y / ls.y, lms.z * lr.z / ls.z);
+    return mul3(lms, 1.72249578f, -0.64569902f, 0.03081737f, 0.00355862f, 0.95128521f, 0.01072160f, -0.00916837f, -0.03054065f, 0.95668139f);
+}
+
+// rebuild RGB from luminance and the two colour-difference ratios
+__DEVICE__ float3 from_ratios(float Y, float a, float b)
+{
+    float r = Y * (1.0f + a), bl = Y * (1.0f + b);
+    return make_float3(r, (Y - 0.2627f * r - 0.0593f * bl) / 0.6780f, bl);
+}
+
+__DEVICE__ float3 primaries(float3 c, float exposure, float contrast, float pivot, float hl, float sh,
+                            float temp, float tint, float sat, float skinHue, float skinSat)
+{
+    c = white_balance(c, temp, tint);
+    c = scale3(c, _exp2f(exposure));
+
+    // tone on luminance, in stops around mid grey (hue and saturation kept)
+    float Y = luma2020(c);
+    if (Y > 1e-6f && (contrast != 1.0f || hl != 0.0f || sh != 0.0f)) {
+        float x = _log2f(Y / GREY);
+        float t = pivot + (x - pivot) * contrast;
+        t += 1.5f * hl / (1.0f + _expf(-(t - 1.0f) / 0.7f));
+        t += 1.5f * sh / (1.0f + _expf((t + 1.5f) / 0.7f));
+        c = scale3(c, GREY * _exp2f(t) / Y);
+        Y = luma2020(c);
+    }
+
+    if (Y > 1e-6f) {
+        float a = (c.x - Y) / Y, b = (c.z - Y) / Y;
+        a *= sat; b *= sat;
+
+        // skin: a hue band around typical skin tones, soft in hue and chroma
+        if (skinHue != 0.0f || skinSat != 1.0f) {
+            float ch = _sqrtf(a * a + b * b);
+            float dh = _atan2f(b, a) - SKIN_HUE;
+            if (dh > 3.14159265f) dh -= 6.2831853f;
+            if (dh < -3.14159265f) dh += 6.2831853f;
+            float m = _expf(-0.5f * (dh / 0.30f) * (dh / 0.30f)) * smooth01(0.03f, 0.15f, ch) * (1.0f - smooth01(0.8f, 1.4f, ch));
+            float ang = skinHue * 0.35f * m;
+            float ca = _cosf(ang), sa = _sinf(ang);
+            float s = 1.0f + (skinSat - 1.0f) * m;
+            float na = (a * ca - b * sa) * s, nb = (a * sa + b * ca) * s;
+            a = na; b = nb;
+        }
+        c = from_ratios(Y, a, b);
+    }
+    return c;
+}
+
+// -----------------------------------------------------------------------------
+//  Spectral data (digitised from Kodak publications H-1-5203, H-1-5207,
+//  VISION3 500T brochure and H-1-2383; generated by kodak/export.py)
+// -----------------------------------------------------------------------------
+
+#define NWL 36            // spectral samples, 380-730 nm every 10 nm
+__CONSTANT__ float NEG_DYE_C[36] = { 0.181f, 0.181f, 0.181f, 0.181f, 0.139918f, 0.101426f, 0.0711167f, 0.0524461f, 0.0386636f, 0.0341811f, 0.0301092f, 0.026808f, 0.026752f, 0.0308775f, 0.0372105f, 0.0506295f, 0.0735f, 0.112476f, 0.151096f, 0.194581f, 0.249744f, 0.337439f, 0.441469f, 0.546129f, 0.639444f, 0.728236f, 0.810767f, 0.881677f, 0.94005f, 0.982464f, 1.00351f, 1.00115f, 0.970901f, 0.911067f, 0.831164f, 0.729041f };   // Vision3 cyan dye
+__CONSTANT__ float NEG_DYE_M[36] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.00355674f, 0.0f, 0.0f, 0.0322208f, 0.112146f, 0.229153f, 0.391179f, 0.5537f, 0.721108f, 0.865368f, 0.970916f, 1.00331f, 0.941914f, 0.792991f, 0.6024f, 0.426833f, 0.292876f, 0.209602f, 0.158188f, 0.124129f, 0.103577f, 0.0917604f, 0.0827378f, 0.0786201f, 0.0752086f, 0.0717544f, 0.0686248f, 0.065164f, 0.061831f, 0.057121f, 0.0525423f };   // magenta
+__CONSTANT__ float NEG_DYE_Y[36] = { 0.6643f, 0.6643f, 0.6643f, 0.6643f, 0.815726f, 0.934885f, 0.997661f, 1.00243f, 0.938249f, 0.805304f, 0.627242f, 0.458821f, 0.311362f, 0.206986f, 0.139052f, 0.0959842f, 0.067297f, 0.052636f, 0.0375496f, 0.0241493f, 0.0156095f, 0.0101526f, 0.00607831f, 0.002848f, 0.0024f, 0.000163929f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0016117f };   // yellow
+__CONSTANT__ float PRINT_W_R[36] = { 0.0f, 2.73114e-05f, 2.44602e-19f, 2.14386e-18f, 1.31719e-17f, 8.37616e-17f, 5.49629e-16f, 4.05821e-15f, 3.11332e-14f, 2.18247e-13f, 1.60901e-12f, 1.36745e-11f, 1.02513e-10f, 6.84037e-10f, 5.37605e-09f, 4.20429e-08f, 2.9507e-07f, 2.02752e-06f, 1.35398e-05f, 9.03951e-05f, 0.000646717f, 0.00610916f, 0.00990772f, 0.0154524f, 0.0235945f, 0.0376067f, 0.0488769f, 0.054143f, 0.0691312f, 0.10722f, 0.154781f, 0.200172f, 0.167017f, 0.0801869f, 0.0233945f, 0.00162655f };   // 2383 red-sensitive layer x printer lamp x negative base
+__CONSTANT__ float PRINT_W_G[36] = { 0.0f, 0.00213564f, 6.87825e-05f, 8.80397e-07f, 5.4092e-06f, 3.43976e-05f, 0.000225711f, 0.00166655f, 0.0041498f, 0.0065314f, 0.0105268f, 0.0223203f, 0.0345581f, 0.0430875f, 0.0556988f, 0.0821712f, 0.158651f, 0.389415f, 0.12946f, 0.0426872f, 0.0150208f, 0.00126387f, 0.000263987f, 4.78512e-05f, 7.90185e-06f, 1.31986e-06f, 2.25054e-07f, 3.67806e-08f, 5.97724e-09f, 8.85076e-10f, 1.30997e-10f, 1.91315e-11f, 2.77519e-12f, 3.97147e-13f, 5.59668e-14f, 7.66389e-15f };
+__CONSTANT__ float PRINT_W_B[36] = { 0.0f, 0.00536967f, 0.0156009f, 0.0250721f, 0.0338231f, 0.0544139f, 0.0724544f, 0.125294f, 0.260591f, 0.295352f, 0.0982801f, 0.0117989f, 0.00175228f, 0.000158928f, 3.1375e-05f, 6.16331e-06f, 1.08654e-06f, 1.87537e-07f, 3.14582e-08f, 5.27553e-09f, 9.48059e-10f, 2.05136e-10f, 4.28471e-11f, 7.7666e-12f, 1.28253e-12f, 2.14223e-13f, 3.65279e-14f, 5.96977e-15f, 9.7015e-16f, 1.43654e-16f, 2.12618e-17f, 3.10518e-18f, 4.50433e-19f, 6.446e-20f, 9.08383e-21f, 1.24391e-21f };
+__CONSTANT__ float PRINT_DYE_C[36] = { 0.0362263f, 0.0460778f, 0.0593396f, 0.0702759f, 0.0821631f, 0.0905896f, 0.076869f, 0.0607161f, 0.0420573f, 0.0307327f, 0.0276704f, 0.0267f, 0.0268345f, 0.0331268f, 0.045966f, 0.0642096f, 0.0999714f, 0.144458f, 0.209648f, 0.294558f, 0.384132f, 0.486074f, 0.60904f, 0.727627f, 0.863152f, 0.961724f, 1.0344f, 1.07736f, 1.0894f, 1.08275f, 1.04549f, 0.973639f, 0.878944f, 0.7508f, 0.635707f, 0.520221f };   // 2383 cyan dye
+__CONSTANT__ float PRINT_DYE_M[36] = { 0.285373f, 0.287314f, 0.283971f, 0.249358f, 0.1957f, 0.140683f, 0.0986905f, 0.0712133f, 0.101932f, 0.16888f, 0.250019f, 0.350831f, 0.499088f, 0.664745f, 0.766864f, 0.841594f, 0.8809f, 0.863617f, 0.779058f, 0.611561f, 0.443512f, 0.29303f, 0.194411f, 0.128604f, 0.0872667f, 0.06011f, 0.0440289f, 0.0317706f, 0.025558f, 0.0198f, 0.0195801f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+__CONSTANT__ float PRINT_DYE_Y[36] = { 0.199671f, 0.268694f, 0.372909f, 0.499295f, 0.6419f, 0.76222f, 0.809035f, 0.812208f, 0.776334f, 0.676063f, 0.516302f, 0.373665f, 0.259199f, 0.173225f, 0.104314f, 0.0665233f, 0.0476565f, 0.0375947f, 0.0295744f, 0.0235242f, 0.0198f, 0.0193451f, 0.0205f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+__CONSTANT__ float PROJ_R[36] = { 0.0f, -4.23292e-05f, 0.000275616f, 0.00271313f, 0.00648939f, 0.0101855f, 0.0150298f, 0.0117594f, 0.00443176f, -0.00196907f, -0.00724567f, -0.0133683f, -0.0182003f, -0.0198254f, -0.0174001f, -0.00795964f, 0.00913864f, 0.031818f, 0.0586214f, 0.0870339f, 0.112989f, 0.131912f, 0.139728f, 0.133984f, 0.113343f, 0.0859673f, 0.0585142f, 0.0358144f, 0.0197107f, 0.00974019f, 0.00431847f, 0.00171817f, 0.000606778f, 0.000188876f, 5.04541e-05f, 1.09944e-05f };   // xenon projection -> Rec.2020 (D65 adapted)
+__CONSTANT__ float PROJ_G[36] = { 0.0f, 1.27723e-06f, -0.000290527f, -0.00208694f, -0.0061484f, -0.011703f, -0.0149202f, -0.0122947f, -0.00590191f, 0.00355728f, 0.0159576f, 0.0316179f, 0.0517189f, 0.0779119f, 0.107163f, 0.126256f, 0.130427f, 0.126007f, 0.114167f, 0.0971047f, 0.0756035f, 0.0520517f, 0.029793f, 0.0129855f, 0.00311775f, -0.00100115f, -0.00167956f, -0.000969021f, -0.00013263f, 0.000345751f, 0.000462534f, 0.000382575f, 0.0002491f, 0.000137894f, 6.68075e-05f, 2.89458e-05f };
+__CONSTANT__ float PROJ_B[36] = { 0.0f, 0.000477349f, 0.00425989f, 0.0190433f, 0.0602894f, 0.127284f, 0.160907f, 0.168112f, 0.160552f, 0.127739f, 0.0827293f, 0.0484923f, 0.0278213f, 0.0148901f, 0.006544f, 0.00152088f, -0.00104743f, -0.00214082f, -0.00237555f, -0.0021548f, -0.00168442f, -0.00111328f, -0.000565308f, -0.000160452f, 5.77561e-05f, 0.000126736f, 0.000110871f, 6.63981e-05f, 2.66512e-05f, 3.01714e-06f, -6.29578e-06f, -7.40597e-06f, -5.4293e-06f, -3.17984e-06f, -1.58928e-06f, -7.01475e-07f };
+#define AINV_NEG 1.13567f, -0.10974f, 0.0101616f, -0.107259f, 1.15131f, -0.1084f, -0.0869777f, -0.026549f, 1.09739f      // Status M density -> negative dye amounts
+#define NEG_DMIN_M 0.212583f, 0.557519f, 0.846998f
+#define AINV_PRINT 1.08149f, -0.0984847f, 0.00507997f, -0.20712f, 1.29967f, -0.0888665f, -0.0320919f, -0.260326f, 1.42597f    // Status A density -> print dye amounts
+#define PRINT_DMIN_A 0.05f, 0.05f, 0.09f
+#define MSENS_50D 1.37794f, -0.453832f, 0.0758934f, -0.0324674f, 1.0009f, 0.0315675f, 0.0592102f, -0.0990701f, 1.03986f   // Rec.2020 -> 50D layer exposure (R, G, B)
+#define MSENS_INV_50D 0.736174f, 0.327497f, -0.0636711f, 0.0251267f, 1.00729f, -0.0324125f, -0.0395242f, 0.0773189f, 0.962205f
+#define MSENS_250D 1.39651f, -0.483424f, 0.0869187f, -0.0261249f, 0.976855f, 0.04927f, 0.0877898f, -0.146036f, 1.05825f   // Rec.2020 -> 250D layer exposure (R, G, B)
+#define MSENS_INV_250D 0.72737f, 0.348602f, -0.0759726f, 0.0223407f, 1.02732f, -0.0496653f, -0.0572581f, 0.112849f, 0.944409f
+#define MSENS_500T 1.3756f, -0.457989f, 0.0823848f, 0.0302542f, 0.956154f, 0.0135922f, 0.038396f, -0.0363782f, 0.997982f   // Rec.2020 -> 500T layer exposure (R, G, B)
+#define MSENS_INV_500T 0.721202f, 0.343006f, -0.0642078f, -0.0224139f, 1.03466f, -0.0122414f, -0.0285643f, 0.0245183f, 1.00405f
+#define PRINT_CURVE_R 0.05f, 4.12155f, 1.25885f, 4.74464f, 1.01845f, 1.02913f   // dmin, dmax, x0, gamma, toe, shoulder
+#define PRINT_CURVE_G 0.05f, 4.16857f, 0.96356f, 4.0816f, 1.01577f, 1.01192f   // dmin, dmax, x0, gamma, toe, shoulder
+#define PRINT_CURVE_B 0.09f, 4.04148f, 0.7646f, 3.54111f, 0.612892f, 0.619076f   // dmin, dmax, x0, gamma, toe, shoulder
+#define PRINT_CURVE_AVG 4.12245f, 0.882371f, 0.886709f   // gamma, toe, shoulder averaged (neutral print curve)
+// interimage (DIR) effect: during development each layer is pushed away from
+// (or pulled toward) the others.  Kodak's sheets do not show it; fitted to a
+// ColorChecker on a real Vision3 250D scan (scanner tone curve fitted too),
+// scaled to 0.6 of the scan fit: the strength that matches best through the
+// 2383 print (the rest of the scan's saturation belongs to the scanner)
+#define II_RG  0.0097f
+#define II_RB  0.2045f
+#define II_GR  0.0759f
+#define II_GB  -0.0772f
+#define II_BR  0.2350f
+#define II_BG  -0.1913f
+
+#define LAD_R     1.09f         // laboratory aim density of the 18% grey on 2383 (Status A)
+#define LAD_G     1.06f
+#define LAD_B     1.03f
+
+__DEVICE__ float3 mat3x3(float3 c, float a, float b, float d, float e, float f, float g, float h, float i, float j)
+{
+    return mul3(c, a, b, d, e, f, g, h, i, j);
+}
+
+// Rec.2020 scene light -> exposure of the three negative layers (R, G, B
+// sensitive), from the stock's spectral sensitivity under its balance light
+__DEVICE__ float3 layer_exposure(float3 c, int m)
+{
+    if (m == 0) return mat3x3(c, MSENS_50D);
+    if (m == 1) return mat3x3(c, MSENS_250D);
+    if (m == 2) return mat3x3(c, MSENS_500T);
+    return c;
+}
+
+__DEVICE__ float3 layer_to_scene(float3 c, int m)
+{
+    if (m == 0) return mat3x3(c, MSENS_INV_50D);
+    if (m == 1) return mat3x3(c, MSENS_INV_250D);
+    if (m == 2) return mat3x3(c, MSENS_INV_500T);
+    return c;
+}
+
+// -----------------------------------------------------------------------------
+//  Negative stocks: Status M characteristic curve per layer
+// -----------------------------------------------------------------------------
+
+typedef struct {
+    float3 dmin, g, xt, kt, emax, ks;    // density = dmin + g * hd(log E): base, gamma, toe, toe softness, shoulder, shoulder softness
+    int mat;                             // spectral sensitivity: 0 = 50D, 1 = 250D, 2 = 500T, 3 = ideal
+    float cd;                            // colour separation relative to Vision3
+} NegStock;
+
+__DEVICE__ NegStock neg_stock(int id)
+{
+    NegStock s;
+    if (id == V3_5203) {  // 50D: finest grain, clean, slightly richer colour
+        // Kodak datasheet, measured
+        s.dmin = make_float3(0.172656f, 0.579906f, 0.850837f); s.g = make_float3(0.499302f, 0.587238f, 0.565878f); s.xt = make_float3(-1.54435f, -1.49689f, -1.5054f);
+        s.kt = make_float3(0.276559f, 0.326198f, 0.443257f); s.emax = make_float3(3.51573f, 3.54435f, 3.50415f); s.ks = make_float3(0.751461f, 0.682186f, 0.549574f);
+        s.mat = 0; s.cd = 1.0f;
+    } else if (id == V3_5207) {  // 250D: neutral-warm, fine grain
+        // Kodak datasheet, measured
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.486541f, 0.568031f, 0.547918f); s.xt = make_float3(-1.47085f, -1.45175f, -1.44924f);
+        s.kt = make_float3(0.595967f, 0.576569f, 0.487185f); s.emax = make_float3(3.58817f, 3.66566f, 3.5717f); s.ks = make_float3(0.920814f, 0.894463f, 0.814529f);
+        s.mat = 1; s.cd = 1.0f;
+    } else if (id == V3_5213) {  // 200T: firm shadows, rich skin
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.49465f, 0.577498f, 0.538786f); s.xt = make_float3(-1.13f, -1.13f, -1.13f);
+        s.kt = make_float3(0.24f, 0.24f, 0.24f); s.emax = make_float3(3.7f, 3.7f, 3.7f); s.ks = make_float3(0.3f, 0.3f, 0.3f);
+        s.mat = 2; s.cd = 1.016f;
+    } else if (id == V3_5219) {  // 500T: soft toe, cool shadows, visible grain
+        // Kodak datasheet, measured
+        s.dmin = make_float3(0.225449f, 0.618194f, 0.913884f); s.g = make_float3(0.591876f, 0.67373f, 0.653235f); s.xt = make_float3(-1.17826f, -1.21857f, -1.24644f);
+        s.kt = make_float3(0.288002f, 0.228172f, 0.389684f); s.emax = make_float3(3.13276f, 3.18167f, 3.28701f); s.ks = make_float3(0.798581f, 0.573326f, 0.773002f);
+        s.mat = 2; s.cd = 1.0f;
+    } else if (id == V3_5219NR) {  // 500T without anti-halation backing (CineStill-style)
+        // Kodak datasheet, measured
+        s.dmin = make_float3(0.225449f, 0.618194f, 0.913884f); s.g = make_float3(0.591876f, 0.67373f, 0.653235f); s.xt = make_float3(-1.17826f, -1.21857f, -1.24644f);
+        s.kt = make_float3(0.288002f, 0.228172f, 0.389684f); s.emax = make_float3(3.13276f, 3.18167f, 3.28701f); s.ks = make_float3(0.798581f, 0.573326f, 0.773002f);
+        s.mat = 2; s.cd = 1.0f;
+    } else if (id == V2_5201) {  // Vision2: earlier shoulder, a touch more contrast
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.510868f, 0.586965f, 0.566182f); s.xt = make_float3(-1.12f, -1.12f, -1.12f);
+        s.kt = make_float3(0.22f, 0.22f, 0.22f); s.emax = make_float3(3.1f, 3.1f, 3.1f); s.ks = make_float3(0.28f, 0.28f, 0.28f);
+        s.mat = 0; s.cd = 1.024f;
+    } else if (id == V2_5205) {
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.510868f, 0.586965f, 0.55705f); s.xt = make_float3(-1.12f, -1.12f, -1.12f);
+        s.kt = make_float3(0.22f, 0.22f, 0.22f); s.emax = make_float3(3.1f, 3.1f, 3.1f); s.ks = make_float3(0.28f, 0.28f, 0.28f);
+        s.mat = 1; s.cd = 1.0f;
+    } else if (id == V2_5212) {
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.510868f, 0.596433f, 0.55705f); s.xt = make_float3(-1.1f, -1.1f, -1.1f);
+        s.kt = make_float3(0.22f, 0.22f, 0.22f); s.emax = make_float3(3.1f, 3.1f, 3.1f); s.ks = make_float3(0.28f, 0.28f, 0.28f);
+        s.mat = 2; s.cd = 1.016f;
+    } else if (id == V2_5217) {
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.510868f, 0.586965f, 0.547918f); s.xt = make_float3(-1.12f, -1.12f, -1.12f);
+        s.kt = make_float3(0.23f, 0.23f, 0.23f); s.emax = make_float3(3.1f, 3.1f, 3.1f); s.ks = make_float3(0.28f, 0.28f, 0.28f);
+        s.mat = 2; s.cd = 1.008f;
+    } else if (id == V2_5218) {
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.502759f, 0.586965f, 0.538786f); s.xt = make_float3(-1.17f, -1.17f, -1.17f);
+        s.kt = make_float3(0.27f, 0.27f, 0.27f); s.emax = make_float3(3.1f, 3.1f, 3.1f); s.ks = make_float3(0.28f, 0.28f, 0.28f);
+        s.mat = 2; s.cd = 0.976f;
+    } else if (id == V2_5229) {  // Expression 500T: low contrast, low saturation
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.437887f, 0.511228f, 0.474862f); s.xt = make_float3(-1.3f, -1.3f, -1.3f);
+        s.kt = make_float3(0.32f, 0.32f, 0.32f); s.emax = make_float3(3.3f, 3.3f, 3.3f); s.ks = make_float3(0.32f, 0.32f, 0.32f);
+        s.mat = 2; s.cd = 0.88f;
+    } else if (id == V1_5246) {  // Vision (1st gen): shorter scale, more grain
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.518977f, 0.596433f, 0.566182f); s.xt = make_float3(-1.08f, -1.08f, -1.08f);
+        s.kt = make_float3(0.2f, 0.2f, 0.2f); s.emax = make_float3(2.8f, 2.8f, 2.8f); s.ks = make_float3(0.26f, 0.26f, 0.26f);
+        s.mat = 1; s.cd = 1.024f;
+    } else if (id == V1_5274) {
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.518977f, 0.6059f, 0.566182f); s.xt = make_float3(-1.08f, -1.08f, -1.08f);
+        s.kt = make_float3(0.2f, 0.2f, 0.2f); s.emax = make_float3(2.8f, 2.8f, 2.8f); s.ks = make_float3(0.26f, 0.26f, 0.26f);
+        s.mat = 2; s.cd = 1.032f;
+    } else if (id == V1_5277) {  // 320T: designed as a low-contrast stock
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.454105f, 0.530162f, 0.502258f); s.xt = make_float3(-1.25f, -1.25f, -1.25f);
+        s.kt = make_float3(0.3f, 0.3f, 0.3f); s.emax = make_float3(3.0f, 3.0f, 3.0f); s.ks = make_float3(0.3f, 0.3f, 0.3f);
+        s.mat = 2; s.cd = 0.928f;
+    } else if (id == V1_5279) {
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.510868f, 0.596433f, 0.547918f); s.xt = make_float3(-1.12f, -1.12f, -1.12f);
+        s.kt = make_float3(0.25f, 0.25f, 0.25f); s.emax = make_float3(2.8f, 2.8f, 2.8f); s.ks = make_float3(0.26f, 0.26f, 0.26f);
+        s.mat = 2; s.cd = 0.992f;
+    } else if (id == V1_5289) {  // 800T: push-stock look, heavy grain
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.502759f, 0.586965f, 0.529654f); s.xt = make_float3(-1.1f, -1.1f, -1.1f);
+        s.kt = make_float3(0.28f, 0.28f, 0.28f); s.emax = make_float3(2.7f, 2.7f, 2.7f); s.ks = make_float3(0.26f, 0.26f, 0.26f);
+        s.mat = 2; s.cd = 0.96f;
+    } else if (id == E_5247) {  // ECN II 100T (70s-80s): short scale, punchy warm colour
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.535195f, 0.615367f, 0.566182f); s.xt = make_float3(-1.02f, -1.02f, -1.02f);
+        s.kt = make_float3(0.2f, 0.2f, 0.2f); s.emax = make_float3(2.4f, 2.4f, 2.4f); s.ks = make_float3(0.24f, 0.24f, 0.24f);
+        s.mat = 2; s.cd = 1.072f;
+    } else if (id == E_5294) {  // 400T (80s): fast, grainy, softer colour
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.518977f, 0.596433f, 0.538786f); s.xt = make_float3(-1.05f, -1.05f, -1.05f);
+        s.kt = make_float3(0.24f, 0.24f, 0.24f); s.emax = make_float3(2.4f, 2.4f, 2.4f); s.ks = make_float3(0.24f, 0.24f, 0.24f);
+        s.mat = 2; s.cd = 0.992f;
+    } else if (id == EXR_5245) {  // EXR (late 80s-90s): finer grain, still shorter scale than Vision
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.527086f, 0.6059f, 0.575314f); s.xt = make_float3(-1.06f, -1.06f, -1.06f);
+        s.kt = make_float3(0.2f, 0.2f, 0.2f); s.emax = make_float3(2.6f, 2.6f, 2.6f); s.ks = make_float3(0.25f, 0.25f, 0.25f);
+        s.mat = 0; s.cd = 1.048f;
+    } else if (id == EXR_5248) {
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.527086f, 0.6059f, 0.566182f); s.xt = make_float3(-1.06f, -1.06f, -1.06f);
+        s.kt = make_float3(0.21f, 0.21f, 0.21f); s.emax = make_float3(2.6f, 2.6f, 2.6f); s.ks = make_float3(0.25f, 0.25f, 0.25f);
+        s.mat = 2; s.cd = 1.04f;
+    } else if (id == EXR_5293) {
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.527086f, 0.615367f, 0.566182f); s.xt = make_float3(-1.07f, -1.07f, -1.07f);
+        s.kt = make_float3(0.21f, 0.21f, 0.21f); s.emax = make_float3(2.6f, 2.6f, 2.6f); s.ks = make_float3(0.25f, 0.25f, 0.25f);
+        s.mat = 2; s.cd = 1.032f;
+    } else if (id == EXR_5296) {  // 500T: the late-80s / 90s night stock
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.518977f, 0.596433f, 0.538786f); s.xt = make_float3(-1.1f, -1.1f, -1.1f);
+        s.kt = make_float3(0.25f, 0.25f, 0.25f); s.emax = make_float3(2.5f, 2.5f, 2.5f); s.ks = make_float3(0.25f, 0.25f, 0.25f);
+        s.mat = 2; s.cd = 1.0f;
+    } else if (id == EXR_5298) {  // 500T: higher contrast, punchier than 5296
+        // Vision3 spectral data, tone from the stock character
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.543304f, 0.624834f, 0.575314f); s.xt = make_float3(-1.06f, -1.06f, -1.06f);
+        s.kt = make_float3(0.23f, 0.23f, 0.23f); s.emax = make_float3(2.5f, 2.5f, 2.5f); s.ks = make_float3(0.25f, 0.25f, 0.25f);
+        s.mat = 2; s.cd = 1.032f;
+    } else {                      // NEG_NONE: ideal negative, straight line, no colour of its own
+        s.dmin = make_float3(0.173916f, 0.575303f, 0.845082f); s.g = make_float3(0.6f, 0.6f, 0.6f); s.xt = make_float3(-1.45f, -1.45f, -1.45f);
+        s.kt = make_float3(0.05f, 0.05f, 0.05f); s.emax = make_float3(9.0f, 9.0f, 9.0f); s.ks = make_float3(0.3f, 0.3f, 0.3f);
+        s.mat = 3; s.cd = 1.0f;
+    }
+    return s;
+}
+// Exposure-equivalent density: straight line through `xt` with soft toe and
+// soft shoulder at `emax`.  Multiply by gamma to get density above base.
+__DEVICE__ float hd_curve(float x, float xt, float kt, float emax, float ks)
+{
+    float e = kt * softplus10((x - xt) / kt);
+    return e - ks * softplus10((e - emax) / ks);
+}
+
+// push / pull processing: development time changes contrast and shadow speed;
+// a neutral curve gives all three layers the same shape (no crossover)
+__DEVICE__ NegStock develop(NegStock s, float pp, int neutral)
+{
+    float g = 1.0f + 0.12f * pp;
+    s.g = scale3(s.g, g);
+    s.xt = add3(s.xt, make_float3(0.07f * pp, 0.07f * pp, 0.07f * pp));
+    if (neutral) {
+        float m;
+        m = (s.g.x + s.g.y + s.g.z) * (1.0f / 3.0f); s.g = make_float3(m, m, m);
+        m = (s.xt.x + s.xt.y + s.xt.z) * (1.0f / 3.0f); s.xt = make_float3(m, m, m);
+        m = (s.kt.x + s.kt.y + s.kt.z) * (1.0f / 3.0f); s.kt = make_float3(m, m, m);
+        m = (s.emax.x + s.emax.y + s.emax.z) * (1.0f / 3.0f); s.emax = make_float3(m, m, m);
+        m = (s.ks.x + s.ks.y + s.ks.z) * (1.0f / 3.0f); s.ks = make_float3(m, m, m);
+    }
+    return s;
+}
+
+// scene light -> negative Status M densities.  Color Density scales the
+// separation between the layer exposures (1 = stock, 0 = monochrome).
+__DEVICE__ float3 neg_density(float3 E, NegStock s, float cd, float ii)
+{
+    float3 e = layer_exposure(E, s.mat);
+    float xr = _log10f(_fmaxf(e.x, 1e-7f) / GREY);
+    float xg = _log10f(_fmaxf(e.y, 1e-7f) / GREY);
+    float xb = _log10f(_fmaxf(e.z, 1e-7f) / GREY);
+    if (ii != 0.0f && s.mat != 3) {
+        float r = xr, g = xg, b = xb;
+        xr = r + ii * (II_RG * (r - g) + II_RB * (r - b));
+        xg = g + ii * (II_GR * (g - r) + II_GB * (g - b));
+        xb = b + ii * (II_BR * (b - r) + II_BG * (b - g));
+    }
+    float k = cd * s.cd;
+    float xm = 0.2627f * xr + 0.6780f * xg + 0.0593f * xb;
+    xr = xm + k * (xr - xm); xg = xm + k * (xg - xm); xb = xm + k * (xb - xm);
+    return make_float3(s.dmin.x + s.g.x * hd_curve(xr, s.xt.x, s.kt.x, s.emax.x, s.ks.x),
+                       s.dmin.y + s.g.y * hd_curve(xg, s.xt.y, s.kt.y, s.emax.y, s.ks.y),
+                       s.dmin.z + s.g.z * hd_curve(xb, s.xt.z, s.kt.z, s.emax.z, s.ks.z));
+}
+
+typedef struct {
+    float3 D;        // Status M density of the pixel
+    float3 Dg;       // ... and of the 18% grey (for printer timing and scans)
+    float silver;    // retained silver (bleach bypass), neutral density
+    float silverG;   // ... in the 18% grey
+    float3 g;        // layer gammas (for scans)
+    int mat;
+} NegOut;
+
+// the stock blended with an ideal, colour-neutral negative (Negative Strength)
+__DEVICE__ NegOut negative(float3 E, NegStock s, float cd, float ii, float strength, int bleach)
+{
+    NegStock id = neg_stock(NEG_NONE);
+    float3 grey = make_float3(GREY, GREY, GREY);
+    NegOut n;
+    float3 Di = neg_density(E, id, 1.0f, 0.0f), Dgi = neg_density(grey, id, 1.0f, 0.0f);
+    float3 Ds = neg_density(E, s, cd, ii), Dgs = neg_density(grey, s, cd, ii);
+    n.D = add3(Di, scale3(add3(Ds, scale3(Di, -1.0f)), strength));
+    n.Dg = add3(Dgi, scale3(add3(Dgs, scale3(Dgi, -1.0f)), strength));
+    n.g = add3(id.g, scale3(add3(s.g, scale3(id.g, -1.0f)), strength));
+    n.mat = strength > 0.5f ? s.mat : id.mat;
+    n.silver = 0.0f; n.silverG = 0.0f;
+    if (bleach) {
+        float3 a = add3(n.D, scale3(s.dmin, -1.0f)), b = add3(n.Dg, scale3(s.dmin, -1.0f));
+        n.silver = 0.5f * _fmaxf(a.x + a.y + a.z, 0.0f) * (1.0f / 3.0f);
+        n.silverG = 0.5f * _fmaxf(b.x + b.y + b.z, 0.0f) * (1.0f / 3.0f);
+    }
+    return n;
+}
+
+// negative -> scene light along each layer's straight line (a "scan"); the
+// toe, shoulder and crossover of the stock stay baked in
+__DEVICE__ float3 negative_to_scene(NegOut n)
+{
+    float3 e = make_float3(GREY * exp10_f((n.D.x - n.Dg.x) / n.g.x),
+                           GREY * exp10_f((n.D.y - n.Dg.y) / n.g.y),
+                           GREY * exp10_f((n.D.z - n.Dg.z) / n.g.z));
+    return layer_to_scene(e, n.mat);
+}
+
+// Cineon printing density: 0.002 D per code value, 18% grey on 445
+__DEVICE__ float3 negative_to_cineon(NegOut n)
+{
+    return make_float3((445.0f + (n.D.x - n.Dg.x) / 0.002f) / 1023.0f,
+                       (445.0f + (n.D.y - n.Dg.y) / 0.002f) / 1023.0f,
+                       (445.0f + (n.D.z - n.Dg.z) / 0.002f) / 1023.0f);
+}
+
+// -----------------------------------------------------------------------------
+//  Print (2383): spectral printing, Status A characteristic curves, projection
+// -----------------------------------------------------------------------------
+
+// print cross-talk, fitted on a ColorChecker in a real 2383 print (Print Version = New)
+#define PI_RG -0.1236f
+#define PI_RB -0.0665f
+#define PI_GR  0.0655f
+#define PI_GB  0.0870f
+#define PI_BR -0.0223f
+#define PI_BG -0.0381f
+
+typedef struct {
+    int print, calib;
+    float printExp, printR, printG, printB, contrast;
+    float dyeSat, dyeC, dyeM, dyeY;
+    float blackToe, shadowRoll, highlightRoll, bleach;
+    int neutral;
+    float flare, flareHue, flareTint;
+} PrintCtl;
+
+__DEVICE__ float3 add_flare(float3 L, float flare, float hue, float tint)
+{
+    if (flare <= 0.0f) return L;
+    float h = hue / 360.0f;
+    float3 hc = make_float3(clampf(_fabs(h * 6.0f - 3.0f) - 1.0f, 0.0f, 1.0f),
+                            clampf(2.0f - _fabs(h * 6.0f - 2.0f), 0.0f, 1.0f),
+                            clampf(2.0f - _fabs(h * 6.0f - 4.0f), 0.0f, 1.0f));
+    hc = scale3(hc, 1.0f / _fmaxf(luma2020(hc), 1e-3f));
+    float fl = flare * 0.002f;
+    float fr = fl * (1.0f + tint * (hc.x - 1.0f));
+    float fg = fl * (1.0f + tint * (hc.y - 1.0f));
+    float fb = fl * (1.0f + tint * (hc.z - 1.0f));
+    return make_float3((L.x + fr) / (1.0f + fr), (L.y + fg) / (1.0f + fg), (L.z + fb) / (1.0f + fb));
+}
+
+// light from the printer lamp through the negative, as seen by the three
+// 2383 layers (spectral integration over the negative's dye densities)
+__DEVICE__ float3 print_exposure(float3 D, float silver)
+{
+    float3 a = mat3x3(add3(D, scale3(make_float3(NEG_DMIN_M), -1.0f)), AINV_NEG);
+    float hr = 0.0f, hg = 0.0f, hb = 0.0f;
+    for (int i = 0; i < NWL; i++) {
+        float dens = a.x * NEG_DYE_C[i] + a.y * NEG_DYE_M[i] + a.z * NEG_DYE_Y[i] + silver;
+        float t = _exp2f(-3.32192809f * dens);
+        hr += PRINT_W_R[i] * t; hg += PRINT_W_G[i] * t; hb += PRINT_W_B[i] * t;
+    }
+    return make_float3(_fmaxf(hr, 1e-12f), _fmaxf(hg, 1e-12f), _fmaxf(hb, 1e-12f));
+}
+
+typedef struct { float dmin, dmax, x0, g, s, hl, sh; } PCurve;
+
+// 2383 characteristic curve (Status A density vs log exposure): a generalised
+// logistic; the roll-off controls stretch the highlight (t < 0) and shadow
+// (t > 0) side, which keeps the curve continuous and monotonic
+__DEVICE__ float pcurve(float x, PCurve c)
+{
+    float t = (x - c.x0) * c.g;
+    t = t < 0.0f ? t / c.hl : t / c.sh;
+    return c.dmin + (c.dmax - c.dmin) / _powf(1.0f + _expf(-t / c.s), c.s);
+}
+
+__DEVICE__ float pcurve_inv(float D, PCurve c)
+{
+    D = clampf(D, c.dmin + 1e-4f, c.dmax - 1e-4f);
+    float r = (c.dmax - c.dmin) / (D - c.dmin);
+    float t = -c.s * _logf(_powf(r, 1.0f / c.s) - 1.0f);
+    t = t < 0.0f ? t * c.hl : t * c.sh;
+    return c.x0 + t / c.g;
+}
+
+__DEVICE__ PCurve make_pcurve(float dmin, float dmax, float x0, float g, float a, float b, PrintCtl c, float3 avg)
+{
+    PCurve p;
+    p.dmin = dmin; p.dmax = dmax; p.x0 = x0; p.g = g; p.s = 0.5f * (a + b);
+    if (c.neutral) { p.g = avg.x; p.s = 0.5f * (avg.y + avg.z); }
+    if (c.print == PR_2393) { p.g *= 1.08f; p.dmax += 0.45f; }          // Vision Premier: more contrast, denser blacks
+    p.g *= c.contrast;
+    p.hl = _fmaxf(1.0f + 0.6f * c.highlightRoll, 0.3f);                  // highlight roll-off: longer / shorter toe
+    p.sh = _fmaxf(1.0f + 0.8f * c.shadowRoll, 0.3f);                     // shadow roll-off: softer / harder shoulder
+    p.dmax = _fmaxf(p.dmax - 1.2f * c.blackToe, 1.8f);                   // black toe: how deep the blacks go
+    return p;
+}
+
+// negative -> projected print light (linear Rec.2020, clear print = 1)
+__DEVICE__ float3 film_print(NegOut n, PrintCtl c)
+{
+    float3 avg = make_float3(PRINT_CURVE_AVG);
+    PCurve pr = make_pcurve(PRINT_CURVE_R, c, avg);
+    PCurve pg = make_pcurve(PRINT_CURVE_G, c, avg);
+    PCurve pb = make_pcurve(PRINT_CURVE_B, c, avg);
+
+    // printer timing: the 18% grey prints to the laboratory aim density;
+    // printer lights are offsets from there (+ = brighter / more of that colour)
+    float3 H = print_exposure(n.D, n.silver);
+    float3 Hg = print_exposure(n.Dg, n.silverG);
+    float er = _log10f(H.x / Hg.x), eg = _log10f(H.y / Hg.y), eb = _log10f(H.z / Hg.z);
+    if (c.calib) {
+        // fitted on a real 2383 print: layer cross-talk the data sheets don't show
+        float r = er, g = eg, b = eb;
+        er = r + PI_RG * (r - g) + PI_RB * (r - b);
+        eg = g + PI_GR * (g - r) + PI_GB * (g - b);
+        eb = b + PI_BR * (b - r) + PI_BG * (b - g);
+    }
+    float ur = er + pcurve_inv(LAD_R, pr) + PT * (c.printExp + c.printR);
+    float ug = eg + pcurve_inv(LAD_G, pg) + PT * (c.printExp + c.printG);
+    float ub = eb + pcurve_inv(LAD_B, pb) + PT * (c.printExp + c.printB);
+    float Dr = pcurve(ur, pr), Dg = pcurve(ug, pg), Db = pcurve(ub, pb);
+
+    // dye saturation: each layer's departure from a visual neutral of the same
+    // density (cyan = red channel, magenta = green, yellow = blue)
+    float Dn = (Dr + Dg + Db) * (1.0f / 3.0f);
+    float on = (LAD_R + LAD_G + LAD_B) * (1.0f / 3.0f);
+    Dr = Dn + (LAD_R - on) + (Dr - Dn - (LAD_R - on)) * c.dyeSat * c.dyeC;
+    Dg = Dn + (LAD_G - on) + (Dg - Dn - (LAD_G - on)) * c.dyeSat * c.dyeM;
+    Db = Dn + (LAD_B - on) + (Db - Dn - (LAD_B - on)) * c.dyeSat * c.dyeY;
+
+    // dye amounts above the print base, then projection through the dyes
+    float3 a = mat3x3(add3(make_float3(Dr, Dg, Db), scale3(make_float3(PRINT_DMIN_A), -1.0f)), AINV_PRINT);
+    float silver = c.bleach > 0.0f ? 0.6f * c.bleach * _fmaxf(Dn - 0.06f, 0.0f) : 0.0f;
+    float3 L = make_float3(0.0f, 0.0f, 0.0f);
+    for (int i = 0; i < NWL; i++) {
+        float dens = a.x * PRINT_DYE_C[i] + a.y * PRINT_DYE_M[i] + a.z * PRINT_DYE_Y[i] + silver;
+        float t = _exp2f(-3.32192809f * dens);
+        L.x += PROJ_R[i] * t; L.y += PROJ_G[i] * t; L.z += PROJ_B[i] * t;
+    }
+
+    // D60 / D55: same print, warmer projection white (gains in display light)
+    if (c.print == PR_2383D60) L = make_float3(L.x, L.y * 0.951f, L.z * 0.875f);
+    else if (c.print == PR_2383D55) L = make_float3(L.x, L.y * 0.895f, L.z * 0.746f);
+    return add_flare(L, c.flare, c.flareHue, c.flareTint);
+}
+
+// -----------------------------------------------------------------------------
+//  Display rendering
+// -----------------------------------------------------------------------------
+
+// neutral DRT: hue-preserving tonescale on max(RGB), mid grey -> SDR grey,
+// highlights roll off and desaturate towards white
+__DEVICE__ float3 neutral_drt(float3 c)
+{
+    c = make_float3(_fmaxf(c.x, 0.0f), _fmaxf(c.y, 0.0f), _fmaxf(c.z, 0.0f));
+    float n = _fmaxf(_fmaxf(c.x, c.y), c.z);
+    if (n < 1e-7f) return make_float3(0.0f, 0.0f, 0.0f);
+    float p = _powf(n, 1.2f);
+    float t = 1.05f * p / (p + 1.039f);            // puts 0.18 at SDR_GREY, like the print
+    c = scale3(c, t / n);
+    float Y = luma2020(c);
+    float k = 0.6f * smooth01(0.6f, 1.05f, t);
+    return make_float3(Y + (c.x - Y) * (1.0f - k), Y + (c.y - Y) * (1.0f - k), Y + (c.z - Y) * (1.0f - k));
+}
+
+// SDR-relative light -> nits: below grey a plain scale, above it the range
+// opens up so that SDR white lands on the HDR peak
+__DEVICE__ float3 hdr_expand(float3 L, float peak, float grey)
+{
+    float Y = luma2020(L);
+    if (Y <= 1e-7f) return scale3(L, grey / SDR_GREY);
+    float y = _logf(Y / SDR_GREY);
+    float yw = _logf(1.0f / SDR_GREY);
+    float a = 8.0f;
+    float k1 = (_logf(peak / grey) - yw) * a / (softplus_e(a * yw) - 0.69314718f);
+    float f = y + k1 * (softplus_e(a * y) - 0.69314718f) / a;   // f(0) = 0: grey stays on `grey`
+    return scale3(L, grey * _expf(f) / Y);
+}
+
+__DEVICE__ float pq_encode(float nits)
+{
+    float y = _powf(clampf(nits / 10000.0f, 0.0f, 1.0f), 0.1593017578125f);
+    return _powf((0.8359375f + 18.8515625f * y) / (1.0f + 18.6875f * y), 78.84375f);
+}
+
+__DEVICE__ float hlg_oetf(float e)
+{
+    if (e <= 1.0f / 12.0f) return _sqrtf(3.0f * _fmaxf(e, 0.0f));
+    return 0.17883277f * _logf(12.0f * e - 0.28466892f) + 0.55991073f;
+}
+
+// pull negative components toward luminance (keeps hue, avoids clipping skew)
+__DEVICE__ float3 gamut_compress(float3 o, float Y)
+{
+    float mn = _fminf(o.x, _fminf(o.y, o.z));
+    if (mn < 0.0f && Y > 0.0f) {
+        float t = Y / (Y - mn);
+        o = make_float3(Y + (o.x - Y) * t, Y + (o.y - Y) * t, Y + (o.z - Y) * t);
+    }
+    return o;
+}
+
+// display light (linear Rec.2020, SDR white = 1) -> output code values
+__DEVICE__ float3 encode_output(float3 L, int outSel, float peak, float grey)
+{
+    float Y = luma2020(L);
+    if (outSel == OUT_PQ || outSel == OUT_HLG) {
+        float3 n = hdr_expand(gamut_compress(L, Y), peak, grey);
+        n = make_float3(_fmaxf(n.x, 0.0f), _fmaxf(n.y, 0.0f), _fmaxf(n.z, 0.0f));
+        if (outSel == OUT_PQ) return make_float3(pq_encode(n.x), pq_encode(n.y), pq_encode(n.z));
+        // HLG: undo the reference OOTF for this peak, then the OETF
+        float g = 1.2f + 0.42f * _log10f(peak / 1000.0f);
+        float3 d = scale3(n, 1.0f / peak);
+        float Yd = _fmaxf(luma2020(d), 1e-7f);
+        float3 sc = scale3(d, _powf(Yd, 1.0f / g - 1.0f));
+        return make_float3(hlg_oetf(sc.x), hlg_oetf(sc.y), hlg_oetf(sc.z));
+    }
+    float3 o;
+    if (outSel == OUT_P3) o = mul3(L, 1.34357825f, -0.28217967f, -0.06139858f, -0.06529745f, 1.07578792f, -0.01049046f, 0.00282179f, -0.01959849f, 1.01677671f);
+    else o = mul3(L, 1.66049100f, -0.58764114f, -0.07284986f, -0.12455047f, 1.13289990f, -0.00834942f, -0.01815076f, -0.10057890f, 1.11872966f);
+    o = gamut_compress(o, Y);
+    o = make_float3(clampf(o.x, 0.0f, 1.0f), clampf(o.y, 0.0f, 1.0f), clampf(o.z, 0.0f, 1.0f));
+    float gm = 1.0f / 2.4f;
+    if (outSel == OUT_SRGB) gm = 1.0f / 2.2f;
+    else if (outSel == OUT_P3) gm = 1.0f / 2.6f;
+    return make_float3(_powf(o.x, gm), _powf(o.y, gm), _powf(o.z, gm));
+}
+
+// the whole node after the primaries; `film` = 0 renders the neutral
+// reference used by Strength (ideal negative, neutral DRT)
+__DEVICE__ float3 render(float3 E, int film, int drt, int outSel, NegStock ns, float cd, float ii, int negBleach,
+                         float negStr, float printStr, PrintCtl pc, float peak, float grey)
+{
+    NegOut n = negative(E, ns, cd, ii, film ? negStr : 0.0f, film ? negBleach : 0);
+    if (drt == DRT_CINEON) return negative_to_cineon(n);
+
+    float3 scene = (film && n.mat != 3) ? negative_to_scene(n) : E;     // the ideal negative scans back exactly
+    if (drt == DRT_OFF) return lin2020_to_di(scene);
+
+    float3 neutralOut = encode_output(neutral_drt(scene), outSel, peak, grey);
+    if (drt != DRT_FILM || !film) return neutralOut;
+    float3 printOut = encode_output(film_print(n, pc), outSel, peak, grey);
+    return add3(scale3(neutralOut, 1.0f - printStr), scale3(printOut, printStr));
+}
+
+// -----------------------------------------------------------------------------
+//  Main
+// -----------------------------------------------------------------------------
+
+__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+{
+    NegStock ns = develop(neg_stock(p_Stock), p_PushPull, p_NeutralNeg);
+
+    PrintCtl pc;
+    pc.print = p_Print; pc.calib = p_PrintVersion == PV_NEW;
+    pc.printExp = p_PrintExp; pc.printR = p_PrintR; pc.printG = p_PrintG; pc.printB = p_PrintB;
+    pc.contrast = p_PrintContrast;
+    pc.dyeSat = p_DyeSat; pc.dyeC = p_DyeC; pc.dyeM = p_DyeM; pc.dyeY = p_DyeY;
+    pc.blackToe = p_BlackToe; pc.shadowRoll = p_ShadowRoll; pc.highlightRoll = p_HighlightRoll;
+    pc.bleach = p_PrintBleach; pc.neutral = p_NeutralPrint;
+    pc.flare = p_Flare; pc.flareHue = p_FlareHue; pc.flareTint = p_FlareTint;
+
+    // ---- Show Curve: a neutral grey ramp through the whole node, drawn bottom left
+    int inBox = 0;
+    float fx = 0.0f, fy = 0.0f, bw = 1.0f, bh = 1.0f;
+    if (p_ShowCurve) {
+        bw = 0.32f * (float)p_Width;
+        bh = 0.30f * (float)p_Height;
+        float bx = 0.03f * (float)p_Width;
+        float by = (float)p_Height - 0.04f * (float)p_Height - bh;
+        fx = ((float)p_X - bx) / bw;
+        fy = 1.0f - ((float)p_Y - by) / bh;
+        if (fx >= 0.0f && fx <= 1.0f && fy >= 0.0f && fy <= 1.0f) inBox = 1;
+    }
+
+    float3 E;
+    if (inBox) {
+        float g = GREY * _exp2f(-8.0f + 16.0f * fx);               // scene stops around grey
+        E = make_float3(g, g, g);
+    } else {
+        E = gamut_to_2020(make_float3(decode_gamma(p_R, p_InGamma), decode_gamma(p_G, p_InGamma), decode_gamma(p_B, p_InGamma)), p_InGamut);
+    }
+    E = primaries(E, p_Exposure, p_Contrast, p_Pivot, p_Highlights, p_Shadows,
+                  p_Temp, p_Tint, p_Saturation, p_SkinHue, p_SkinSat);
+
+    float3 res = render(E, 1, p_DRT, p_Output, ns, p_ColorDensity, (p_NegVersion == NV_OLD ? 0.0f : p_Interimage), p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
+    if (p_Strength < 1.0f) {
+        float3 ref = render(E, 0, p_DRT, p_Output, ns, p_ColorDensity, (p_NegVersion == NV_OLD ? 0.0f : p_Interimage), p_NegBleach, p_NegStrength, p_PrintStrength, pc, p_HdrPeak, p_HdrGrey);
+        res = add3(scale3(ref, 1.0f - p_Strength), scale3(res, p_Strength));
+    }
+
+    if (inBox) {
+        float stops = -8.0f + 16.0f * fx;
+        float3 dot = make_float3(0.08f, 0.08f, 0.08f);
+        float gx = _fabs(stops - 2.0f * _floorf(stops * 0.5f + 0.5f)) * bw / 16.0f;
+        float gy = _fabs(fy * 4.0f - _floorf(fy * 4.0f + 0.5f)) * bh / 4.0f;
+        if (gx < 0.6f || gy < 0.6f) dot = make_float3(0.18f, 0.18f, 0.18f);
+        if (_fabs(stops) * bw / 16.0f < 0.8f) dot = make_float3(0.32f, 0.32f, 0.32f);
+        float w = 1.6f / bh;
+        if (_fabs(res.z - fy) < w) dot = make_float3(0.25f, 0.45f, 1.0f);
+        if (_fabs(res.y - fy) < w) dot = make_float3(0.2f, 0.9f, 0.3f);
+        if (_fabs(res.x - fy) < w) dot = make_float3(1.0f, 0.25f, 0.2f);
+        res = dot;
+    }
+    return make_float3(res.x, res.y, res.z);
+}

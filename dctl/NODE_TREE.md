@@ -13,9 +13,11 @@ Nastavení projektu: *Color Science = DaVinci YRGB* (bez automatické správy ba
 | 05 | **WINDOWS** | Power Windows: přisvětlení subjektu, vinětace | DWG/DI |
 | 06 | **LUT LOG** | DCTL *FilmLab_LUT_Library*: pro LUTy, které čekají log / DWG / Cineon vstup (ve výchozím stavu Bypass) | DWG/DI |
 | 07 | **HALACE** | ResolveFX *Halation* (Studio): Processing Color Space = DaVinci Wide Gamut / Intermediate, preset Modern / Vintage níže | DWG/DI (světlo scény) |
-| 08 | **FILM** | DCTL *FilmLab_Color*: Input DaVinci Wide Gamut + DaVinci Intermediate, Vision3 50D / 250D / 500T, Print 2383, Output Rec.709 Gamma 2.4 | DWG/DI → Rec.709 |
+| 08 | **FILM** | DCTL *FilmLab_Color* v4: Input DaVinci Wide Gamut + DaVinci Intermediate, Vision3 50D / 250D / 500T, Print 2383, Output Rec.709 Gamma 2.4 | DWG/DI → Rec.709 |
 | 09 | **LUT 709** | DCTL *FilmLab_LUT_Library*: pro běžné kreativní LUTy (Rec.709 vstup) | Rec.709 |
 | 10 | **GRAIN** | ResolveFX *Film Grain* (Studio), preset níže. Volitelně za něj DCTL *FilmLab_Texture* (jen MTF, halaci a zrno v něm vypni) | Rec.709 |
+
+> **Film Lab v4:** halace a zrno jsou přímo ve FilmLab_Color (v negativu, kde fyzikálně vznikají). Nody 07 a 10 jsou s v4 volitelné. Když je použiješ, dej ve FilmLab_Color **Halation** a **Grain** na 0, ať se efekty nesčítají.
 
 ## Proč je to v tomhle pořadí
 

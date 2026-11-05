@@ -1,9 +1,14 @@
 // =============================================================================
-//  FILM LAB TEXTURE  |  film MTF, halation, bloom, grain and motion
-//  v2.0
+//  FILM LAB TEXTURE  |  film MTF, bloom and motion
+//  v3.0
 //
 //  Goes on the node after FilmLab_Color and works on its SDR output
 //  (Rec.709 / sRGB / P3, display light decoded with gamma 2.4).
+//
+//  Since Film Lab Color v4, halation (in the negative's exposure) and grain
+//  (in the negative's density) live in FilmLab_Color, where they belong in
+//  the photographic chain.  The display-domain halation and grain here are
+//  off by default and kept only for looks made with v3.
 //
 //    MTF (softness, acutance, red layer) -> halation -> bloom -> vignette
 //    -> film breath -> grain
@@ -18,7 +23,7 @@ DEFINE_UI_PARAMS(p_Acutance, Acutance, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 2.0, 0.01)
 DEFINE_UI_PARAMS(p_AcuRadius, Acutance Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.3, 3.0, 0.01)
 DEFINE_UI_PARAMS(p_RedSoft, Red Layer Softness, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 2.0, 0.01)
 
-DEFINE_UI_PARAMS(p_HalAmount, Halation Amount, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 4.0, 0.01)
+DEFINE_UI_PARAMS(p_HalAmount, Halation Amount (v3 display), DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 4.0, 0.01)
 DEFINE_UI_PARAMS(p_HalRadius, Halation Radius, DCTLUI_SLIDER_FLOAT, 1.0, 0.2, 4.0, 0.01)
 DEFINE_UI_PARAMS(p_HalThreshold, Halation Threshold, DCTLUI_SLIDER_FLOAT, 0.8, 0.0, 1.0, 0.01)
 DEFINE_UI_PARAMS(p_HalWarmth, Halation Warmth, DCTLUI_SLIDER_FLOAT, 0.5, 0.0, 1.0, 0.01)
@@ -29,7 +34,7 @@ DEFINE_UI_PARAMS(p_BloomThreshold, Bloom Threshold, DCTLUI_SLIDER_FLOAT, 0.6, 0.
 
 DEFINE_UI_PARAMS(p_GrainStock, Grain Stock, DCTLUI_COMBO_BOX, 3, { GS_50D, GS_200T, GS_250D, GS_V3_500T, GS_V2_500T, GS_V1_500T, GS_800T, GS_5294 }, { "50D (finest)", "200T", "250D", "Vision3 500T", "Vision2 500T", "Vision / EXR 500T", "800T", "Eastman 5294 400T (coarse)" })
 DEFINE_UI_PARAMS(p_Format, Film Format, DCTLUI_COMBO_BOX, 1, { FMT_65, FMT_35, FMT_S16, FMT_S8 }, { "65 mm", "35 mm", "Super 16", "Super 8" })
-DEFINE_UI_PARAMS(p_GrainAmount, Grain Amount, DCTLUI_SLIDER_FLOAT, 1.0, 0.0, 4.0, 0.01)
+DEFINE_UI_PARAMS(p_GrainAmount, Grain Amount (v3 display), DCTLUI_SLIDER_FLOAT, 0.0, 0.0, 4.0, 0.01)
 DEFINE_UI_PARAMS(p_GrainSize, Grain Size, DCTLUI_SLIDER_FLOAT, 1.0, 0.5, 3.0, 0.01)
 DEFINE_UI_PARAMS(p_GrainChroma, Grain Color, DCTLUI_SLIDER_FLOAT, 0.6, 0.0, 1.0, 0.01)
 DEFINE_UI_PARAMS(p_Animate, Animate Grain, DCTLUI_CHECK_BOX, 1)

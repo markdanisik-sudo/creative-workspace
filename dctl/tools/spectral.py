@@ -20,12 +20,21 @@ def _g(l, mu, s1, s2):
     s = np.where(l < mu, s1, s2)
     return np.exp(-0.5 * ((l - mu) / s) ** 2)
 
-def cmf(l=WL):
-    """CIE 1931 2deg colour matching functions, multi-lobe gaussian fit (Wyman et al. 2013)"""
+_CIE = json.load(open(os.path.join(HERE, 'cie_standard.json')))     # CIE 015 tables (public standard data)
+_CIE_WL = np.array(_CIE['wavelength'], float)
+
+def cmf_wyman(l=WL):
+    """CIE 1931 2deg colour matching functions, multi-lobe gaussian fit (Wyman et al. 2013).
+    Film Lab v3 used this; max error 1.4 % of peak.  Kept for comparison."""
     x = 1.056 * _g(l, 599.8, 37.9, 31.0) + 0.362 * _g(l, 442.0, 16.0, 26.7) - 0.065 * _g(l, 501.1, 20.4, 26.2)
     y = 0.821 * _g(l, 568.8, 46.9, 40.5) + 0.286 * _g(l, 530.9, 16.3, 31.1)
     z = 1.217 * _g(l, 437.0, 11.8, 36.0) + 0.681 * _g(l, 459.0, 26.0, 13.8)
     return np.stack([x, y, z], 1)
+
+def cmf(l=WL):
+    """CIE 1931 2deg colour matching functions, the CIE table"""
+    t = np.array(_CIE['cmf_1931_2deg'])
+    return np.stack([np.interp(l, _CIE_WL, t[:, i]) for i in range(3)], 1)
 
 def blackbody(T, l=WL):
     l = l * 1e-9
@@ -33,9 +42,22 @@ def blackbody(T, l=WL):
     return b / b[np.argmin(abs(WL - 560))]
 
 def daylight(T, l=WL):
-    """CIE daylight series via its xy chromaticity; spectrum approximated by a
-    blackbody with the same correlated temperature (fine for exposure balance)"""
-    return blackbody(T, l)
+    """CIE daylight illuminant of correlated colour temperature T (CIE 015:
+    xy from T, then the S0 + M1 S1 + M2 S2 basis).  Film Lab v3 used a
+    blackbody here, which is up to 57 % off D55 in the blue."""
+    T = T * 1.4388 / 1.4380                    # nominal D55 / D65 -> CCT on the current c2
+    if T <= 7000:
+        x = -4.6070e9 / T ** 3 + 2.9678e6 / T ** 2 + 0.09911e3 / T + 0.244063
+    else:
+        x = -2.0064e9 / T ** 3 + 1.9018e6 / T ** 2 + 0.24748e3 / T + 0.237040
+    y = -3.0 * x * x + 2.870 * x - 0.275
+    M = 0.0241 + 0.2562 * x - 0.7341 * y
+    M1 = (-1.3515 - 1.7703 * x + 5.9114 * y) / M
+    M2 = (0.0300 - 31.4424 * x + 30.0717 * y) / M
+    B = _CIE['daylight_basis']
+    s = np.array(B['S0']) + M1 * np.array(B['S1']) + M2 * np.array(B['S2'])
+    out = np.interp(l, _CIE_WL, s)
+    return out / out[np.argmin(abs(l - 560))]
 
 XYZ_TO_2020 = np.linalg.inv(np.array([[0.63695805, 0.14461690, 0.16888098],
                                       [0.26270021, 0.67799807, 0.05930172],
@@ -80,6 +102,11 @@ def load_data():
     d['neg_dye'] = np.maximum(np.stack([ext('C'), ext('M'), ext('Y')], 1), 0.0)
     d['neg_dmin'] = np.maximum(ext('Dmin'), 0.0)
     d['neg_mid'] = ext('N')
+    # 500T has its own dye and base curves (VISION3 500T brochure); 50D uses the 250D set
+    # (no 50D dye graph digitised); 200T has no Kodak data at all
+    v5 = v500['dye']
+    d['neg_dye_500T'] = np.maximum(np.stack([_resample(v5['C']), _resample(v5['M']), _resample(v5['Y'])], 1), 0.0)
+    d['neg_dmin_500T'] = np.maximum(_resample(v5['Dmin']), 0.0)
     # characteristic curves (Status M), stops relative to the normal grey exposure
     d['char_neg'] = J('char_neg.json')
     # print
@@ -121,7 +148,7 @@ def natural_reflectances(n=4000, seed=1):
         R[i] = np.clip(r, 0.01, 1.0)
     return R
 
-XYZ_D65 = cmf() * daylight(6504)[:, None]
+XYZ_D65 = cmf() * daylight(6500)[:, None]
 RGB_OF_SPECTRUM = XYZ_TO_2020 @ (XYZ_D65.T / XYZ_D65[:, 1].sum())     # 3 x n, flat reflector = (1,1,1)
 TRAIN = natural_reflectances()
 
@@ -154,25 +181,49 @@ def fit_neg_curves(char):
 PRINT_DMIN = {'R': 0.05, 'G': 0.05, 'B': 0.09}    # 2383 base + fog, Status A (read off the toe)
 
 def print_curve(logH, p):
-    """2383 Status A density vs log exposure: sigmoid with a free toe and shoulder.
-    p = (dmin, dmax, x0, gamma, toe, shoulder)"""
+    """2383 Status A density vs log exposure: a generalised (Richards) logistic,
+    smooth everywhere; its single shape parameter s makes it asymmetric
+    (s < 1: longer toe, s > 1: longer shoulder).  p = (dmin, dmax, x0, k, s, s).
+    Film Lab v3 fitted separate toe / shoulder shapes switched at x0, which
+    left a 0.006-0.012 D step in the curve; the DCTL then used their mean."""
     dmin, dmax, x0, g, a, b = p
     x = np.asarray(logH, float)
-    # asymmetric logistic: separate softness below / above the mid point
-    t = (x - x0) * g
-    s = np.where(t < 0, a, b)
-    return dmin + (dmax - dmin) / (1.0 + np.exp(-t / s)) ** s
+    s = 0.5 * (a + b)
+    return dmin + (dmax - dmin) / (1.0 + np.exp(-(x - x0) * g / s)) ** s
 
 def fit_print_curves(char):
+    """D-min is not in the digitised range (the graph starts at D 0.175): it is
+    fixed at the base + fog read off the toe.  D-max is fitted but the graph
+    stops at D 4.06, so values above that are an extrapolation."""
     out = {}
     for k in 'RGB':
         a = np.array(char[k]); x, D = a[:, 0], a[:, 1]
         dm = PRINT_DMIN[k]
-        f = lambda q: print_curve(x, [dm] + list(q)) - D
-        q0 = [4.1, np.interp(2.0, D, x), 2.5, 1.0, 1.0]
-        r = least_squares(f, q0, bounds=([3.8, -1.0, 0.5, 0.2, 0.2], [4.4, 3.0, 8.0, 5.0, 5.0]))
-        out[k] = np.array([dm] + list(r.x))
+        f = lambda q: print_curve(x, [dm, q[0], q[1], q[2], q[3], q[3]]) - D
+        q0 = [4.1, np.interp(2.0, D, x), 4.0, 1.0]
+        r = least_squares(f, q0, bounds=([3.8, -1.0, 0.5, 0.2], [4.4, 3.0, 12.0, 5.0]))
+        out[k] = np.array([dm, r.x[0], r.x[1], r.x[2], r.x[3], r.x[3]])
     return out
+
+# ---------------------------------------------------------------- scene -> layer exposure
+def root_poly(rgb):
+    """degree-3 root-polynomial terms (Finlayson et al. 2015): exposure invariant,
+    so k * rgb -> k * exposure, as photographic exposure must be"""
+    r, g, b = [np.maximum(np.asarray(rgb, float)[..., i], 0.0) for i in range(3)]
+    c = np.cbrt
+    return np.stack([r, g, b, np.sqrt(r * g), np.sqrt(g * b), np.sqrt(r * b),
+                     c(r * g * g), c(r * r * g), c(g * b * b), c(g * g * b), c(r * b * b), c(r * r * b), c(r * g * b)], -1)
+
+def fit_root_poly(rgb, E):
+    """least squares, constrained so that a neutral (1, 1, 1) -> (1, 1, 1)"""
+    X = root_poly(rgb); A = np.linalg.inv(X.T @ X); one = np.ones(X.shape[1])
+    M = np.linalg.lstsq(X, E, rcond=None)[0]                  # 13 x 3
+    for j in range(3):
+        M[:, j] -= A @ one * (one @ M[:, j] - 1.0) / (one @ A @ one)
+    return M.T                                                # 3 x 13
+
+def layer_exposure(M_rp, rgb):
+    return np.einsum('ij,...j->...i', M_rp, root_poly(rgb))
 
 # ---------------------------------------------------------------- densitometry
 def bands(centers, width=18.0):
@@ -195,19 +246,25 @@ class Film:
         self.print_fit = fit_print_curves(self.d['char_2383'])
         sens = self.d['sens_' + stock]
         T = balance or (3200 if stock.endswith('T') else 5500)
+        # tungsten balance: 3200 K tungsten (near-Planckian); daylight: CIE D55
         self.illum = blackbody(T) if T < 4000 else daylight(T)
-        # scene RGB -> layer exposure: best linear map over natural reflectances,
-        # exposed under the film's balance illuminant, neutral kept exact
+        # scene RGB -> layer exposure, fitted over natural reflectances exposed
+        # under the film's balance illuminant; neutral kept exact
         W = sens * self.illum[:, None]                           # n x 3 (R, G, B layer)
         W = W / W.sum(0)                                         # flat reflector -> exposure 1
         rgb = TRAIN @ RGB_OF_SPECTRUM.T; E = TRAIN @ W
-        M = np.linalg.lstsq(rgb, E, rcond=None)[0].T             # 3 x 3
+        M = np.linalg.lstsq(rgb, E, rcond=None)[0].T             # 3 x 3 (Film Lab v3)
         M = M / M.sum(1, keepdims=True)                          # (1,1,1) -> (1,1,1)
         self.M_sens = M
         self.train_err = np.abs(rgb @ M.T - E).mean(0) / E.mean(0)
-        self.A_neg = band_matrix(self.d['neg_dye'], STATUS_M)
+        self.M_rp = fit_root_poly(rgb, E)                        # 3 x 13 (v4)
+        # dyes: 500T has its own; 50D / 250D (and the 200T estimate) use the 250D set
+        dye_key = '_500T' if stock == '500T' else ''
+        self.neg_dye = self.d['neg_dye' + dye_key]
+        self.neg_dmin = self.d['neg_dmin' + dye_key]
+        self.A_neg = band_matrix(self.neg_dye, STATUS_M)
         self.A_print = band_matrix(self.d['print_dye'], STATUS_A)
-        self.neg_dmin_M = STATUS_M.T @ self.d['neg_dmin']
+        self.neg_dmin_M = STATUS_M.T @ self.neg_dmin
         # print Dmin: small, slightly bluish base (Status A ~ 0.04 / 0.05 / 0.09)
         pdmin = np.array([p[0] for p in (self.print_fit['R'], self.print_fit['G'], self.print_fit['B'])])
         self.print_dmin_amt = np.linalg.solve(self.A_print, pdmin)
@@ -218,14 +275,14 @@ class Film:
 
     # ---- negative
     def neg_density(self, rgb):
-        E = np.einsum('ij,...j->...i', self.M_sens, np.asarray(rgb, float))
+        E = layer_exposure(self.M_rp, rgb)
         stops = np.log2(np.maximum(E, 1e-6) / 0.18)
         f = self.neg_fit[self.stock]
         return np.stack([neg_curve(stops[..., i], f[k]) for i, k in enumerate('RGB')], -1)
 
     def neg_spectrum(self, D):
         amt = np.einsum('ij,...j->...i', np.linalg.inv(self.A_neg), D - self.neg_dmin_M)
-        return self.d['neg_dmin'] + np.einsum('nk,...k->...n', self.d['neg_dye'], amt), amt
+        return self.neg_dmin + np.einsum('nk,...k->...n', self.neg_dye, amt), amt
 
     # ---- print
     def print_exposure(self, Dneg_spec):

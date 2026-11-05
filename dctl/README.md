@@ -1,18 +1,17 @@
-# Film Lab: Kodak / Eastman film emulace pro DaVinci Resolve
+# Film Lab: Kodak Vision3 + 2383 film emulace pro DaVinci Resolve
 
-Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN II) a kopírovacího materiálu (Kodak 2383 / 2393). Plugin má dva DCTL nody:
+Emulace negativů Kodak Vision3 (50D, 200T, 250D, 500T) a kopírovacího materiálu Kodak 2383. Model stojí na datech z technických listů Kodaku: charakteristické křivky, spektrální citlivost a spektrální hustota barviv. Podrobný audit, zdroj každého parametru, předpoklady a validace jsou v [`FILMLAB_V4.md`](FILMLAB_V4.md).
 
 | Soubor | Co dělá |
 |---|---|
-| `FilmLab_Color.dctl` | Barva a tonalita: vstup z kamery, primaries (expozice, kontrast, teplota, …), negativ, print / DRT a výstup |
-| `FilmLab_Texture.dctl` | Textura filmu: MTF (kresba), halace, bloom, zrno, breath, gate weave a vinětace |
+| `FilmLab_Color.dctl` (v4) | Vstup z kamery → negativ (včetně halace a zrna) → print 2383 → výstup |
+| `FilmLab_Texture.dctl` (v3) | Optika a pohyb na hotovém obraze: MTF, bloom, breath, gate weave, vinětace |
 | `FilmLab_LUT_Library.dctl` + složka `FilmLab_LUTs` | Knihovna 10 vlastních LUTů s posuvníkem intenzity |
+| `backup/FilmLab_Color_v3.dctl`, `backup/FilmLab_Texture_v2.dctl` | Předchozí verze beze změny, včetně starých stocků (Vision2, Vision, EXR, ECN II) |
 
-**Doporučený node tree (10 nodů) a nastavení vestavěné halace a zrna:** viz [`NODE_TREE.md`](NODE_TREE.md).
+**Doporučený node tree:** viz [`NODE_TREE.md`](NODE_TREE.md).
 
 > Vyžaduje **DaVinci Resolve Studio**.
->
-> `FilmLab_Kodak.dctl` je původní verze 1 (všechno v jednom nodu). Zůstává tu kvůli kompatibilitě, pro novou práci používej dvojici Color + Texture.
 
 ## Instalace
 
@@ -20,169 +19,102 @@ Emulace filmového negativu Kodak / Eastman (Vision, Vision2, Vision3, EXR, ECN 
    - **Windows:** `C:\ProgramData\Blackmagic Design\DaVinci Resolve\Support\LUT\`
    - **macOS:** `/Library/Application Support/Blackmagic Design/DaVinci Resolve/LUT/`
    - **Linux:** `/opt/resolve/LUT/`
-2. V Resolve: *Project Settings → Color Management → Lookup Tables → Update Lists* (nebo Resolve restartuj).
-3. Na Color page přidej na node **ResolveFX → DCTL** a v menu *DCTL List* vyber plugin.
+2. *Project Settings → Color Management → Lookup Tables → Update Lists* (nebo restart Resolve).
+3. Na Color page přidej **ResolveFX → DCTL** a v *DCTL List* vyber plugin.
 
 ## Pořadí nodů
 
 ```
-[Balance / secondary v logu] → [FilmLab Color] → [FilmLab Texture] → výstup
+[korekce v logu] → [FilmLab Color] → [FilmLab Texture] → výstup
 ```
 
-- **FilmLab Color** dostává log z kamery (nastav *Input Color Space* a *Input Gamma*) nebo DaVinci WG / Intermediate. Výstupem je hotový obraz pro displej, takže nahrazuje výstupní LUT nebo CST.
-- **FilmLab Texture** jde hned za něj a pracuje s jeho výstupem. Nemá vlastní nastavení barevného prostoru a počítá s **SDR výstupem** (Rec.709 / sRGB / P3). Pro HDR výstup (PQ / HLG) se nehodí.
-- Při color-managed timeline (DWG, ACES) nastav výstupní transformaci timeline tak, aby nic netonemapovala (DWG/Intermediate), jinak se křivka použije dvakrát.
+- **FilmLab Color** dostává log z kamery. Výchozí vstup je **Canon Cinema Gamut / Canon Log 2** (Canon C50). Výstupem je hotový obraz pro displej, takže nahrazuje výstupní LUT nebo CST.
+- **FilmLab Texture** jde za něj a počítá se **SDR výstupem**.
+- U color-managed timeline nastav výstupní transformaci tak, aby nic netonemapovala.
+
+### Canon C50: kontrola Input Data Levels (1 minuta)
+
+1. Na Canon Log 2 klip dej na jeden node *Color Space Transform* Canon Cinema Gamut / Canon Log 2 → DaVinci WG / DaVinci Intermediate.
+2. Na paralelní node dej Film Lab s **DRT = Off – negative scan**, **Negative Stock = None**.
+3. Na šedé kartě se s CST shodne jedna z voleb **Input Data Levels** (*Full* nebo *Video*). Tu používej.
+
+Verze v3 dekódovala Canon Log 2 / 3 chybně: šeď o 0,1–0,2 stopy, světla až o 2 stopy.
 
 ## FilmLab Color: ovládání
 
-> **Pořadí v Resolve:** Resolve řadí ovládání DCTL podle typu, ne podle pořadí v kódu. Nahoře jsou všechny **posuvníky**, pod nimi **zaškrtávátka** a úplně dole **rozbalovací menu** (Input Color Space, Input Gamma, Negative Stock, DRT, Print Stock, Negative Version, Print Version, Output). Tabulky níže jsou seřazené podle významu.
+> Resolve řadí ovládání podle typu: nahoře posuvníky, pod nimi zaškrtávátka, dole menu. Značky říkají, odkud hodnota pochází:
+> - **[M]** digitalizováno z dat Kodaku
+> - **[F]** nafitováno
+> - **[E]** odhad bez dat
 
-### Hlavička
+### Vstup a scéna (před filmem)
 | Parametr | Co dělá |
 |---|---|
-| **Input Color Space / Input Gamma** | Gamut a gamma kamery zvlášť: DaVinci WG, ARRI WG3 / WG4, S-Gamut3.Cine, V-Gamut, RED WG, **Canon Cinema Gamut**, Rec.709, Rec.2020 · DaVinci Intermediate, LogC3, LogC4, S-Log3, V-Log, Log3G10, **Canon Log 2 / 3**, Gamma 2.4, Linear, **Cineon Log** (scan filmu). |
-| **Negative Stock** | 23 negativů (Vision3, Vision2, Vision, Eastman EXR / ECN II) nebo **None – print only**: obraz jde rovnou na print (samotný 2383 bez Vision3). **Vision3 50D, 250D a 500T jsou spektrální modely z technických listů Kodaku** (viz níže), ostatní stocky používají spektrální data Vision3 se svou vlastní tonalitou. |
-| **DRT** | **Film Print** (použije Print Stock) · **Neutral** (vlastní neutrální DRT: měkké rameno, zachovaný odstín, SDR i HDR) · **Off – DWG/Intermediate** (scénický výstup pro vlastní výstupní transformaci) · **Off – Cineon Log** (pro originální 2383 LUT z Resolve, viz níže). |
-| **Print Stock** | Kodak **2383 D65 / D60 / D55**: spektrální model z technického listu 2383, varianty se liší jen bílou projekce (D60 a D55 jsou teplejší) · Kodak 2393 (2383 s vyšším kontrastem a hlubšími černými). |
-| **Negative Version** | **New**: negativ s Interimage efektem kalibrovaným na skutečném skenu Vision3 250D · **Old**: jen data z technických listů Kodaku (stejné jako Interimage 0). |
-| **Print Version** | **New**: 2383 s vazbou mezi vrstvami nafitovanou na ColorChecker ze skutečného printu 2383 · **Old**: jen data z technického listu. Platí pro všechny varianty Print Stock. |
-| **Output** | Rec.709 Gamma 2.4 · sRGB 2.2 · P3-D65 2.6 · **Rec.2100 PQ** · **Rec.2100 HLG** (HDR, gamut Rec.2020). |
-| **Strength** | Síla filmu: 1 = plný film, 0 = stejný obraz přes neutrální DRT bez filmu. |
-| **Negative Strength** | Síla emulace negativu: 1 = plný charakter stocku, 0 = neutrální „ideální“ negativ (jen print). |
-| **Print Strength** | Síla emulace printu: 1 = plný 2383 / 2393, 0 = negativ přes neutrální DRT bez printu. |
-
-### Primaries
-| Parametr | Co dělá |
-|---|---|
-| **Exposure** | Expozice ve stopách (před negativem, jako na place). |
-| **Contrast / Pivot** | Kontrast kolem pivotu (Pivot je ve stopách vůči 18% šedé). Mění jas, ne sytost. |
-| **Highlights / Shadows** | Zvednutí nebo stažení světel a stínů (až ±1,5 stopy). |
-| **Temperature K / Tint** | Vyvážení bílé **chromatickou adaptací (CAT02)**, stejně jako v kameře: 6500 K = beze změny, nižší hodnota = chladnější obraz, vyšší = teplejší. Tint: + = purpurová, − = zelená. |
-| **Saturation** | Sytost scény před filmem. |
+| **Input Color Space / Input Gamma / Input Data Levels** | Kamera (Canon Cinema Gamut / Canon Log 2 a 3, ARRI, Sony, Panasonic, RED, DWG, Rec.709 / 2020, Cineon) a interpretace úrovní, viz výše. |
+| **Exposure** | Expozice ve stopách, jako clona na place. Podexpozice posouvá obraz do toe negativu, přeexpozice do ramene, u všech stocků stejně. |
+| **Temperature K / Tint** | Vyvážení bílé (CAT02), jako filtr nebo vyvážení kamery: 6500 K = beze změny. |
 
 ### Negativ
 | Parametr | Co dělá |
 |---|---|
-| **Push Pull** | Push/pull vyvolání (−2 až +3): push zvedá kontrast a sytost a ubírá kresbu ve stínech, pull opačně. |
-| **Color Density** | Sytost barev v denzitě negativu (1 = stock, 0 = černobílá). |
-| **Interimage** | Vzájemné ovlivňování vrstev při vyvolání (DIR efekt): modrá ujíždí do azurova, zeleň do olivova, teplé tóny a pleť jsou sytější. 1 = kalibrace podle ColorCheckeru na skutečném skenu Vision3 250D, 0 = jen data z technických listů, 2 = výraznější. |
-| **Neutral Negative Curve** | Stejná křivka pro všechny vrstvy: bez barevného crossoveru, barevnost stocku zůstane. |
-| **Negative Bleach Bypass** | Stříbro zůstane v negativu: víc kontrastu, méně barev. |
+| **Negative Stock** | **Vision3 50D, 250D, 500T** [M]: vlastní křivky každé vrstvy, spektrální citlivost a barviva (500T má vlastní barviva). **200T (estimated)**: Kodak data pro 5213 nemáme, je to odhad [E]. **500T no rem-jet**: bez antihalační vrstvy, výrazná halace [E]. **None**: ideální negativ. |
+| **Push Pull** | Delší nebo kratší vyvolání (−1 až +2) [E]: vyšší gamma vrstev, rychlost v toe, závoj, víc zrna. Kopírka je nastavená na normálně vyvolaný negativ, takže push zjasní obraz. 1 stopa podexpozice + Push 1 dá zhruba normální šeď. Není to expozice ani kontrast. |
+| **Interimage** | Vzájemné tlumení vrstev při vyvolání [F na skenu 250D]. 1 = kalibrace, 0 = jen data Kodaku. |
+| **Film Saturation** | Odchylka každé vrstvy od neutrálu o stejné expozici, po vyvolání. Šedé nemění, v toe a rameni působí méně, jako u skutečného filmu. |
+| **Layer Density Cyan / Magenta / Yellow** | Množství barviva v jednotlivých vrstvách. Laboratoř přečasuje šeď, takže se mění crossover (barvy stínů a světel), ne vyvážení šedé. |
+| **Negative Bleach Bypass** | Stříbro zůstane v negativu [E]. |
+| **Halation** | Světlo odražené od podložky znovu exponuje červenou (a trochu zelenou) vrstvu, ještě před vyvoláním [E]. Plochy beze světel nemění. |
+| **Grain / Film Format / Animate Grain** | Zrno v hustotě negativu, nezávislé v každé vrstvě [E]. Přes křivku printu je nejvíc vidět ve středních tónech. Formát určuje velikost zrna a halace vůči obrazu. |
 
-### Print
+### Print 2383 a výstup
 | Parametr | Co dělá |
 |---|---|
-| **Print Exposure** | Světlost kopie v printer points (12 bodů = 1 clona expozice printu, na obrazovce 1 bod ≈ 0,2 EV). + = světlejší. |
-| **Printer Light R/G/B** | Barevné korekce laboratoře. + = víc dané barvy. |
-| **Print Contrast** | Násobič gammy printu. |
-| **Dye Saturation** | Sytost všech barviv printu jedním posuvníkem. |
-| **Dye Sat Cyan / Magenta / Yellow** | Sytost každého barviva zvlášť. Azurové barvivo tvoří červený kanál (červené tóny a jejich protějšek, azurové), purpurové zelený (zeleň, purpur), žluté modrý (modrá, žlutá). |
-| **Black Toe** | + = zvednuté, měkčí černé · − = hlubší černé. |
-| **Shadow Roll-off** | + = měkčí přechod stínů do černé · − = tvrdší. |
-| **Highlight Roll-off** | + = delší, měkčí přechod světel do bílé · − = kratší, tvrdší. |
-| **Neutral Print Curve** | Stejná křivka printu pro všechny vrstvy (bez crossoveru printu). |
-| **Print Bleach Bypass** | Stříbro v printu (0–1): hluboké černé, tvrdý kontrast, vybledlé barvy (*Se7en*, *Zachraňte vojína Ryana*). Obraz ztmavne, dorovnej ho Print Exposure. |
+| **Print Stock** | **Kodak 2383** [M], projekce D65. D60 / D55 jsou teplejší projekce [E]. 2393 je odhad z 2383 [E]. |
+| **Print Exposure / Printer Light R G B** | Časování kopie v printer points (12 = 1 stopa). |
+| **Print Contrast** | Vyvolání printu [E]. |
+| **Print Dye Saturation** | Odchylka barviv printu od neutrálu. |
+| **Print Crosstalk** | Vazba vrstev 2383 nafitovaná na skutečném printu [F]. 1 = kalibrace, 0 = jen data Kodaku. |
+| **Print Bleach Bypass / Projection Flare** | Stříbro v printu, rozptyl světla v kině [E]. |
+| **DRT** | Film Print · Neutral (bez printu) · Off – sken negativu do DWG / DI · Off – Cineon (pro 2383 LUT z Resolve). |
+| **Output, HDR Peak / Grey** | Rec.709, sRGB, P3, PQ, HLG. |
+| **Strength** | Prolnutí s neutrálním obrazem bez filmu. |
+| **Show Curve** | Tónová křivka nodu vlevo dole (−8 až +8 stop). |
 
-### Pleť, projekce a výstup
-| Parametr | Co dělá |
-|---|---|
-| **Skin Hue / Skin Saturation** | Odstín a sytost jen v pásmu odstínů pleti. Zeleň a modrou nechá být. |
-| **Projection Flare** | Zvedne černé jako rozptyl světla v kině. |
-| **Flare Tint Hue / Amount** | Barva zvednutých černých (35 = zlatá, 195 = azurová). Bílá zůstává bílá. |
-| **HDR Peak Luminance / HDR Grey nits** | Pro výstup PQ / HLG: jas bílé a jas 18% šedé v nitech. |
-| **Show Curve** | Vykreslí vlevo dole tónovou křivku celého nodu (R, G, B). Vodorovně je −8 až +8 stop scény, svislá čára je 18% šeď. |
-
-### Originální 2383 LUT z Resolve
-1. V FilmLab Color nastav **DRT = Off – Cineon Log** (negativ si vyber, nebo nech *None – print only*).
-2. Do **dalšího nodu** dej LUT z Resolve: *Film Looks → Rec709 Kodak 2383 D65* (název se může podle verze Resolve mírně lišit). Tyhle LUTy počítají se vstupem Cineon log, který plugin v tomto režimu vydává (18% šeď = kód 445).
-
-## Spektrální model (Vision3 50D / 250D / 500T + 2383)
-
-Barvy nevznikají odhadem, ale výpočtem z dat, která Kodak zveřejňuje v technických listech (H-1-5203, H-1-5207, brožura VISION3 500T, H-1-2383):
-
-- **spektrální citlivost** vrstev negativu i printu: jak film „vidí“ jednotlivé barvy světla,
-- **charakteristické křivky** (Status M pro negativ, Status A pro 2383): tonalita každé vrstvy,
-- **spektrální hustota barviv** negativu i printu: jaké barvy film skutečně vytvoří.
-
-Pro každý pixel plugin spočítá expozici vrstev negativu, hustoty a barviva negativu, světlo kopírky prošlé negativem (36 vlnových délek, 380–730 nm), expozici a barviva 2383 a nakonec světlo projektoru (xenon) prošlé printem, převedené přes CIE 1931 na barvu. Šedá 18 % se kopíruje na **laboratorní cílovou hustotu Kodaku** (LAD: Status A 1,09 / 1,06 / 1,03, vizuálně neutrální 1,0), stejně jako v laboratoři. Printer Lights jsou odchylky od tohoto nastavení.
-
-**Interimage efekt** (vzájemné ovlivňování vrstev) v technických listech není. Je nafitovaný na ColorChecker ze skutečného skenu Vision3 250D: shoda odstínů se zlepšila z 12° na 8,7° přes print 2383. Zbytek rozdílu dělá barevná matice skeneru, kterou do filmu nepřidávám.
-
-**Print Version New** je nafitovaná stejně, na ColorChecker ze skutečného printu 2383. Po vyrovnání šedé se shoda odstínů zlepšila ze 7,6° na 5,5°. Žlutozelený nádech toho printu (rozdílný ve světlech a stínech) do pluginu nepatří, je to digitalizace nebo printer lights.
-
-Grafy z PDF jsou digitalizované s přesností zhruba ±0,01–0,02 hustoty. Přesnou spektrální křivku densitometrů Status A/M Kodak neuvádí, proto jsou kalibrované tak, aby LAD patch vyšel neutrální. Data a skripty jsou ve složce `tools/` (`export.py` z nich tabulky v pluginu vygeneruje znovu).
-
-**Zvednuté, matné černé:** *Projection Flare* 1,5–2,0 (případně *Flare Tint Hue* 200 a *Amount* 0,3 pro studený nádech).
+**Odstraněno proti v3:**
+- Kontrast, Highlights, Shadows, Saturation a Skin na scéně: patří do korekce před nodem.
+- Color Density: nahrazuje ji Film Saturation.
+- Negative / Print Version: nahrazují je posuvníky Interimage a Print Crosstalk na 0 / 1.
+- Negative / Print Strength.
+- Neutral curves, Black Toe a roll-offy.
+- Staré stocky: najdeš je v `backup/FilmLab_Color_v3.dctl`.
 
 ## FilmLab Texture: ovládání
 
 | Parametr | Co dělá |
 |---|---|
-| **Strength** | Celková síla všech textur. |
-| **MTF Softness** | Filmová měkkost jemných detailů (ostrost emulze a kopírování). |
-| **Acutance / Acutance Radius** | Zvýraznění hran z vyvolávání (adjacency efekt): kontury vypadají výrazně, i když je obraz měkký. |
-| **Red Layer Softness** | Červená vrstva leží v emulzi nejhlouběji, a je proto nejměkčí. |
-| **Halation Amount / Radius / Threshold / Warmth** | Červenooranžová záře kolem světel. Threshold je jas na výstupu (0–1): od kterého jasu světla září. |
-| **Bloom Amount / Radius / Threshold** | Rozptyl světla (difuze / Pro-Mist), zachovává energii. Nízký threshold = difuze celého obrazu. |
-| **Grain Stock** | Charakter zrna: 50D, 200T, 250D, Vision3 / Vision2 / Vision 500T, 800T, Eastman 5294. |
-| **Film Format** | 65 mm / 35 mm / Super 16 / Super 8: velikost zrna, MTF a halace vůči obrazu. |
-| **Grain Amount / Size / Color** | Síla, velikost a barevnost zrna (Color 0 = monochromatické). Zrno je nejvíc vidět ve středních tónech. |
-| **Animate Grain / Grain Seed** | Zrno se mění s každým snímkem. Vypni pro statický náhled; Seed dává jinou variantu. |
-| **Film Breath / Gate Weave / Vignette** | Kolísání expozice a barev mezi snímky, mikropohyb obrazu v okénku, pokles světla do rohů. |
-| **Quality** | Vzorky pro halaci a bloom (Low při gradingu, High pro render). |
+| **Strength** | Celková síla. |
+| **MTF Softness, Acutance, Red Layer Softness** | Kresba filmu, zvýraznění hran z vyvolávání, měkčí červená vrstva. |
+| **Bloom Amount / Radius / Threshold** | Difuze (Pro-Mist). |
+| **Film Format** | Velikost efektů vůči obrazu. |
+| **Film Breath / Gate Weave / Vignette** | Kolísání expozice, pohyb v okénku, vinětace. |
+| **Halation / Grain (v3 display)** | Starší verze halace a zrna na hotovém obraze. Ve výchozím stavu jsou vypnuté, protože ve v4 jsou v negativu ve FilmLab Color. |
+| **Quality** | Vzorky pro bloom (Low při gradingu, High pro render). |
 
-Velikosti MTF, halace, bloomu a zrna se počítají relativně k šířce obrazu, takže look vypadá stejně v HD i 4K.
+## Recepty (výchozí body)
 
-## Recepty pro looky
+- **Teplé, zlaté exteriéry:** 250D · 2383 · Print Exposure −1, Printer Light R +2, G +1, B −2 · Film Saturation 1.1 · Grain 0.8 · Halation 1.
+- **Čisté, syté:** 50D · 2383 · Film Saturation 1.2 · Printer Light R +1, B −1 · Grain 0.5.
+- **Noc, interiéry pod žárovkou:** 500T · Temperature 3200 · Grain 1.2 · Printer Light B +2, G +1 pro chladnější noc.
+- **Noční město / CineStill:** 500T no rem-jet · Halation 1–2 · Grain 1.2.
+- **Podexponováno a pushnuto:** Exposure −1 · Push Pull +1: vyšší kontrast, víc zrna, normální šeď.
+- **Bleach bypass:** 500T · Print Bleach Bypass 0.6–1.0 · Print Exposure +3 až +5 · Print Dye Saturation 0.8.
 
-Výchozí body odvozené z toho, jak tyto snímky vypadají, ne oficiální nastavení z produkce. **Pán prstenů** (2001–2003) se točil na 35mm film Kodak, **Hobit** a **Stranger Things** digitálně s filmovým lookem z gradingu.
+## Vývoj a ověření
 
-### Pán prstenů: Kraj / Lothlórien (teplé, zlaté)
-- Color: **Vision 5246 250D** (exteriéry) / **Vision 5279 500T** (noc) · **2383** · Print Exposure −1, Printer Light R +2, G +1, B −2 · Color Density 1.1
-- Texture: Grain Stock *Vision / EXR 500T*, Grain 1.0 · Halation 0.8 · Bloom 0.2
-- Moria / Mordor: Color Density 0.6, Printer Light B +2, R −1, Print Contrast 1.1
+- `tools/filmlab_model.py`: referenční model celého řetězce v Pythonu.
+- `tools/export.py`: vygeneruje datový blok v `FilmLab_Color.dctl` (`--check` ověří, že je aktuální).
+- `tools/fit_calibration.py`: nafituje interimage a cross-talk na ColorCheckerech, s validací leave-one-out.
+- `tools/validate_colorchecker.py`: srovná v3 a v4 s printem 2383.
+- `tests/test_filmlab.py`: 19 testů proti datům Kodaku, colour-science a referenčnímu modelu. Spuštění: `python3 dctl/tests/test_filmlab.py`, potřebuje g++, numpy, scipy a colour-science.
 
-### Hobit (čisté, sytější, teplé)
-- Color: **Vision3 5203 50D** · **2393** · Color Density 1.2 · Printer Light R +1, B −1
-- Texture: Grain Stock *50D*, Grain 0.4 · Halation 0.5 · Bloom 0.15
-
-### Stranger Things (80. léta, teplé interiéry, viditelné zrno)
-- Color: **Eastman 5294 400T** (noc, interiéry) / **Eastman ECN II 5247** (den) · **2383** · Color Density 1.05
-- Texture: Grain Stock *Eastman 5294*, Grain 1.4, Color 0.7 · Halation 1.3 · Bloom 0.25 · Film Breath 0.3 · Gate Weave 0.2 · Vignette 0.4
-- Noční scény: Printer Light B +2, G +1 (azurová noc), Exposure −0.5
-
-### Noční město / CineStill
-- Color: **Vision3 500T 5219 no rem-jet** · **2383**
-- Texture: Halation 2.0–3.0, Halation Radius 2.0, Threshold 0.7 · Grain 1.2
-
-### Bleach bypass (Se7en, Zachraňte vojína Ryana)
-- Color: **Vision3 5219** · **2383** · Print Bleach Bypass 0.6–1.0 · Print Exposure +3 až +5 (dorovnání jasu) · Dye Saturation 0.8
-
-## Eastman vs. Kodak a staré stocky
-
-Kodak prodává kinematografické negativy pod značkou **Eastman** (na okraji filmu je natištěno „EASTMAN“). Číslo určuje formát: **52xx** = 35 mm (a 65 mm), **72xx** = 16 mm. Jde o stejné emulze, takže *Kodak Vision3 7219* dostaneš jako 5219 + v Texture **Film Format → Super 16**.
-
-| Stock | Éra | Charakter |
-|---|---|---|
-| ECN II 5247 (100T) | 70.–80. léta | krátký rozsah ve světlech, hutné teplé barvy |
-| 5294 (400T) | 80. léta | rychlý, zrnitý, měkčí barvy |
-| EXR 5245 / 5248 / 5293 | konec 80. a 90. léta | jemnější zrno, kratší rozsah než Vision |
-| EXR 5296 (500T) | konec 80. a 90. léta | noční stock své doby |
-| EXR 5298 (500T) | 90. léta | kontrastnější a „punchovější“ než 5296 |
-
-## Jak to funguje
-
-1. **Vstup** se převede do scénicky lineárního světla (primáry Rec.2020).
-2. **Primaries** (vyvážení bílé, expozice, tón, sytost, pleť) pracují na světle scény.
-3. **Negativ:** expozice vrstev podle spektrální citlivosti stocku pod jeho vyvážením (5500 K / 3200 K), charakteristické křivky Status M, push/pull a bleach bypass. Rozdíly mezi vrstvami tvoří barevný crossover.
-4. **Print:** spektrální kopírování: světlo kopírky prošlé barvivy negativu (včetně oranžové masky) exponuje vrstvy 2383, nastavení na LAD, křivky 2383, sytost barviv, bleach bypass a projekce přes barviva printu.
-5. **Výstup:** převod do cílového gamutu s kompresí přesycených barev. Pro HDR se rozsah nad šedou roztáhne tak, aby bílá printu dosáhla zvoleného jasu.
-6. **Texture** pak přidá kresbu filmu, světelné efekty a zrno na hotový obraz.
-
-**Vision3 50D, 250D, 500T a 2383** jsou spočítané z dat Kodaku. **Ostatní stocky** (Vision2, Vision, EXR, ECN II) používají spektrální data Vision3 a jejich tonalita je odhad podle známého charakteru materiálu.
-
-## Tipy
-
-- Na 18% šedou kartu vychází ~0,41 (Rec.709), což odpovídá Kodak LAD a vizuální hustotě 1,0 v kině. Když je obraz moc tmavý, uprav **Exposure** nebo **Print Exposure**.
-- Pro plynulý grading nech v Texture Quality na **Low**, před renderem přepni na **High**.
-- Zrno a MTF posuzuj v plném rozlišení (100% zoom).
+Na 18% šedou kartu vychází ~0,41 (Rec.709): Kodak LAD, vizuální hustota 1,0 v kině. Zrno posuzuj při 100% zoomu.
