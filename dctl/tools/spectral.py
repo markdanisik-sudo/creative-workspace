@@ -93,8 +93,9 @@ def load_data():
     J = lambda f: json.load(open(os.path.join(HERE, f)))
     d = {}
     # negative spectral sensitivities (log), layers ordered R, G, B (= C, M, Y forming)
-    s50, s250, v500 = J('sens_50d.json'), J('sens_250d.json'), J('v_500t.json')
-    for name, s in [('50D', s50), ('250D', s250), ('500T', v500['sens'])]:
+    # 500T: full technical data sheet (digitize_5219.py); v_500t.json (brochure) is superseded
+    s50, s250, s500, s200 = J('sens_50d.json'), J('sens_250d.json'), J('sens_500t.json'), J('sens_200t.json')
+    for name, s in [('50D', s50), ('250D', s250), ('500T', s500), ('200T', s200)]:
         d['sens_' + name] = np.stack([10 ** _logsens(s['C']), 10 ** _logsens(s['M']), 10 ** _logsens(s['Y'])], 1)
     # negative dyes (Vision3 family, from 250D): C, M, Y and base (orange mask)
     dy = J('dye_250d.json')
@@ -102,13 +103,19 @@ def load_data():
     d['neg_dye'] = np.maximum(np.stack([ext('C'), ext('M'), ext('Y')], 1), 0.0)
     d['neg_dmin'] = np.maximum(ext('Dmin'), 0.0)
     d['neg_mid'] = ext('N')
-    # 500T has its own dye and base curves (VISION3 500T brochure); 50D uses the 250D set
-    # (no 50D dye graph digitised); 200T has no Kodak data at all
-    v5 = v500['dye']
+    # 500T: its own dyes and base from the full technical data sheet (the brochure graph
+    # digitised earlier had a ~-0.1 D offset); 50D uses the 250D set (no 50D dye graph digitised)
+    v5 = J('dye_500t.json')
     d['neg_dye_500T'] = np.maximum(np.stack([_resample(v5['C']), _resample(v5['M']), _resample(v5['Y'])], 1), 0.0)
     d['neg_dmin_500T'] = np.maximum(_resample(v5['Dmin']), 0.0)
+    # 200T (H-1-5213, digitised by digitize_5213.py): its own dyes and base
+    d2 = J('dye_200t.json')
+    d['neg_dye_200T'] = np.maximum(np.stack([_resample(d2['C']), _resample(d2['M']), _resample(d2['Y'])], 1), 0.0)
+    d['neg_dmin_200T'] = np.maximum(_resample(d2['Dmin']), 0.0)
     # characteristic curves (Status M), stops relative to the normal grey exposure
     d['char_neg'] = J('char_neg.json')
+    d['char_neg']['200T'] = J('char_200t.json')['200T']
+    d['char_neg']['500T'] = J('char_500t.json')['500T']       # full technical data sheet (replaces the brochure curves)
     # print
     ps = J('sens_2383.json')
     def psens(main, tail):
@@ -120,6 +127,8 @@ def load_data():
     d['print_dye'] = np.maximum(np.stack([_resample(pd['C'], fill=0.0), _resample(pd['M'], fill=0.0), _resample(pd['Y'], fill=0.0)], 1), 0.0)
     d['print_neutral'] = _resample(pd['N'])
     d['char_2383'] = J('char_2383_rows.json')
+    sh = J('char_2383_shoulder.json')                  # measured shoulder / D-max plateau
+    d['char_2383'] = {k: d['char_2383'][k] + sh[k] for k in 'RGB'}
     return d
 
 # ---------------------------------------------------------------- filters / lamps
@@ -258,8 +267,8 @@ class Film:
         self.M_sens = M
         self.train_err = np.abs(rgb @ M.T - E).mean(0) / E.mean(0)
         self.M_rp = fit_root_poly(rgb, E)                        # 3 x 13 (v4)
-        # dyes: 500T has its own; 50D / 250D (and the 200T estimate) use the 250D set
-        dye_key = '_500T' if stock == '500T' else ''
+        # dyes: 200T and 500T have their own; 50D uses the 250D set (no 50D dye graph digitised)
+        dye_key = '_' + stock if stock in ('200T', '500T') else ''
         self.neg_dye = self.d['neg_dye' + dye_key]
         self.neg_dmin = self.d['neg_dmin' + dye_key]
         self.A_neg = band_matrix(self.neg_dye, STATUS_M)

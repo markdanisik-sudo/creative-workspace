@@ -123,8 +123,10 @@ def test_cinema_gamut_matrix():
 def test_kodak_negative_curves():
     """grey ramp through the DCTL negative (Cineon output) vs the digitised Status M curves"""
     char = json.load(open(os.path.join(ROOT, 'tools', 'char_neg.json')))
+    char['200T'] = json.load(open(os.path.join(ROOT, 'tools', 'char_200t.json')))['200T']
+    char['500T'] = json.load(open(os.path.join(ROOT, 'tools', 'char_500t.json')))['500T']    # full data sheet
     s, img = stops_ramp(-6.5, 7.0, 136)
-    for key, st in [('V3_5203', '50D'), ('V3_5207', '250D'), ('V3_5219', '500T')]:
+    for key, st in [('V3_5203', '50D'), ('V3_5213', '200T'), ('V3_5207', '250D'), ('V3_5219', '500T')]:
         dD = cineon_density(run(img, p_Stock=key, p_DRT='DRT_CINEON', p_Interimage=0.0, **LIN2020)[0])
         Dgrey = M.Negative(key).grey_reference()            # fitted density of the normal grey
         for i, L in enumerate('RGB'):
@@ -137,12 +139,14 @@ def test_kodak_negative_curves():
 
 def test_kodak_2383_curves():
     """the smooth 2383 fit vs the digitised Status A curves, and no step at the mid point"""
-    char = json.load(open(os.path.join(ROOT, 'tools', 'char_2383_rows.json')))
+    char = M.DATA['char_2383']                  # digitised rows + the sheet's shoulder / D-max plateau
     for L in 'RGB':
         a = np.array(char[L]); x, D = a[:, 0], a[:, 1]
         p = M.REF.print_fit[L]
         err = M.S['print_curve'](x, p) - D
-        assert np.sqrt(np.mean(err ** 2)) < 0.01 and np.abs(err).max() < 0.04, L
+        body = D < 3.8                               # above 3.8 D (< 0.02 % transmission) one smooth curve
+        assert np.sqrt(np.mean(err[body] ** 2)) < 0.01 and np.abs(err[body]).max() < 0.04, L
+        assert np.abs(err[~body]).max() < 0.09, f'{L}: shoulder'   # can't follow both blue toe and plateau
         xs = np.linspace(x.min(), x.max(), 20001)
         assert np.abs(np.diff(M.S['print_curve'](xs, p))).max() < 1e-3, f'{L}: step in the curve'
 

@@ -31,7 +31,7 @@ S = {'__file__': os.path.join(HERE, 'spectral.py')}
 exec(compile(_src, 'spectral.py', 'exec'), S)
 WL = S['WL']
 DATA = S['load_data']()
-FILMS = {k: S['Film'](k, data=DATA) for k in ['50D', '250D', '500T']}
+FILMS = {k: S['Film'](k, data=DATA) for k in ['50D', '200T', '250D', '500T']}
 REF = FILMS['250D']
 GREY = 0.18
 LAD = np.array([1.09, 1.06, 1.03])
@@ -42,7 +42,7 @@ PT = 0.30103 / 12.0                     # one printer point: 1/12 stop of print 
 #   key, label, sens set, dye set, curves from, halation gain, grain sigma
 STOCKS = [
     ('V3_5203',   'Vision3 50D 5203',                    '50D',  '250D', '50D',  1.0, 0.0060),
-    ('V3_5213',   'Vision3 200T 5213 (estimated)',       '500T', '500T', '200T', 1.0, 0.0085),
+    ('V3_5213',   'Vision3 200T 5213',                   '200T', '200T', '200T', 1.0, 0.0085),
     ('V3_5207',   'Vision3 250D 5207',                   '250D', '250D', '250D', 1.0, 0.0090),
     ('V3_5219',   'Vision3 500T 5219',                   '500T', '500T', '500T', 1.0, 0.0130),
     ('V3_5219NR', 'Vision3 500T 5219 no rem-jet',        '500T', '500T', '500T', 6.0, 0.0135),
@@ -50,27 +50,23 @@ STOCKS = [
 ]
 STOCK_TAGS = {
     'V3_5203': 'curves, spectral sensitivity: Kodak H-1-5203 [M]; dyes: 250D set [E: no 50D dye graph]',
-    'V3_5213': 'NO KODAK DATA: 500T spectral data, hand-set curves (legacy_stocks.json) [E]',
+    'V3_5213': 'curves, spectral sensitivity, dyes: Kodak 5213/7213 technical information [M]',
     'V3_5207': 'curves, spectral sensitivity, dyes: Kodak H-1-5207 [M]',
     'V3_5219': 'curves, spectral sensitivity, dyes: VISION3 500T brochure [M, coarser digitisation]',
     'V3_5219NR': 'as 5219; no anti-halation backing: halation gain [E]',
     'NEG_NONE': 'ideal straight-line negative, no colour of its own [D]',
 }
-SENS_SETS = ['50D', '250D', '500T']
-DYE_SETS = ['250D', '500T']
+SENS_SETS = ['50D', '200T', '250D', '500T']   # index 4 = ideal negative
+DYE_SETS = ['250D', '200T', '500T']
 HALATION_LAYER = np.array([1.0, 0.25, 0.0])   # halation re-exposes the red layer, a little green [E]
 
 
 def curve_params(which):
     """per layer (R, G, B): dmin, gamma, toe, toe softness, shoulder, shoulder softness"""
     nf = REF.neg_fit
-    if which in ('50D', '250D', '500T'):
+    if which in ('50D', '200T', '250D', '500T'):
         return np.array([nf[which][k] for k in 'RGB'])
     ref = nf['250D']
-    if which == '200T':
-        p = json.load(open(os.path.join(HERE, 'legacy_stocks.json')))['V3_5213'][1]
-        g = {'R': p['gr'], 'G': p['gg'], 'B': p['gb']}
-        return np.array([[ref[k][0], g[k] * ref[k][1] / 0.60, p['xt'], p['kt'], p['emax'], p['ks']] for k in 'RGB'])
     # ideal negative: straight line, no colour of its own
     return np.array([[ref[k][0], 0.6, -1.45, 0.05, 9.0, 0.3] for k in 'RGB'])
 
@@ -113,7 +109,7 @@ class Negative:
         self.M_rp = FILMS[sens].M_rp if sens else None
         self.P = curve_params(curves)
         self.dye_set = dyes
-        f = FILMS['500T'] if dyes == '500T' else REF
+        f = FILMS[dyes]
         self.A_inv = np.linalg.inv(f.A_neg)
         self.dmin_M = f.neg_dmin_M
         self.dye, self.base = f.neg_dye, f.neg_dmin

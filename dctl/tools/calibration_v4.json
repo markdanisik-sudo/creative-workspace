@@ -9,12 +9,12 @@
   -0.12396
  ],
  "print_crosstalk": [
-  -0.00908,
-  -0.14643,
-  -0.02876,
-  0.17064,
-  -0.13388,
-  -0.04249
+  -0.00703,
+  -0.14789,
+  -0.02881,
+  0.17104,
+  -0.13668,
+  -0.0385
  ],
  "report": {
   "scan_dE00_insample_no_ii_vs_ii": [
@@ -28,32 +28,32 @@
   "print_dE00_by_interimage_strength": {
    "0.0": {
     "no_crosstalk_insample_loo": [
-     3.22,
-     3.39
+     3.23,
+     3.4
     ],
     "crosstalk_insample_loo": [
-     2.65,
-     3.16
+     2.67,
+     3.17
     ]
    },
    "0.6": {
     "no_crosstalk_insample_loo": [
-     5.27,
-     5.56
+     5.31,
+     5.61
     ],
     "crosstalk_insample_loo": [
-     2.63,
-     3.12
+     2.64,
+     3.13
     ]
    },
    "1.0": {
     "no_crosstalk_insample_loo": [
-     6.97,
-     7.36
+     7.01,
+     7.4
     ],
     "crosstalk_insample_loo": [
-     2.61,
-     3.1
+     2.62,
+     3.11
     ]
    }
   }

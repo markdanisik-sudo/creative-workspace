@@ -1,6 +1,6 @@
 # Film Lab: Kodak Vision3 + 2383 film emulace pro DaVinci Resolve
 
-Emulace negativů Kodak Vision3 (50D, 200T, 250D, 500T) a kopírovacího materiálu Kodak 2383. Model stojí na datech z technických listů Kodaku: charakteristické křivky, spektrální citlivost a spektrální hustota barviv. Podrobný audit, zdroj každého parametru, předpoklady a validace jsou v [`FILMLAB_V4.md`](FILMLAB_V4.md).
+Emulace negativů Kodak Vision3 (50D, 200T, 250D, 500T) a kopírovacího materiálu Kodak 2383. Model stojí na datech z technických listů Kodaku, u všech pěti materiálů: charakteristické křivky, spektrální citlivost a spektrální hustota barviv. Podrobný audit, zdroj každého parametru, předpoklady a validace jsou v [`FILMLAB_V4.md`](FILMLAB_V4.md).
 
 | Soubor | Co dělá |
 |---|---|
@@ -57,7 +57,7 @@ Verze v3 dekódovala Canon Log 2 / 3 chybně: šeď o 0,1–0,2 stopy, světla a
 ### Negativ
 | Parametr | Co dělá |
 |---|---|
-| **Negative Stock** | **Vision3 50D, 250D, 500T** [M]: vlastní křivky každé vrstvy, spektrální citlivost a barviva (500T má vlastní barviva). **200T (estimated)**: Kodak data pro 5213 nemáme, je to odhad [E]. **500T no rem-jet**: bez antihalační vrstvy, výrazná halace [E]. **None**: ideální negativ. |
+| **Negative Stock** | **Vision3 50D, 200T, 250D, 500T** [M]: vlastní křivky každé vrstvy, spektrální citlivost a barviva z technických listů Kodaku (50D používá barviva 250D). **500T no rem-jet**: bez antihalační vrstvy, výrazná halace [E]. **None**: ideální negativ. |
 | **Push Pull** | Delší nebo kratší vyvolání (−1 až +2) [E]: vyšší gamma vrstev, rychlost v toe, závoj, víc zrna. Kopírka je nastavená na normálně vyvolaný negativ, takže push zjasní obraz. 1 stopa podexpozice + Push 1 dá zhruba normální šeď. Není to expozice ani kontrast. |
 | **Interimage** | Vzájemné tlumení vrstev při vyvolání [F na skenu 250D]. 1 = kalibrace, 0 = jen data Kodaku. |
 | **Film Saturation** | Odchylka každé vrstvy od neutrálu o stejné expozici, po vyvolání. Šedé nemění, v toe a rameni působí méně, jako u skutečného filmu. |

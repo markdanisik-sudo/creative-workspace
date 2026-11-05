@@ -18,7 +18,7 @@ Tags used throughout:
 | 1 | Canon Log 2 / 3 decoded with a legal-range conversion in the wrong direction: grey −0.09 or −0.20 stops, highlights up to +2 stops off | [V] against colour-science | Fixed. All log formulas take code / 1023; the *Input Data Levels* option covers legal-scaled data (see section 6) |
 | 2 | Scene → layer exposure by a 3×3 matrix: 8–13 % mean error; 21–26 % of narrow-band (LED) colours gave non-positive red- or blue-layer exposure | [D] on 4000 held-out spectra | Degree-3 root polynomial: 95th percentile error 1.9–2.1 → 1.2–1.3 stops, non-positive exposures only in the red layer, in 14 % of LED spectra [D/F] |
 | 3 | Daylight balance light was a 5500 K blackbody (up to 57 % off D55 in the blue); CIE 1931 from an approximation (1.4 %) | [V] | CIE D-series and the CIE 1931 table (`tools/cie_standard.json`) |
-| 4 | 500T used the 250D dyes although its own dye data was digitised | data in `v_500t.json` | 500T uses its own dyes and base [M] |
+| 4 | 500T used the 250D dyes; its own dye data (`v_500t.json`, digitised from the brochure) turned out to have a ~−0.1 D axis offset and a cyan peak at 704 nm instead of ~683 nm | full 5219 sheet | 500T sensitivity, dyes and base re-digitised from the full technical data sheet [M] |
 | 5 | 2383 fit switched shape at the mid point (0.006–0.012 D step); the DCTL used a different (averaged) curve | [D] | One smooth Richards curve per layer, fitted on the data (RMS 0.006–0.008 D) |
 | 6 | The 2383 "gamma" quoted earlier (4.74 / 4.08 / 3.54) is the fit steepness, not density gamma | [M] | Real chord gamma D 0.5 → 3.0: R 3.84, G 3.37, B 3.48 (fit: 3.81 / 3.35 / 3.51) |
 | 7 | Interimage on log exposure before the curve; scaled by an arbitrary 0.6 | — | On exposure-equivalent density after development (fades in toe and shoulder); refitted with leave-one-out validation [F] |
@@ -26,7 +26,9 @@ Tags used throughout:
 | 9 | Halation and grain added to the display image after the print | — | Halation in the negative's exposure; grain in the negative's density [E amounts] |
 | 10 | Push / pull: gamma + toe shift only; the print was retimed on the pushed negative, so push never brightened anything | — | Development model (gamma, toe speed, fog, grain); printer lights set for a normally developed negative [E coefficients] |
 | 11 | Saturation, Color Density and Dye Saturation overlapped; scene Contrast / Highlights / Shadows duplicated the film curves | — | Separate concepts (section 4); grading tools removed from the film node |
-| 12 | 200T listed like a measured stock | no Kodak data for 5213 | Labelled *estimated* in the UI |
+| 12 | 200T was a hand-set estimate (grey 0.13–0.15 D too low in every layer) | 5213 sheet | Digitised from the 5213/7213 technical information: curves, spectral sensitivity, dyes [M] |
+| 13 | 500T curves came from the brochure: about 0.4 stops off and ~20 % too much contrast (layer gamma 0.59 / 0.67 / 0.65 instead of 0.48 / 0.57 / 0.55) | full 5219 sheet | Curves from the full technical data sheet [M] |
+| 14 | 2383 D-max extrapolated (R 4.13, G 4.16, B 4.04) | 2383 sheet shows the plateau | Shoulder and plateau (4.10–4.12, all layers) traced and fitted [M] |
 
 Removed controls, and what to use instead:
 
@@ -44,20 +46,20 @@ Removed controls, and what to use instead:
 | Item | Source | Class |
 |---|---|---|
 | Negative H&D curves 50D, 250D (Status M) | H-1-5203, H-1-5207, ~900 points per layer | M, fitted RMS 0.003–0.006 D |
-| Negative H&D curves 500T | VISION3 500T brochure, ~80 points per layer | M (coarse), fitted RMS 0.004–0.010 D |
-| 200T (5213) | none | E: 500T spectra, hand-set curves |
-| Spectral sensitivity 50D / 250D / 500T / 2383 | data sheets (log sensitivity); outside the plotted range −0.08 log/nm | M (extrapolation E) |
-| Dyes 250D, 500T, 2383 | data sheets; values outside the plot held constant or zero | M (edges E) |
-| 2383 H&D (Status A) | H-1-2383, 639 points per layer | M; D-min 0.05 / 0.05 / 0.09 below the digitised range (E); D-max above 4.06 extrapolated (E) |
-| LAD 1.09 / 1.06 / 1.03 | Kodak laboratory aim density | M (not re-checked against the PDF in this session) |
+| Negative H&D curves 500T | 5219/7219 technical data, ~465 points per layer (replaces the brochure) | M, fitted RMS 0.003–0.005 D |
+| Negative H&D curves 200T | 5213/7213 technical information, ~560 points per layer | M, fitted RMS 0.002–0.003 D |
+| Spectral sensitivity 50D / 200T / 250D / 500T / 2383 | data sheets (log sensitivity); outside the plotted range −0.08 log/nm | M (extrapolation E) |
+| Dyes 250D (also used for 50D), 200T, 500T, 2383 | data sheets; values outside the plot held constant or zero | M (edges E); 50D dye graph not digitised |
+| 2383 H&D (Status A) | H-1-2383, 639 points per layer + the shoulder / plateau traced from the sheet | M; D-max plateau 4.10–4.12 measured; D-min 0.05 / 0.05 / 0.09 consistent with the toe ends (0.06–0.10 ±0.03 D) |
+| LAD 1.09 / 1.06 / 1.03 | Kodak laboratory aim density | M; the 2383 sheet defines LAD as a 1.0 visual-density grey and refers to publication H-61 for the values (H-61 not available here) |
 | Status M / A densitometers | Gaussian bands; Status A centres set so the LAD patch is neutral under the projector | F (no ISO 5-3 tables available) |
 | Printer lamp 3200 K, projector 5800 K | blackbody approximations | E |
 | CIE 1931, CIE daylight | CIE 015 tables | standard |
 | Layer exposure map | root polynomial fitted over 4000 synthetic natural reflectances | D/F |
 | Interimage, print cross-talk | ColorChecker scan / print | F (section 5) |
-| Push / pull, fog, grain, halation amounts, 2393, D60 / D55, bleach bypass, flare | no data | E |
+| Push / pull, fog, grain, halation amounts, 2393, D60 / D55, bleach bypass, flare | no data | E. The sheets' granularity graphs (diffuse RMS σD per layer) could make grain measured; not digitised yet |
 
-Digitising accuracy of the graphs is about ±0.01–0.02 D. The stops axis of the negative curves is anchored at the "normal grey exposure" chosen during digitising. That anchor should be checked against the PDFs.
+Digitising accuracy of the graphs is about ±0.01–0.02 D. **Grey anchor verified:** re-traced from the full sheets, the 50D and 250D curves agree with the earlier digitisation within 0.003 D RMS and 0.02 stops, so stop 0 is Kodak's normal exposure (on the 200T sheet: −1.284 log lux-s). On the 500T sheet the top log-exposure axis and the camera-stop ticks disagree by ~3.5 % in scale; the stop ticks are used. Digitisers: `tools/digitize_5213.py`, `digitize_5219.py`, `digitize_2383.py` (they read the graphs out of the PDFs; the PDFs are not stored in the repository).
 
 ## 3. Processing order (and why)
 
@@ -103,9 +105,9 @@ Interimage generalises.
 
 | Interimage strength | No cross-talk | With cross-talk |
 |---|---|---|
-| 0 | 3.22 / 3.39 | 2.65 / 3.16 |
-| 0.6 | 5.27 / 5.56 | 2.63 / 3.12 |
-| 1 | 6.97 / 7.36 | 2.61 / 3.10 |
+| 0 | 3.23 / 3.40 | 2.67 / 3.17 |
+| 0.6 | 5.31 / 5.61 | 2.64 / 3.13 |
+| 1 | 7.01 / 7.40 | 2.62 / 3.11 |
 
 The print alone cannot determine interimage strength: cross-talk cancels it.
 
@@ -117,8 +119,8 @@ The print alone cannot determine interimage strength: cross-talk cancels it.
 |---|---|
 | v3 Old | 4.33 |
 | v3 New | 4.71 |
-| v4 without calibration | 4.19 |
-| **v4 default** | **3.77** |
+| v4 without calibration | 4.23 |
+| **v4 default** | **3.79** |
 
 ## 6. Canon C50 (Canon Log 2 / Cinema Gamut)
 
@@ -136,8 +138,8 @@ The print alone cannot determine interimage strength: cross-talk cancels it.
 ## 7. Validation
 
 **Numerical,** in `tests/test_filmlab.py` (`python3 dctl/tests/test_filmlab.py`, needs g++, numpy, scipy, colour-science):
-- Negative curves through the DCTL vs the digitised Kodak curves for 50D / 250D / 500T: RMS < 0.012 D, max < 0.035 D per layer.
-- 2383 fit vs data, and no step anywhere on the curve.
+- Negative curves through the DCTL vs the digitised Kodak curves for 50D / 200T / 250D / 500T: RMS < 0.012 D, max < 0.035 D per layer.
+- 2383 fit vs data (RMS < 0.01 D below D 3.8; the blue shoulder within 0.09 D), and no step anywhere on the curve.
 - Canon Log 2 / 3, other decoders and Cinema Gamut vs colour-science.
 - The whole colour chain, DCTL vs the Python reference model (`tools/filmlab_model.py`), on ColorChecker colours at three exposures, for every stock and most controls: < 0.003 code.
 - **Exposure:** a pure scaling of scene light; underexposure reaches the toe for every stock.
@@ -161,10 +163,10 @@ The print alone cannot determine interimage strength: cross-talk cancels it.
 - Grain texture and size against real scans.
 - Halation shape and colour.
 - Overall rendering of skin, foliage and sky.
-- The look of 200T, 2393, D60 / D55, bleach bypass and flare (all [E]).
+- The look of 2393, D60 / D55, bleach bypass and flare (all [E]).
 
 **Needed to go further:**
-1. The Kodak PDFs, for re-checking D-min, LAD and the grey anchor; H-1-5213 for 200T; the full H-1-5219.
+1. Kodak publication H-61 (LAD values); the 50D dye graph; digitising the granularity graphs (grain per layer and stock).
 2. ISO 5-3 Status A / M spectral products, and the printer-lamp and xenon spectra.
 3. C50 Canon Log 2 footage of a ColorChecker (ideally the SG version) at −4…+4 stops, in daylight and tungsten, for independent validation of input and exposure.
 4. The same scene on real 250D / 500T: processed normally and pushed +1 / +2, step wedges or sensitometric strips, printed on 2383 or scanned with a known calibration. This is what push / pull, grain and halation need to stop being estimates.

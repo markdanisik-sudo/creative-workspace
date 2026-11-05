@@ -41,8 +41,8 @@ def block():
          '//  calibration_v4.json.  [M] digitised Kodak, [D] derived, [F] fitted, [E] estimated.',
          f'#define NWL {len(M.WL)}   // 380-730 nm every 10 nm', '']
 
-    dye_films = [M.REF, M.FILMS['500T']]
-    o.append(arr('NEG_DYE_C', [fl.neg_dye[:, 0] for fl in dye_films], 'negative dyes [M], set 0 = 250D (also 50D, 200T est.), set 1 = 500T; NWL each'))
+    dye_films = [M.FILMS[k] for k in M.DYE_SETS]
+    o.append(arr('NEG_DYE_C', [fl.neg_dye[:, 0] for fl in dye_films], 'negative dyes [M], sets 250D (also 50D), 200T, 500T; NWL each'))
     o.append(arr('NEG_DYE_M', [fl.neg_dye[:, 1] for fl in dye_films]))
     o.append(arr('NEG_DYE_Y', [fl.neg_dye[:, 2] for fl in dye_films]))
     W = []
@@ -77,7 +77,7 @@ def block():
     o.append('')
 
     rp = [M.FILMS[k].M_rp for k in M.SENS_SETS]
-    o.append(arr('RP', rp, 'scene Rec.2020 -> layer exposure, degree-3 root polynomial (13 terms) per sensitivity set 50D / 250D / 500T [D/F on M]'))
+    o.append(arr('RP', rp, 'scene Rec.2020 -> layer exposure, degree-3 root polynomial (13 terms) per sensitivity set 50D / 200T / 250D / 500T [D/F on M]'))
     o.append(arr('SENS3', [M.FILMS[k].M_sens for k in M.SENS_SETS], 'the same as 3x3 matrices (only for the halation source)'))
     o.append(define('INTERIMAGE', M.CAL['interimage'], 'RG RB GR GB BR BG, on exposure-equivalent density [F: 250D scan]'))
     o.append(define('PRINT_XTALK', M.CAL['print_crosstalk'], 'RG RB GR GB BR BG, 2383 layer cross-talk [F: 2383 print]'))
@@ -86,11 +86,12 @@ def block():
     rows = []
     o.append(f'#define NSTOCK {len(M.STOCKS)}')
     o.append('#define STOCK_STRIDE 22')
-    o.append('// per stock: sensitivity set (0 50D, 1 250D, 2 500T, 3 none), dye set, then per layer R, G, B')
-    o.append('// dmin, gamma, toe, toe softness, shoulder, shoulder softness [F on M; 200T: E], halation gain, grain sigma (D) [E]')
+    o.append('#define SENS_NONE 4')
+    o.append('// per stock: sensitivity set (0 50D, 1 200T, 2 250D, 3 500T, 4 none), dye set (0 250D, 1 200T, 2 500T), then per layer R, G, B')
+    o.append('// dmin, gamma, toe, toe softness, shoulder, shoulder softness [F on M], halation gain, grain sigma (D) [E]')
     for key, label, sens, dyes, curves, hal, grain in M.STOCKS:
         n = M.Negative(key)
-        rows.append([3 if sens is None else M.SENS_SETS.index(sens), M.DYE_SETS.index(dyes)] + list(n.P.ravel()) + [hal, grain])
+        rows.append([4 if sens is None else M.SENS_SETS.index(sens), M.DYE_SETS.index(dyes)] + list(n.P.ravel()) + [hal, grain])
         o.append(f'//   {key:10s} {M.STOCK_TAGS[key]}')
     o.append(arr('STOCKS', rows))
     o.append(f'#define STOCK_ORDER "{" ".join(s[0] for s in M.STOCKS)}"')
