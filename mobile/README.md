@@ -2,7 +2,7 @@
 
 A native shell (Capacitor) around the live site, so the studio can be tried
 as an app on an iPhone or in the Simulator. It loads
-https://mstudiolab.vercel.app, so every push to the site shows up in the app
+https://lab.mstudio.company, so every push to the site shows up in the app
 without rebuilding it.
 
 ## Open it in Xcode (on a Mac)

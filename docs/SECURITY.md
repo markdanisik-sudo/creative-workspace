@@ -61,8 +61,8 @@ Frankfurt).
 
 Supabase (Dashboard):
 
-0. **Authentication → URL Configuration**: Site URL `https://mstudiolab.vercel.app` and
-   Redirect URL `https://mstudiolab.vercel.app/**` — otherwise links in emails (password
+0. **Authentication → URL Configuration**: Site URL `https://lab.mstudio.company` and
+   Redirect URL `https://lab.mstudio.company/**` — otherwise links in emails (password
    reset, invitations) point at localhost.
 1. **Authentication → Multi-Factor**: authenticator app (TOTP) enabled (default).
 2. **Authentication → Sign In / Providers → Email**: set a minimum password length

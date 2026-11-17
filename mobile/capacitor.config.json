@@ -3,7 +3,7 @@
   "appName": "m.studio.lab",
   "webDir": "www",
   "server": {
-    "url": "https://mstudiolab.vercel.app",
+    "url": "https://lab.mstudio.company",
     "errorPath": "offline.html"
   },
   "backgroundColor": "#ecebe8",
