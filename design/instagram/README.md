@@ -19,3 +19,24 @@ Rozvržení: **Work** (projekt jako karta z webu), **Statement** (tmavý box s v
 4. Story/Reels mají nahoře 250 px a dole 340 px volno pro ovládací prvky Instagramu – text tam nedávejte.
 
 Úprava všech šablon najednou: `python3 design/instagram/generate.py design/instagram/logo-path.txt design/instagram`.
+
+# Karusel „Night Drive“ – 10 snímků
+
+Složka `carousel/` – jeden celý karusel v každém formátu (`feed-1x1`, `feed-4x5`, `feed-3x4`, `feed-1.91x1`, `story-reel-9x16`). Snímky na sebe navazují, počítadlo jde 01/10 → 10/10 a čísla kapitol odpovídají obsahu.
+
+| # | Soubor | Snímek |
+|---|---|---|
+| 01 | `01-cover` | Úvod – fotka přes celou plochu, velký název |
+| 02 | `02-index` / `02b-index-card` | Obsah: 01 The idea · 02 On set · 03 Behind the lens · 04 The city · 05 Final cut (světlý / karta přes fotku) |
+| 03 | `03-chapter` | Kapitola 01 – rozmazaná fotka, velké číslo |
+| 04 | `04-photo-card` | Kapitola 02 – zaoblená fotka na papíře + popisek |
+| 05 | `05-duo` | Kapitola 02 – dvě fotky s popisky |
+| 06 | `06-split` | Kapitola 03 – nadpis nahoře, fotka dole |
+| 07 | `07-band` | Kapitola 04 – pás přes fotku |
+| 08 | `08-grid` | Kapitola 04 – mřížka 4 fotek |
+| 09 | `09-text` | Kapitola 05 – krátký příběh |
+| 10 | `10-end` | Závěr – logo, „See the full film“, odkaz |
+
+Snímky jdou libovolně vynechat nebo opakovat (např. víc `05-duo`) – jen přepište počítadlo „NN/10“ a čísla kapitol.
+Rozmazané pozadí: u vrstev „(Layer blur 60)“ přidejte ve Figmě Effects → Layer blur.
+Karusel na Instagramu musí mít všechny snímky ve stejném formátu.
