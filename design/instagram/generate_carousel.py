@@ -1,4 +1,4 @@
-"""m.STUDIO carousel series for Instagram, as Figma-ready SVGs.
+"""m.STUDIO carousel series for Instagram, as Figma-ready SVGs, in the website's own style.
 
 Usage: python3 generate_carousel.py logo-path.txt out-dir
 """
@@ -10,333 +10,298 @@ LOGO = open(sys.argv[1]).read().strip()
 OUT = sys.argv[2]
 os.makedirs(OUT, exist_ok=True)
 
-PAPER, INK, TEXT, MUTED, WHITE = "#E4E3DF", "#121212", "#0A0A0A", "#6E6E6E", "#FFFFFF"
-MUTED_DARK = "#828385"
-GREYS = ["#8A8A8A", "#9E9E9E", "#767676", "#B0B0B0"]
+# Website tokens (light) and the ink box / footer.
+BG, TEXT, MUTED, LINE, SURFACE = "#FFFFFF", "#0A0A0A", "#757575", "#A8A8A8", "#EBEBEB"
+INK, INK_TEXT, INK_MUTED, FOOT_LOGO = "#121212", "#F2F2F2", "#828385", "#2E2E2E"
+PHOTO = ["#CFCFCF", "#C2C2C2", "#B6B6B6", "#D8D8D8"]
 
 FORMATS = [
-    ("feed-1x1", "Feed 1:1", 1080, 1080, 64, 72),
-    ("feed-4x5", "Feed 4:5", 1080, 1350, 72, 80),
-    ("feed-3x4", "Feed 3:4", 1080, 1440, 72, 80),
-    ("feed-1.91x1", "Feed 1.91:1", 1080, 566, 44, 52),
+    ("feed-1x1", "Feed 1:1", 1080, 1080, 64, 64),
+    ("feed-4x5", "Feed 4:5", 1080, 1350, 72, 72),
+    ("feed-3x4", "Feed 3:4", 1080, 1440, 72, 72),
+    ("feed-1.91x1", "Feed 1.91:1", 1080, 566, 44, 44),
     ("story-reel-9x16", "Story & Reels 9:16", 1080, 1920, 250, 340),
 ]
-PAD = 72
-TOTAL = 10
-CAPS = 0.66  # rough advance of Inter Bold capitals, in em
+PAD = 64
+GLYPH = 0.5  # rough advance of Inter Medium, in em, at the website's tight tracking
 
 
-def t(x, y, body, size, fill, weight=600, anchor="start", track=-0.02, name=None, opacity=None):
+def wide(H):
+    return H < 700
+
+
+def tall(W, H):
+    return H / W > 1.5
+
+
+def t(x, y, body, size, fill, weight=500, anchor="start", track=-0.04, name=None):
     ident = f' id="{escape(name)}"' if name else ""
-    op = f' fill-opacity="{opacity}"' if opacity is not None else ""
     return (
         f'<text{ident} x="{x:.0f}" y="{y:.0f}" font-family="Inter" font-size="{size:.0f}" font-weight="{weight}" '
-        f'letter-spacing="{size * track:.2f}" fill="{fill}"{op} text-anchor="{anchor}">{escape(body)}</text>'
+        f'letter-spacing="{size * track:.2f}" fill="{fill}" text-anchor="{anchor}">{escape(body)}</text>'
     )
 
 
-def block(x, y_first, rows, size, fill, weight=700, anchor="start", lh=0.92, track=-0.03, name="Title"):
-    spans = "".join(
-        f'<tspan x="{x:.0f}" y="{y_first + i * size * lh:.0f}">{escape(r)}</tspan>' for i, r in enumerate(rows)
-    )
+def para(x, y_first, rows, size, lh=1.1, weight=500, track=-0.05, anchor="start", name="Text"):
+    """Rows of (text, colour), or of [(text, colour), …] for two-tone lines."""
+    out = []
+    for i, row in enumerate(rows):
+        segs = row if isinstance(row, list) else [row]
+        spans = "".join(f'<tspan fill="{c}">{escape(s)}</tspan>' for s, c in segs)
+        out.append(f'<tspan x="{x:.0f}" y="{y_first + i * size * lh:.0f}">{spans}</tspan>')
     return (
         f'<text id="{name}" font-family="Inter" font-size="{size:.0f}" font-weight="{weight}" '
-        f'letter-spacing="{size * track:.2f}" fill="{fill}" text-anchor="{anchor}">{spans}</text>'
+        f'letter-spacing="{size * track:.2f}" text-anchor="{anchor}">{"".join(out)}</text>'
     )
 
 
 def fit(text, width, cap):
-    return min(cap, width / (len(text) * CAPS))
+    return min(cap, width / (len(text) * GLYPH))
 
 
 def logo(x, y, width, fill, anchor="start"):
-    s = width / 3200
     if anchor == "end":
         x -= width
     elif anchor == "middle":
         x -= width / 2
     return (
-        f'<g id="Logo m.STUDIO" transform="translate({x:.0f} {y:.0f}) scale({s:.5f})">'
+        f'<g id="Logo m.STUDIO" transform="translate({x:.0f} {y:.0f}) scale({width / 3200:.5f})">'
         f'<path fill="{fill}" fill-rule="evenodd" d="{LOGO}"/></g>'
     )
 
 
-def photo(x, y, w, h, r=0, fill=GREYS[0], name="Photo – vložte obrázek", hint=True):
+def photo(x, y, w, h, r, fill=PHOTO[0], name="Photo – vložte obrázek"):
     out = f'<rect id="{escape(name)}" x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="{r}" fill="{fill}"/>'
-    if hint and w > 200 and h > 120 and not (x == 0 and y == 0 and w >= 1080):
-        out += t(x + w / 2, y + h / 2 + 9, "FOTKA", 24, WHITE, anchor="middle", name="Hint – smazat", opacity=0.6)
+    if w > 160 and h > 100:
+        out += t(x + w / 2, y + h / 2 + 9, "Fotka", 26, "#8F8F8F", anchor="middle", name="Hint – smazat")
     return out
 
 
-def shade(W, H, opacity):
-    return f'<rect id="Shade" width="{W}" height="{H}" fill="#000" fill-opacity="{opacity}"/>'
+def pill(x, y, label, dark=True, anchor="start", size=26, name="Button"):
+    h = size * 2.4
+    w = len(label) * size * 0.55 + size * 2.6
+    if anchor == "end":
+        x -= w
+    bg, fg = (TEXT, BG) if dark else (SURFACE, TEXT)
+    return (
+        f'<g id="{name}"><rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="{h / 2:.0f}" fill="{bg}"/>'
+        + t(x + w / 2, y + h / 2 + size * 0.36, label, size, fg, anchor="middle", track=-0.03)
+        + "</g>"
+    )
 
 
-def line(x0, x1, y, color, name="Line"):
-    return f'<rect id="{name}" x="{x0:.0f}" y="{y:.0f}" width="{x1 - x0:.0f}" height="2" fill="{color}"/>'
+def header(W, top, label, index, fg=TEXT, muted=MUTED):
+    """The website's section label: /Label ………… (01)."""
+    return (
+        '<g id="Section label">'
+        + t(PAD, top + 26, f"/{label}", 28, fg, track=-0.03, name="Label")
+        + t(W - PAD, top + 26, f"({index:02d})", 28, muted, anchor="end", track=-0.02, name="Index")
+        + "</g>"
+    )
 
 
-def n(i):
-    return f"{i:02d}/{TOTAL}"
+def footer(W, H, bottom, fg=TEXT, muted=MUTED, right="mstudio.company"):
+    lw = 150
+    return (
+        '<g id="Footer">'
+        + logo(PAD, H - bottom - lw * 438 / 3200, lw, fg)
+        + t(W - PAD, H - bottom, right, 24, muted, anchor="end", track=-0.02, name="Web")
+        + "</g>"
+    )
 
 
-def footer(W, H, bottom, color, counter="01/10", cta="SWIPE FOR MORE"):
-    y = H - bottom
-    out = '<g id="Footer">'
-    if counter:
-        out += t(PAD, y - 18, counter, 24, color, weight=500, track=0, name="Counter")
-    out += t(W - PAD, y - 18, cta, 22, color, anchor="end", track=-0.01, name="CTA")
-    out += line(PAD, W - PAD, y, color) + "</g>"
-    return out
+def body_box(H, top, bottom):
+    """Space between the section label and the footer."""
+    gap = 44 if wide(H) else 70
+    return top + gap, H - bottom - gap
 
 
-def label(x, y, body, color, anchor="middle", size=26):
-    return t(x, y, body, size, color, anchor=anchor, track=-0.01, name="Label")
-
-
-def small(H):
-    return H < 700
-
-
-# ---------------------------------------------------------------- layouts
+# ---------------------------------------------------------------- slides
 
 
 def cover(W, H, top, bottom):
-    """01 Cover – full photo, centred title, the series opener."""
-    b = photo(0, 0, W, H, fill=GREYS[2]) + shade(W, H, 0.28)
-    b += label(W / 2, top + 26, "BEHIND THE SHOOT", WHITE)
-    big = fit("DRIVE", W - 2 * PAD, H * (0.24 if small(H) else 0.22))
-    sm = big * 0.42
-    mid = top + (H - bottom - top) * 0.5
-    b += t(W / 2, mid - big * 0.62, "NIGHT", sm, WHITE, weight=700, anchor="middle", track=-0.03, name="Kicker")
-    b += t(W / 2, mid + big * 0.28, "DRIVE", big, WHITE, weight=700, anchor="middle", track=-0.04, name="Title")
-    sub = 24 if small(H) else 26
-    b += block(W / 2, mid + big * 0.28 + sub * 2.2, ["A BRAND FILM SHOT", "ON THE STREETS OF PRAGUE"], sub, WHITE,
-               weight=600, anchor="middle", lh=1.1, track=-0.01, name="Subtitle")
-    b += footer(W, H, bottom, WHITE, counter=n(1), cta="SWIPE TO DISCOVER")
-    return b, GREYS[2]
+    b = header(W, top, "Behind the shoot", 1)
+    y0, y1 = body_box(H, top, bottom)
+    size = fit("Night drive", W - 2 * PAD, 96 if wide(H) else 230)
+    b += t(PAD - size * 0.04, y0 + size * 0.78, "Night drive", size, TEXT, track=-0.07, name="Title")
+    tag = 24 if wide(H) else 30
+    ty = y0 + size * 0.78 + tag * (1.6 if wide(H) else 1.9)
+    b += para(W - PAD, ty, [("A brand film shot", MUTED), ("on the streets of Prague.", MUTED)], tag, lh=1.3,
+              track=-0.04, anchor="end", name="Tagline")
+    py = ty + tag * 1.6
+    b += photo(PAD, py, W - 2 * PAD, y1 - py, 28 if wide(H) else 40)
+    b += footer(W, H, bottom, right="Swipe →")
+    return b, BG
+
+
+def contents(W, H, top, bottom):
+    b = header(W, top, "Contents", 2)
+    y0, y1 = body_box(H, top, bottom)
+    items = ["The idea", "On set", "Behind the lens", "The city", "What we did"]
+    items = items[:3] if wide(H) else items
+    step = min((y1 - y0) / len(items), 210)
+    size = min(step * 0.42, 66)
+    b += '<g id="Menu list">'
+    for i, item in enumerate(items):
+        base = y0 + step * (i + 1) - 26
+        b += t(PAD, base, item, size, TEXT, weight=600, track=-0.04, name=f"Item {i + 1}")
+        b += t(W - PAD, base, f"({i + 1:02d})", 26, TEXT, anchor="end", track=-0.02, name=f"Number {i + 1}")
+        b += f'<rect id="Line {i + 1}" x="{PAD}" y="{base + 24:.0f}" width="{W - 2 * PAD}" height="2" fill="{LINE}"/>'
+    b += "</g>" + footer(W, H, bottom)
+    return b, BG
 
 
 def chapter(W, H, top, bottom):
-    """02 Chapter – blurred photo, title left, big number right."""
-    b = photo(0, 0, W, H, fill=GREYS[1], name="Photo – vložte obrázek (Layer blur 60)") + shade(W, H, 0.3)
-    b += label(W / 2, top + 26, "NIGHT DRIVE", WHITE)
-    num = H * 0.2 if small(H) else W * 0.22
-    y = top + (H - bottom - top) * 0.55
-    b += t(W - PAD, y, "01", num, WHITE, weight=600, anchor="end", track=-0.05, name="Number")
-    ts = num * 0.3
-    b += block(PAD, y - ts * 0.92, ["THE", "IDEA"], ts, WHITE)
-    b += line(PAD, W - PAD, y + 18, WHITE, name="Divider")
-    b += footer(W, H, bottom, WHITE, counter=n(3), cta="SWIPE FOR MORE")
-    return b, GREYS[1]
-
-
-def under(W, H, bottom, x0, counter):
-    """Counter and CTA below the closing line, for the paper slides."""
-    return (
-        t(x0, H - bottom + 36, counter, 22, MUTED, weight=500, track=0, name="Counter")
-        + t(W - PAD, H - bottom + 36, "SWIPE FOR MORE", 22, MUTED, anchor="end", track=-0.01, name="CTA")
-    )
-
-
-def photo_card(W, H, top, bottom):
-    """03 Photo card – rounded photo on paper, caption, title + number."""
-    b = ""
-    num = H * 0.17 if small(H) else W * 0.12
-    base = H - bottom - 30
-    if small(H):
-        pw = W * 0.5
-        b += photo(PAD, top, pw - PAD, H - top - bottom - 84, r=24)
-        b += block(PAD, H - bottom - 20 - 22 * 1.15, ["NATURE’S RAW BEAUTY MEETS", "DOCUMENTARY STORYTELLING."], 20,
-                   MUTED, weight=600, lh=1.15, track=-0.01, name="Caption")
-        x0 = pw + 40
-    else:
-        ph = (H - top - bottom) * 0.56
-        b += photo(PAD, top, W - 2 * PAD, ph, r=32)
-        b += block(PAD, top + ph + 40, ["NATURE’S RAW BEAUTY MEETS", "DOCUMENTARY STORYTELLING."], 24, MUTED,
-                   weight=600, lh=1.15, track=-0.01, name="Caption")
-        x0 = PAD
-    ts = num * 0.42
-    b += t(W - PAD, base, "02", num, MUTED, weight=600, anchor="end", track=-0.05, name="Number")
-    b += block(x0, base - ts * 0.92, ["ON", "SET"], ts, MUTED)
-    b += label(x0, base - ts * 1.92 - 12, "NIGHT DRIVE", MUTED, anchor="start", size=22)
-    b += line(x0, W - PAD, H - bottom, TEXT, name="Divider")
-    b += under(W, H, bottom, x0, n(4))
-    return b, PAPER
-
-
-def duo(W, H, top, bottom):
-    """04 Duo – two photos with captions, title + number."""
-    b = label(W / 2, top + 26, "FROM THE SET", MUTED)
-    gap = 24
-    pw = (W - 2 * PAD - gap) / 2
-    ph = min(pw, (H - top - bottom) * (0.42 if not small(H) else 0.52))
-    py = top + 70
-    caps = [["WE STOPPED THE CAR FIVE", "TIMES A NIGHT FOR STILLS."], ["THE CITY NEVER LOOKED", "QUIETER THAN AT 3 AM."]]
-    for i in range(2):
-        x = PAD + i * (pw + gap)
-        b += photo(x, py, pw, ph, r=28, fill=GREYS[i], name=f"Photo {i + 1} – vložte obrázek")
-        if not small(H):
-            b += block(x + 12, py + ph + 36, caps[i], 22, MUTED, weight=600, lh=1.15, track=-0.01, name=f"Caption {i + 1}")
-    if not small(H):
-        num = W * 0.12
-        base = H - bottom - 30
-        ts = num * 0.42
-        b += t(W - PAD, base, "02", num, MUTED, weight=600, anchor="end", track=-0.05, name="Number")
-        b += block(PAD, base - ts * 0.92, ["ON", "SET"], ts, MUTED)
-        b += line(PAD, W - PAD, H - bottom, TEXT, name="Divider")
-        b += under(W, H, bottom, PAD, n(5))
-    else:
-        b += footer(W, H, bottom, TEXT, counter=n(5))
-    return b, PAPER
-
-
-def rows(W, H, y0, y1, items, color, line_color, x0=PAD, x1=None, num_size=None):
-    x1 = x1 or W - PAD
-    step = (y1 - y0) / len(items)
-    ns = num_size or min(step * 0.62, 110)
-    ls = min(ns * 0.42, 32)
-    out = '<g id="Index">'
-    for i, name in enumerate(items):
-        base = y0 + step * (i + 1) - 14
-        out += t(x0, base - 6, name, ls, color, weight=700, track=-0.02, name=f"Row {i + 1}")
-        out += t(x1, base, f"{i + 1:02d}", ns, color, weight=500, anchor="end", track=-0.04, name=f"Number {i + 1}")
-        out += line(x0, x1, base + 12, line_color, name=f"Row line {i + 1}")
-    return out + "</g>"
-
-
-INDEX = ["THE IDEA", "ON SET", "BEHIND THE LENS", "THE CITY", "FINAL CUT"]
-
-
-def index_light(W, H, top, bottom):
-    """05 Index – contents of the carousel on paper."""
-    count = 3 if small(H) else 5
-    b = label(W / 2, top + 26, "NIGHT DRIVE", MUTED)
-    b += rows(W, H, top + 50, H - bottom - (64 if small(H) else 120), INDEX[:count], MUTED, TEXT)
-    b += footer(W, H, bottom, TEXT, counter=n(2), cta="SWIPE TO DISCOVER")
-    return b, PAPER
-
-
-def index_card(W, H, top, bottom):
-    """06 Index card – contents on a rounded paper card over a photo."""
-    count = 3 if small(H) else 5
-    b = photo(0, 0, W, H, fill=GREYS[3], name="Photo – vložte obrázek (Layer blur 30)")
-    b += label(PAD, top + 26, "NIGHT DRIVE", WHITE, anchor="start")
-    b += logo(W - PAD, top, 170, WHITE, anchor="end")
-    cy0, cy1 = top + 64, H - bottom - 56
-    b += f'<rect id="Card" x="{PAD}" y="{cy0}" width="{W - 2 * PAD}" height="{cy1 - cy0}" rx="32" fill="{PAPER}"/>'
-    inset = 72 if not small(H) else 48
-    b += rows(W, H, cy0 + (60 if not small(H) else 10), cy1 - (60 if not small(H) else 24), INDEX[:count], MUTED, TEXT,
-              x0=PAD + inset, x1=W - PAD - inset, num_size=None if small(H) else 64)
-    b += footer(W, H, bottom, WHITE, counter=n(2), cta="SWIPE TO DISCOVER")
-    return b, GREYS[3]
-
-
-def split(W, H, top, bottom):
-    """07 Split – paper header with title + number, photo below."""
-    head = H * (0.5 if small(H) else 0.42)
-    b = f'<rect id="Paper" width="{W}" height="{head:.0f}" fill="{PAPER}"/>'
-    b += photo(0, head, W, H - head, fill=GREYS[0])
-    ts = fit("THE LENS", W * 0.6, 120 if not small(H) else 64)
-    y = top + ts * 0.82
-    b += block(PAD, y, ["BEHIND", "THE LENS"], ts, TEXT)
-    b += t(W - PAD, y, "03", ts * 0.8, TEXT, weight=600, anchor="end", track=-0.05, name="Number")
-    b += t(PAD, y + ts * 0.92 + 38, "LENSES, LIGHT AND LONG NIGHTS", 26 if not small(H) else 22, TEXT, weight=600, track=-0.01, name="Subtitle")
-    if not small(H):
-        b += block(PAD, head - 56, ["SHOT ON ANAMORPHIC GLASS,", "LIT BY THE CITY ITSELF."], 22, TEXT, weight=500, lh=1.15,
-                   track=-0.01, name="Caption")
-    b += footer(W, H, bottom, WHITE, counter=n(6))
-    return b, PAPER
-
-
-def band(W, H, top, bottom):
-    """08 Band – photo with a paper band across the middle."""
-    b = photo(0, 0, W, H, fill=GREYS[1])
-    bh = H * (0.34 if small(H) else 0.24)
-    by = (H - bh) / 2 + (0 if small(H) else (top - bottom) / 4)
-    b += label(W / 2, top + 26, "PRAGUE", WHITE)
-    b += f'<rect id="Band" x="0" y="{by:.0f}" width="{W}" height="{bh:.0f}" fill="{PAPER}"/>'
-    ts = fit("04. THE CITY", W - 2 * PAD - 120, 84)
-    b += t(W / 2, by + bh / 2 + ts * 0.1, "04. THE CITY", ts, TEXT, weight=700, anchor="middle", track=-0.03, name="Title")
-    b += block(W / 2, by + bh / 2 + ts * 0.1 + 44, ["FROM THE QUIET COURTYARDS OF MALÁ STRANA", "TO THE NEON OF AFTER-HOURS ŽIŽKOV."],
-               20 if small(H) else 22, TEXT, weight=600, anchor="middle", lh=1.15, track=-0.01, name="Subtitle")
-    b += footer(W, H, bottom, WHITE, counter=n(7))
-    return b, GREYS[1]
-
-
-def grid(W, H, top, bottom):
-    """09 Grid – four photos edge to edge."""
-    b = ""
-    for i in range(4):
-        x, y = (i % 2) * W / 2, (i // 2) * H / 2
-        b += photo(x, y, W / 2, H / 2, fill=GREYS[i], name=f"Photo {i + 1} – vložte obrázek")
-    b += label(W / 2, top + 26, "THE CITY", WHITE)
-    b += footer(W, H, bottom, WHITE, counter=n(8))
-    return b, GREYS[0]
-
-
-def text_slide(W, H, top, bottom):
-    """10 Text – a short story on a dark, blurred background."""
-    b = photo(0, 0, W, H, fill="#3A3A3A", name="Photo – vložte obrázek (Layer blur 80)", hint=False)
-    b += shade(W, H, 0.45)
-    b += label(PAD, top + 26, "05 — FINAL CUT", WHITE, anchor="start")
-    b += logo(W - PAD, top, 170, WHITE, anchor="end")
-    size = 22 if small(H) else 26
-    col = W * (0.5 if small(H) else 0.42)
-    x = (W - col) / 2
-    p1 = ["WE FEEL INSPIRED BY THE", "BEAUTIFUL CHAOS OF THE CITY."]
-    p2 = ["ROAMING THE STREETS AND", "FINDING NEW TEXTURES, LIGHT", "AND EVERYTHING IN BETWEEN.",
-          "EVERYWHERE YOU LOOK, THERE’S", "A STORY UNFOLDING."]
-    if small(H):
-        p2 = p2[:3]
-    total = (len(p1) + len(p2)) * size * 1.2 + size * 3
-    y = top + (H - bottom - top - total) / 2 + size
-    b += block(x, y, p1, size, WHITE, weight=600, lh=1.2, track=-0.01, name="Paragraph 1")
-    b += block(x, y + (len(p1) + 2) * size * 1.2, p2, size, WHITE, weight=600, lh=1.2, track=-0.01, name="Paragraph 2")
-    b += footer(W, H, bottom, WHITE, counter=n(9))
-    return b, "#3A3A3A"
-
-
-def end(W, H, top, bottom):
-    """10 End – logo, call to action, the address."""
-    b = label(W / 2, top + 26, "NIGHT DRIVE", MUTED_DARK)
-    lw = min(W * 0.62, (H - top - bottom) * 2.4)
-    mid = top + (H - bottom - top) * 0.46
-    b += logo(W / 2, mid - lw * 438 / 3200, lw, WHITE, anchor="middle")
-    size = 30 if not small(H) else 24
-    b += t(W / 2, mid + size * 2.4, "SEE THE FULL FILM", size, WHITE, weight=700, anchor="middle", track=-0.02, name="CTA title")
-    pill_w, pill_h = (320, 64) if not small(H) else (260, 52)
-    py = mid + size * 3.4
-    b += (
-        f'<g id="Button"><rect x="{(W - pill_w) / 2:.0f}" y="{py:.0f}" width="{pill_w}" height="{pill_h}" rx="{pill_h / 2}" fill="{WHITE}"/>'
-        + t(W / 2, py + pill_h / 2 + 9, "LINK IN BIO", 24 if not small(H) else 20, TEXT, weight=700, anchor="middle", track=-0.01)
-        + "</g>"
-    )
-    b += footer(W, H, bottom, MUTED_DARK, counter=n(10), cta="MSTUDIO.COMPANY")
+    b = header(W, top, "Chapter one", 3, INK_TEXT, INK_MUTED)
+    y0, y1 = body_box(H, top, bottom)
+    size = fit("The idea.", W * 0.8, 200 if not wide(H) else 110)
+    lead = 26 if wide(H) else 38
+    rows = [
+        ("Every film starts with listening.", INK_MUTED),
+        ("We dug into the brand, the audience", INK_MUTED),
+        [("and what really needed ", INK_MUTED), ("to be said.", INK_TEXT)],
+    ]
+    ly = y1 - (len(rows) - 1) * lead * 1.3
+    b += para(PAD, ly, rows, lead, lh=1.3, track=-0.04, name="Lead")
+    b += t(PAD - size * 0.04, ly - lead * 1.3 - 24, "The idea.", size, INK_TEXT, track=-0.07, name="Title")
+    b += footer(W, H, bottom, INK_TEXT, INK_MUTED)
     return b, INK
 
 
-LAYOUTS = [
+def card(x, y, w, h, title, year, scope, fill, compact=False):
+    """The website's project card: surface frame, photo, title + year, scope."""
+    info = 116 if not compact else 92
+    ts = 34 if not compact else 26
+    out = f'<g id="Card – {escape(title)}">'
+    out += f'<rect id="Card" x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="36" fill="{SURFACE}"/>'
+    out += photo(x + 12, y + 12, w - 24, h - 24 - info, 26, fill)
+    out += t(x + 26, y + h - info + ts + 16, title, ts, TEXT, weight=600, track=-0.04, name="Title")
+    out += t(x + w - 26, y + h - info + ts + 16, year, ts * 0.8, TEXT, anchor="end", track=-0.03, name="Year")
+    out += t(x + 26, y + h - (28 if not compact else 22), scope, ts * 0.72, MUTED, track=-0.03, name="Scope")
+    return out + "</g>"
+
+
+def project(W, H, top, bottom):
+    b = header(W, top, "On set", 4)
+    y0, y1 = body_box(H, top, bottom)
+    b += card(PAD, y0, W - 2 * PAD, y1 - y0, "Night drive", "2026", "Brand film · Porsche", PHOTO[0], wide(H))
+    b += footer(W, H, bottom)
+    return b, BG
+
+
+def duo(W, H, top, bottom):
+    b = header(W, top, "On set", 5)
+    y0, y1 = body_box(H, top, bottom)
+    gap = 16
+    cards = [("Location scout", "Day 1", "Vyšehrad, 3 am"), ("First take", "Day 2", "Karlův most")]
+    if tall(W, H):
+        ch = (y1 - y0 - gap) / 2
+        for i, (a, c, d) in enumerate(cards):
+            b += card(PAD, y0 + i * (ch + gap), W - 2 * PAD, ch, a, c, d, PHOTO[i + 1])
+    else:
+        cw = (W - 2 * PAD - gap) / 2
+        for i, (a, c, d) in enumerate(cards):
+            b += card(PAD + i * (cw + gap), y0, cw, y1 - y0, a, c, d, PHOTO[i + 1], compact=True)
+    b += footer(W, H, bottom)
+    return b, BG
+
+
+def photo_statement(W, H, top, bottom):
+    b = header(W, top, "Behind the lens", 6)
+    y0, y1 = body_box(H, top, bottom)
+    b += f'<rect id="Photo – vložte obrázek" x="{PAD}" y="{y0:.0f}" width="{W - 2 * PAD}" height="{y1 - y0:.0f}" rx="40" fill="#9A9A9A"/>'
+    size = 40 if wide(H) else 52
+    b += t(W / 2, (y0 + y1) / 2 + size * 0.36, "We feel your story.", size, "#FFFFFF",
+           weight=600, anchor="middle", track=-0.04, name="Statement")
+    return b + footer(W, H, bottom), BG
+
+
+def two_tone(W, H, top, bottom):
+    b = header(W, top, "The city", 7)
+    y0, y1 = body_box(H, top, bottom)
+    size = fit("everything in between.", W - 2 * PAD, 96 if not wide(H) else 52)
+    rows = [
+        ("Prague after dark.", TEXT),
+        ("Quiet courtyards,", MUTED),
+        ("neon streets and", MUTED),
+        ("everything in between.", MUTED),
+    ]
+    btn = 26 if not wide(H) else 20
+    by = y1 - btn * 2.4
+    ty = by - (50 if not wide(H) else 30) - (len(rows) - 1) * size * 1.1
+    b += para(PAD, ty, rows, size, lh=1.1, track=-0.05, name="Statement")
+    b += pill(PAD, by, "Watch the film  +", dark=False, size=btn)
+    return b + footer(W, H, bottom), BG
+
+
+def services(W, H, top, bottom):
+    b = header(W, top, "What we did", 8)
+    y0, y1 = body_box(H, top, bottom)
+    b += f'<rect id="Ink box" x="{PAD}" y="{y0:.0f}" width="{W - 2 * PAD}" height="{y1 - y0:.0f}" rx="40" fill="{INK}"/>'
+    items = ["Concept", "Shoot", "Edit", "Colour grade"]
+    items = items[:3] if wide(H) else items
+    inset = 48 if not wide(H) else 32
+    room = y1 - y0 - 2 * inset - (60 if not wide(H) else 44)
+    size = min(room / len(items) / 1.35, 88)
+    step = size * 1.35
+    start = y1 - inset - step * (len(items) - 1)
+    for i, item in enumerate(items):
+        base = start + i * step
+        b += t(PAD + inset, base, item, size, INK_TEXT, weight=600, track=-0.05, name=f"Service {i + 1}")
+        cx, cy, arm = W - PAD - inset - 20, base - size * 0.34, 18
+        b += (
+            f'<g id="Toggle {i + 1}" opacity="0.45"><rect x="{cx - arm:.0f}" y="{cy - 1.5:.0f}" width="{2 * arm}" height="3" fill="{INK_TEXT}"/>'
+            f'<rect x="{cx - 1.5:.0f}" y="{cy - arm:.0f}" width="3" height="{2 * arm}" fill="{INK_TEXT}"/></g>'
+        )
+    b += t(PAD + inset, y0 + inset + 22, "Production by m.STUDIO", 26 if not wide(H) else 22, INK_MUTED, track=-0.03, name="Kicker")
+    return b + footer(W, H, bottom), BG
+
+
+def grid(W, H, top, bottom):
+    b = header(W, top, "The city", 9)
+    y0, y1 = body_box(H, top, bottom)
+    gap = 12
+    cw, ch = (W - 2 * PAD - gap) / 2, (y1 - y0 - gap) / 2
+    for i in range(4):
+        b += photo(PAD + (i % 2) * (cw + gap), y0 + (i // 2) * (ch + gap), cw, ch, 28, PHOTO[i], f"Photo {i + 1} – vložte obrázek")
+    return b + footer(W, H, bottom), BG
+
+
+def end(W, H, top, bottom):
+    b = header(W, top, "Night drive", 10, INK_TEXT, INK_MUTED)
+    y0, _ = body_box(H, top, bottom)
+    lw = W - 2 * PAD
+    lh = lw * 438 / 3200
+    b += logo(PAD, H - bottom - lh, lw, FOOT_LOGO)
+    size = 40 if wide(H) else 60
+    ly = y0 + size * 0.9
+    b += para(PAD, ly, [("Have a story to tell?", INK_MUTED), ("We make you feel it.", INK_TEXT)], size, lh=1.12,
+              track=-0.05, name="Lead")
+    b += pill(PAD, ly + size * 1.12 + (44 if not wide(H) else 26), "Start a project  +", dark=False, size=26 if not wide(H) else 20)
+    b += t(W - PAD, ly, "mstudio.company", 26 if not wide(H) else 22, INK_TEXT, anchor="end", weight=600, track=-0.03, name="Web")
+    return b, INK
+
+
+SLIDES = [
     ("01-cover", "Cover", cover),
-    ("02-index", "Index", index_light),
-    ("02b-index-card", "Index card (alternative)", index_card),
+    ("02-contents", "Contents", contents),
     ("03-chapter", "Chapter", chapter),
-    ("04-photo-card", "Photo card", photo_card),
+    ("04-project", "Project card", project),
     ("05-duo", "Duo", duo),
-    ("06-split", "Split", split),
-    ("07-band", "Band", band),
-    ("08-grid", "Grid", grid),
-    ("09-text", "Text", text_slide),
+    ("06-photo", "Photo statement", photo_statement),
+    ("07-statement", "Two-tone statement", two_tone),
+    ("08-services", "What we did", services),
+    ("09-grid", "Grid", grid),
     ("10-end", "End", end),
 ]
 
 for slug, fname, W, H, top, bottom in FORMATS:
     folder = os.path.join(OUT, slug)
     os.makedirs(folder, exist_ok=True)
-    for lslug, lname, fn in LAYOUTS:
+    for sslug, sname, fn in SLIDES:
         body, bg = fn(W, H, top, bottom)
-        name = f"Carousel {lname} – {fname} ({W}×{H})"
-        with open(os.path.join(folder, f"{lslug}.svg"), "w") as f:
+        name = f"Carousel {sname} – {fname} ({W}×{H})"
+        with open(os.path.join(folder, f"{sslug}.svg"), "w") as f:
             f.write(
                 f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">'
                 f"<title>{escape(name)}</title>"
