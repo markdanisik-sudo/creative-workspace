@@ -2,7 +2,7 @@
 
 import { MapPin, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { TextField } from "@/components/ui/Input";
@@ -14,20 +14,13 @@ import { cn } from "@/lib/cn";
 import { formatTime } from "@/lib/format";
 import { deleteEvent, saveEvent } from "./actions";
 import { EventDate } from "./EventDate";
+import { KIND_DOT, ScheduleCalendar, dayKey, eventsByDay } from "./ScheduleCalendar";
 import { EVENT_KINDS, type EventKind, type ProjectEvent } from "./types";
 
-const KIND_DOT: Record<EventKind, string> = {
-  shoot: "bg-[#e5484d]",
-  deadline: "bg-text",
-  meeting: "bg-[#0a84ff]",
-  delivery: "bg-[#30a46c]",
-  other: "bg-text-tertiary",
-};
+type View = "calendar" | "list";
 
 function localDate(iso: string) {
-  const date = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return dayKey(new Date(iso));
 }
 
 function localTime(iso: string) {
@@ -37,12 +30,14 @@ function localTime(iso: string) {
 
 function EventDialog({
   event,
+  defaultDate,
   open,
   onClose,
   onSaved,
   projectId,
 }: {
   event: ProjectEvent | null;
+  defaultDate?: string;
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
@@ -124,7 +119,7 @@ function EventDialog({
             name="date"
             type="date"
             required
-            defaultValue={event ? localDate(event.startsAt) : ""}
+            defaultValue={event ? localDate(event.startsAt) : (defaultDate ?? "")}
           />
           {allDay ? (
             <TextField
@@ -257,34 +252,83 @@ export function ScheduleView({
   events: ProjectEvent[];
   canEdit: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const router = useRouter();
   const [editing, setEditing] = useState<ProjectEvent | "new" | null>(null);
+  const [view, setView] = useState<View>("calendar");
+  const [selected, setSelected] = useState(() => dayKey(new Date()));
+  const byDay = useMemo(() => eventsByDay(events), [events]);
+  const dayEvents = byDay.get(selected) ?? [];
 
   const startOfToday = new Date(new Date().toDateString()).getTime();
   const isPast = (event: ProjectEvent) =>
     new Date(event.endsAt ?? event.startsAt).getTime() < startOfToday;
   const upcoming = events.filter((event) => !isPast(event));
   const past = events.filter(isPast).reverse();
+  const open = (event: ProjectEvent) => (canEdit ? () => setEditing(event) : undefined);
+  const selectedLabel = new Intl.DateTimeFormat(locale, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  })
+    .format(new Date(`${selected}T12:00`))
+    .replace(/^./, (letter) => letter.toUpperCase());
 
   return (
-    <div className="flex max-w-3xl flex-col gap-12">
-      {canEdit ? (
-        <div>
+    <div className={cn("flex flex-col gap-10", view === "list" && "max-w-3xl")}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1.5" role="tablist" aria-label={t("hub.schedule")}>
+          {(["calendar", "list"] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              role="tab"
+              aria-selected={view === option}
+              onClick={() => setView(option)}
+              className={cn(
+                "h-8 rounded-full px-3.5 text-body font-semibold transition-colors",
+                view === option
+                  ? "bg-ink text-text-inverse"
+                  : "bg-surface-muted text-text-secondary hover:text-text",
+              )}
+            >
+              {t(`schedule.views.${option}`)}
+            </button>
+          ))}
+        </div>
+        {canEdit ? (
           <Button variant="primary" onClick={() => setEditing("new")}>
             <Plus size={16} aria-hidden="true" />
             {t("schedule.addDate")}
           </Button>
-        </div>
+        ) : null}
+      </div>
+
+      {view === "calendar" ? (
+        <>
+          <ScheduleCalendar byDay={byDay} selected={selected} onSelect={setSelected} />
+          <section className="flex max-w-3xl flex-col gap-4">
+            <SectionLabel label={selectedLabel} />
+            {dayEvents.length ? (
+              <ul className="flex flex-col gap-2">
+                {dayEvents.map((event) => (
+                  <EventRow key={event.id} event={event} onOpen={open(event)} />
+                ))}
+              </ul>
+            ) : (
+              <p className="text-callout text-text-secondary">{t("schedule.dayEmpty")}</p>
+            )}
+          </section>
+        </>
       ) : null}
 
-      {events.length === 0 ? (
+      {view === "list" && events.length === 0 ? (
         <p className="text-callout text-text-secondary">
           {canEdit ? t("schedule.empty") : t("schedule.emptyClient")}
         </p>
       ) : null}
 
-      {upcoming.length > 0 ? (
+      {view === "list" && upcoming.length > 0 ? (
         <section className="flex flex-col gap-4">
           <SectionLabel label={t("schedule.upcoming")} index={1} />
           <ul className="flex flex-col gap-2">
@@ -299,7 +343,7 @@ export function ScheduleView({
         </section>
       ) : null}
 
-      {past.length > 0 ? (
+      {view === "list" && past.length > 0 ? (
         <section className="flex flex-col gap-4 opacity-70">
           <SectionLabel label={t("schedule.past")} index={upcoming.length > 0 ? 2 : 1} />
           <ul className="flex flex-col gap-2">
@@ -319,6 +363,7 @@ export function ScheduleView({
           key={editing === "new" ? "new" : editing.id}
           projectId={projectId}
           event={editing === "new" ? null : editing}
+          defaultDate={view === "calendar" ? selected : undefined}
           open
           onClose={() => setEditing(null)}
           onSaved={() => {

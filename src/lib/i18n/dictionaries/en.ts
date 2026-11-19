@@ -301,6 +301,12 @@ export const en = {
     past: "Past",
     empty: "No dates yet.",
     emptyClient: "The studio will add shoot days and deadlines here.",
+    views: { calendar: "Calendar", list: "List" },
+    today: "Today",
+    prevMonth: "Previous month",
+    nextMonth: "Next month",
+    more: "+{count} more",
+    dayEmpty: "Nothing planned for this day.",
     kinds: {
       shoot: "Shoot day",
       deadline: "Deadline",

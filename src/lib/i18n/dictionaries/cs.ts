@@ -334,6 +334,12 @@ export const cs: Dictionary = {
     past: "Proběhlé",
     empty: "Zatím žádné termíny.",
     emptyClient: "Studio sem doplní natáčecí dny a deadliny.",
+    views: { calendar: "Kalendář", list: "Seznam" },
+    today: "Dnes",
+    prevMonth: "Předchozí měsíc",
+    nextMonth: "Další měsíc",
+    more: "+{count} další",
+    dayEmpty: "Na tento den nic naplánováno.",
     kinds: {
       shoot: "Natáčecí den",
       deadline: "Deadline",
