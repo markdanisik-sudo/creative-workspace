@@ -1,14 +1,12 @@
 # Instagram šablony – m.STUDIO
 
-15 šablon: 3 rozvržení × 5 formátů. Text je živý (Inter), vrstvy jsou pojmenované.
+9 šablon: 3 rozvržení × 3 formáty. Text je živý (Inter), vrstvy jsou pojmenované.
 
 | Formát | Rozměr | Kde |
 |---|---|---|
-| Feed 1:1 | 1080 × 1080 | čtvercový post, karusel |
-| Feed 4:5 | 1080 × 1350 | na výšku – nejvíc místa ve feedu |
-| Feed 3:4 | 1080 × 1440 | nová mřížka profilu |
-| Feed 1.91:1 | 1080 × 566 | na šířku |
+| Feed 4:5 | 1080 × 1350 | příspěvek / karusel na výšku |
 | Story & Reels 9:16 | 1080 × 1920 | story, reels, cover reelsu |
+| Landscape 16:9 | 1920 × 1080 | na šířku |
 
 Rozvržení: **Work** (projekt jako karta z webu), **Statement** (tmavý box s větou), **Photo** (fotka přes celou plochu).
 
@@ -22,7 +20,7 @@ Rozvržení: **Work** (projekt jako karta z webu), **Statement** (tmavý box s v
 
 # Karusel „Night Drive“ – 10 snímků
 
-Složka `carousel/` – jeden celý karusel v každém formátu (`feed-1x1`, `feed-4x5`, `feed-3x4`, `feed-1.91x1`, `story-reel-9x16`). Vše ve stylu webu: Inter, popisky „/Label …… (01)“, zaoblené boxy, dvoubarevný text, pilulky, patička s logem.
+Složka `carousel/` – jeden celý karusel v každém formátu (`feed-4x5`, `story-reel-9x16`, `landscape-16x9`). Vše ve stylu webu: Inter, popisky „/Label …… (01)“, zaoblené boxy, dvoubarevný text, pilulky, patička s logem.
 
 | # | Soubor | Snímek |
 |---|---|---|

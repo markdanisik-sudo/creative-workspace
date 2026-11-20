@@ -16,11 +16,9 @@ INK, INK_TEXT, INK_MUTED, FOOT_LOGO = "#121212", "#F2F2F2", "#828385", "#2E2E2E"
 PHOTO = ["#CFCFCF", "#C2C2C2", "#B6B6B6", "#D8D8D8"]
 
 FORMATS = [
-    ("feed-1x1", "Feed 1:1", 1080, 1080, 64, 64),
     ("feed-4x5", "Feed 4:5", 1080, 1350, 72, 72),
-    ("feed-3x4", "Feed 3:4", 1080, 1440, 72, 72),
-    ("feed-1.91x1", "Feed 1.91:1", 1080, 566, 44, 44),
     ("story-reel-9x16", "Story & Reels 9:16", 1080, 1920, 250, 340),
+    ("landscape-16x9", "Landscape 16:9", 1920, 1080, 72, 72),
 ]
 PAD = 64
 GLYPH = 0.5  # rough advance of Inter Medium, in em, at the website's tight tracking
@@ -100,12 +98,12 @@ def header(W, top, label, index, fg=TEXT, muted=MUTED):
     )
 
 
-def footer(W, H, bottom, fg=TEXT, muted=MUTED, right="mstudio.company"):
+def footer(W, H, bottom, fg=TEXT, muted=MUTED, right=None):
     lw = 150
     return (
         '<g id="Footer">'
         + logo(PAD, H - bottom - lw * 438 / 3200, lw, fg)
-        + t(W - PAD, H - bottom, right, 24, muted, anchor="end", track=-0.02, name="Web")
+        + (t(W - PAD, H - bottom, right, 24, muted, anchor="end", track=-0.02, name="Hint") if right else "")
         + "</g>"
     )
 
@@ -343,7 +341,6 @@ def end(W, H, top, bottom):
     b += para(PAD, ly, [("Have a story to tell?", INK_MUTED), ("We make you feel it.", INK_TEXT)], size, lh=1.12,
               track=-0.05, name="Lead")
     b += pill(PAD, ly + size * 1.12 + (44 if not wide(H) else 26), "Start a project  +", dark=False, size=26 if not wide(H) else 20)
-    b += t(W - PAD, ly, "mstudio.company", 26 if not wide(H) else 22, INK_TEXT, anchor="end", weight=600, track=-0.03, name="Web")
     return b, INK
 
 

@@ -11,11 +11,9 @@ INK, INK_TEXT, INK_MUTED = "#121212", "#F2F2F2", "#828385"
 
 FORMATS = [
     # slug, name, W, H, top, bottom  (story keeps clear of Instagram's own UI)
-    ("feed-1x1", "Feed 1:1", 1080, 1080, 64, 64),
     ("feed-4x5", "Feed 4:5", 1080, 1350, 64, 64),
-    ("feed-3x4", "Feed 3:4", 1080, 1440, 64, 64),
-    ("feed-1.91x1", "Feed 1.91:1", 1080, 566, 48, 48),
     ("story-reel-9x16", "Story & Reels 9:16", 1080, 1920, 250, 340),
+    ("landscape-16x9", "Landscape 16:9", 1920, 1080, 64, 64),
 ]
 PAD = 64
 
@@ -89,7 +87,6 @@ def statement(W, H, top, bottom):
     body += text(W - PAD, top + 28, "(02)", 30, INK_MUTED, anchor="end", name="Counter")
     foot = H - bottom
     body += logo(PAD, foot - lw * 438 / 3200, lw, INK_TEXT)
-    body += text(W - PAD, foot, "mstudio.company", 26, INK_MUTED, anchor="end", name="Web", track=-0.02)
     body += lines(PAD, foot - (90 if H > 600 else 60), ["Story first.", "Then the camera."], size, INK_TEXT)
     return body, INK
 
@@ -110,7 +107,7 @@ def fullbleed(W, H, top, bottom):
     py = H - bottom - pill_h
     body += (
         f'<g id="Button"><rect x="{PAD}" y="{py}" width="{pill_w}" height="{pill_h}" rx="{pill_h / 2}" fill="#FFFFFF"/>'
-        + text(PAD + pill_w / 2, py + pill_h / 2 + 10, "mstudio.company", 28 if H > 600 else 24, TEXT, anchor="middle", track=-0.03)
+        + text(PAD + pill_w / 2, py + pill_h / 2 + 10, "Watch the film", 28 if H > 600 else 24, TEXT, anchor="middle", track=-0.03)
         + "</g>"
     )
     body += lines(PAD, py - (44 if H > 600 else 28), ["We feel", "your story."], size, "#FFFFFF")
