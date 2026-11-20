@@ -27,14 +27,14 @@ Složka `carousel/` – jeden celý karusel v každém formátu (`feed-1x1`, `fe
 | # | Soubor | Snímek |
 |---|---|---|
 | 01 | `01-cover` | Velký název, tagline vpravo, zaoblená fotka |
-| 02 | `02-contents` | Obsah jako menu webu – řádky s linkou a (01)–(05) |
+| 02 | `02-contents` | Obsah jako bento z m.studio.lab – velká tmavá dlaždice + menší šedé |
 | 03 | `03-chapter` | Tmavý snímek kapitoly – velký nadpis + dvoubarevný text |
 | 04 | `04-project` | Karta projektu jako na webu – fotka, název, rok, typ |
 | 05 | `05-duo` | Dvě karty (v Story pod sebou) |
-| 06 | `06-photo` | Fotka s větou uprostřed (jako obrázek v menu webu) |
+| 06 | `06-monitor` | Záběr jako na monitoru kamery – REC, timecode, ISO, rohové značky |
 | 07 | `07-statement` | Dvoubarevné prohlášení + pilulka |
 | 08 | `08-services` | Tmavý box „What we did“ s položkami a + (jako služby na webu) |
-| 09 | `09-grid` | Mřížka 4 zaoblených fotek |
+| 09 | `09-bento` | Velká fotka + dvě menší, popisky v pilulkách |
 | 10 | `10-end` | Patička webu – výzva, pilulka, velké logo |
 
 Číslo v pravém horním rohu (01)–(10) je pořadí snímku. Snímky jde vynechat nebo opakovat – jen přepište číslo.

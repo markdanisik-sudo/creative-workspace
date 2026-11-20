@@ -134,21 +134,37 @@ def cover(W, H, top, bottom):
     return b, BG
 
 
+def tile(x, y, w, h, label, index, title, dark=False, size=48):
+    """A bento tile like the m.studio.lab overview: /label (01) on top, title at the foot."""
+    bg, fg, mu = (INK, INK_TEXT, INK_MUTED) if dark else (SURFACE, TEXT, MUTED)
+    return (
+        f'<g id="Tile {index:02d}"><rect x="{x:.0f}" y="{y:.0f}" width="{w:.0f}" height="{h:.0f}" rx="32" fill="{bg}"/>'
+        + t(x + 28, y + 46, f"/{label}", 22, fg, track=-0.03, name="Label")
+        + t(x + w - 28, y + 46, f"({index:02d})", 22, mu, anchor="end", track=-0.02, name="Index")
+        + t(x + 26, y + h - 30, title, size, fg, weight=600, track=-0.05, name="Title")
+        + "</g>"
+    )
+
+
 def contents(W, H, top, bottom):
     b = header(W, top, "Contents", 2)
     y0, y1 = body_box(H, top, bottom)
-    items = ["The idea", "On set", "Behind the lens", "The city", "What we did"]
-    items = items[:3] if wide(H) else items
-    step = min((y1 - y0) / len(items), 210)
-    size = min(step * 0.42, 66)
-    b += '<g id="Menu list">'
-    for i, item in enumerate(items):
-        base = y0 + step * (i + 1) - 26
-        b += t(PAD, base, item, size, TEXT, weight=600, track=-0.04, name=f"Item {i + 1}")
-        b += t(W - PAD, base, f"({i + 1:02d})", 26, TEXT, anchor="end", track=-0.02, name=f"Number {i + 1}")
-        b += f'<rect id="Line {i + 1}" x="{PAD}" y="{base + 24:.0f}" width="{W - 2 * PAD}" height="2" fill="{LINE}"/>'
-    b += "</g>" + footer(W, H, bottom)
-    return b, BG
+    items = [("Chapter", "The idea"), ("Chapter", "On set"), ("Chapter", "The lens"), ("Chapter", "The city"),
+             ("Chapter", "What we did")]
+    gap = 12
+    x0, w = PAD, W - 2 * PAD
+    if wide(H):
+        cw = (w - 2 * gap) / 3
+        for i, (lab, title) in enumerate(items[:3]):
+            b += tile(x0 + i * (cw + gap), y0, cw, y1 - y0, lab, i + 1, title, dark=i == 0, size=38)
+        return b + footer(W, H, bottom), BG
+    big = (y1 - y0 - gap) * (0.42 if not tall(W, H) else 0.36)
+    b += tile(x0, y0, w, big, *items[0][:1], 1, items[0][1], dark=True, size=96 if not wide(H) else 60)
+    cw, ch = (w - gap) / 2, (y1 - y0 - big - 2 * gap) / 2
+    for i, (lab, title) in enumerate(items[1:]):
+        b += tile(x0 + (i % 2) * (cw + gap), y0 + big + gap + (i // 2) * (ch + gap), cw, ch, lab, i + 2, title,
+                  size=44 if not tall(W, H) else 52)
+    return b + footer(W, H, bottom), BG
 
 
 def chapter(W, H, top, bottom):
@@ -206,13 +222,38 @@ def duo(W, H, top, bottom):
     return b, BG
 
 
-def photo_statement(W, H, top, bottom):
+def corner(x, y, dx, dy, arm=44, stroke=3):
+    """One L-shaped frame mark of a camera monitor."""
+    return (
+        f'<rect x="{min(x, x + dx * arm):.0f}" y="{y - stroke / 2:.0f}" width="{arm}" height="{stroke}" fill="#FFFFFF"/>'
+        f'<rect x="{x - stroke / 2:.0f}" y="{min(y, y + dy * arm):.0f}" width="{stroke}" height="{arm}" fill="#FFFFFF"/>'
+    )
+
+
+def monitor(W, H, top, bottom):
+    """06 Monitor – the frame as the camera sees it, like the m.studio.lab menu image."""
     b = header(W, top, "Behind the lens", 6)
     y0, y1 = body_box(H, top, bottom)
-    b += f'<rect id="Photo – vložte obrázek" x="{PAD}" y="{y0:.0f}" width="{W - 2 * PAD}" height="{y1 - y0:.0f}" rx="40" fill="#9A9A9A"/>'
-    size = 40 if wide(H) else 52
-    b += t(W / 2, (y0 + y1) / 2 + size * 0.36, "We feel your story.", size, "#FFFFFF",
-           weight=600, anchor="middle", track=-0.04, name="Statement")
+    x0, x1 = PAD, W - PAD
+    b += f'<rect id="Photo – vložte obrázek" x="{x0}" y="{y0:.0f}" width="{x1 - x0}" height="{y1 - y0:.0f}" rx="40" fill="#5E5E5E"/>'
+    i = 36 if wide(H) else 48
+    osd = 22 if wide(H) else 26
+    b += '<g id="Monitor OSD">'
+    b += f'<circle cx="{x0 + i + 8:.0f}" cy="{y0 + i + osd * 0.5 - 8:.0f}" r="8" fill="#E5484D"/>'
+    b += t(x0 + i + 26, y0 + i + osd * 0.5, "REC   00:12:04:18", osd, "#FFFFFF", track=0, name="Timecode")
+    b += t(x1 - i, y0 + i + osd * 0.5, "A001C003", osd, "#FFFFFF", anchor="end", track=0, name="Clip")
+    b += t(x0 + i, y1 - i, "ISO 800   5600K   T2.0", osd, "#FFFFFF", track=0, name="Settings")
+    b += t(x1 - i, y1 - i, "24 fps", osd, "#FFFFFF", anchor="end", track=0, name="Frame rate")
+    fi = i + osd * 1.6
+    fx0, fy0, fx1, fy1 = x0 + fi, y0 + fi, x1 - fi, y1 - fi
+    b += corner(fx0, fy0, 1, 1) + corner(fx1, fy0, -1, 1) + corner(fx0, fy1, 1, -1) + corner(fx1, fy1, -1, -1)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    b += f'<rect x="{cx - 14:.0f}" y="{cy - 1:.0f}" width="28" height="2" fill="#FFFFFF" fill-opacity="0.7"/>'
+    b += f'<rect x="{cx - 1:.0f}" y="{cy - 14:.0f}" width="2" height="28" fill="#FFFFFF" fill-opacity="0.7"/>'
+    b += "</g>"
+    size = 34 if wide(H) else 44
+    b += t(cx, cy + 14 + size * 1.6, "We feel your story.", size, "#FFFFFF", weight=600, anchor="middle",
+           track=-0.04, name="Statement")
     return b + footer(W, H, bottom), BG
 
 
@@ -257,13 +298,37 @@ def services(W, H, top, bottom):
     return b + footer(W, H, bottom), BG
 
 
+def tag(x, y, label, size=22):
+    """A small white pill caption sitting on a photo."""
+    h = size * 2
+    w = len(label) * size * 0.55 + size * 1.8
+    return (
+        f'<g id="Tag – {escape(label)}"><rect x="{x:.0f}" y="{y - h:.0f}" width="{w:.0f}" height="{h:.0f}" rx="{h / 2:.0f}" fill="#FFFFFF"/>'
+        + t(x + w / 2, y - h / 2 + size * 0.36, label, size, TEXT, anchor="middle", track=-0.03)
+        + "</g>"
+    )
+
+
 def grid(W, H, top, bottom):
+    """09 Bento – one big frame and two small ones, captions in pills."""
     b = header(W, top, "The city", 9)
     y0, y1 = body_box(H, top, bottom)
     gap = 12
-    cw, ch = (W - 2 * PAD - gap) / 2, (y1 - y0 - gap) / 2
-    for i in range(4):
-        b += photo(PAD + (i % 2) * (cw + gap), y0 + (i // 2) * (ch + gap), cw, ch, 28, PHOTO[i], f"Photo {i + 1} – vložte obrázek")
+    x0, w, h = PAD, W - 2 * PAD, y1 - y0
+    tags = ["Malá Strana, 2 am", "Žižkov", "Karlín"]
+    if tall(W, H):
+        bh = (h - gap) * 0.6
+        frames = [(x0, y0, w, bh)]
+        sw = (w - gap) / 2
+        frames += [(x0 + i * (sw + gap), y0 + bh + gap, sw, h - bh - gap) for i in range(2)]
+    else:
+        bw = (w - gap) * 0.6
+        frames = [(x0, y0, bw, h)]
+        sh = (h - gap) / 2
+        frames += [(x0 + bw + gap, y0 + i * (sh + gap), w - bw - gap, sh) for i in range(2)]
+    for i, (x, y, fw, fh) in enumerate(frames):
+        b += photo(x, y, fw, fh, 32, PHOTO[i], f"Photo {i + 1} – vložte obrázek")
+        b += tag(x + 20, y + fh - 20, tags[i], 20 if wide(H) else 22)
     return b + footer(W, H, bottom), BG
 
 
@@ -288,10 +353,10 @@ SLIDES = [
     ("03-chapter", "Chapter", chapter),
     ("04-project", "Project card", project),
     ("05-duo", "Duo", duo),
-    ("06-photo", "Photo statement", photo_statement),
+    ("06-monitor", "Monitor", monitor),
     ("07-statement", "Two-tone statement", two_tone),
     ("08-services", "What we did", services),
-    ("09-grid", "Grid", grid),
+    ("09-bento", "Bento", grid),
     ("10-end", "End", end),
 ]
 
