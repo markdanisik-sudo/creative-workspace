@@ -11,9 +11,9 @@ INK, INK_TEXT, INK_MUTED = "#121212", "#F2F2F2", "#828385"
 
 FORMATS = [
     # slug, name, W, H, top, bottom  (story keeps clear of Instagram's own UI)
-    ("feed-4x5", "Feed 4:5", 1080, 1350, 64, 64),
+    ("feed-4x5", "Feed 4:5", 1080, 1350, 72, 72),
     ("story-reel-9x16", "Story & Reels 9:16", 1080, 1920, 250, 340),
-    ("landscape-16x9", "Landscape 16:9", 1920, 1080, 64, 64),
+    ("landscape-16x9", "Landscape 16:9", 1920, 1080, 88, 88),
 ]
 PAD = 64
 
@@ -80,14 +80,15 @@ def work(W, H, top, bottom):
 
 
 def statement(W, H, top, bottom):
-    """/Statement: the dark ink box with one big sentence."""
+    """/Statement: the dark ink box with one big sentence. Logo and number on top, like the other two."""
     size = min(W * 0.112, H * 0.15)
     lw = 200 if H > 600 else 170
-    body = text(PAD, top + 28, "/Approach", 30, INK_TEXT, name="Label")
-    body += text(W - PAD, top + 28, "(02)", 30, INK_MUTED, anchor="end", name="Counter")
+    lh = lw * 438 / 3200
+    body = logo(PAD, top, lw, INK_TEXT)
+    body += text(W - PAD, top + lh, "(02)", 28, INK_MUTED, anchor="end", name="Counter", track=-0.02)
     foot = H - bottom
-    body += logo(PAD, foot - lw * 438 / 3200, lw, INK_TEXT)
-    body += lines(PAD, foot - (90 if H > 600 else 60), ["Story first.", "Then the camera."], size, INK_TEXT)
+    body += lines(PAD, foot, ["Story first.", "Then the camera."], size, INK_TEXT)
+    body += text(PAD, foot - size * 1.05 - size * 0.75 - 36, "/Approach", 30, INK_MUTED, name="Label")
     return body, INK
 
 
@@ -102,6 +103,7 @@ def fullbleed(W, H, top, bottom):
     )
     lw = 220 if H > 600 else 170
     body += logo(PAD, top, lw, "#FFFFFF")
+    body += text(W - PAD, top + lw * 438 / 3200, "(03)", 28, "#FFFFFF", anchor="end", name="Counter", track=-0.02)
     size = min(W * 0.085, H * 0.13)
     pill_h, pill_w = (68, 300) if H > 600 else (54, 250)
     py = H - bottom - pill_h
@@ -117,6 +119,7 @@ def fullbleed(W, H, top, bottom):
 LAYOUTS = [("work", "Work", work), ("statement", "Statement", statement), ("photo", "Photo", fullbleed)]
 
 for slug, fname, W, H, top, bottom in FORMATS:
+    PAD = 72 if slug.startswith("story") else top  # one margin all round outside the story
     for lslug, lname, fn in LAYOUTS:
         body, bg = fn(W, H, top, bottom)
         name = f"{fname} – {lname} ({W}×{H})"

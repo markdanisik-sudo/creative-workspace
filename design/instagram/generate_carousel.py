@@ -16,9 +16,11 @@ INK, INK_TEXT, INK_MUTED, FOOT_LOGO = "#121212", "#F2F2F2", "#828385", "#2E2E2E"
 PHOTO = ["#CFCFCF", "#C2C2C2", "#B6B6B6", "#D8D8D8"]
 
 FORMATS = [
-    ("feed-4x5", "Feed 4:5", 1080, 1350, 72, 72),
-    ("story-reel-9x16", "Story & Reels 9:16", 1080, 1920, 250, 340),
-    ("landscape-16x9", "Landscape 16:9", 1920, 1080, 72, 72),
+    # slug, name, W, H, side margin, top, bottom – feed and landscape keep one margin all round;
+    # the story keeps clear of Instagram's own controls at the top and bottom.
+    ("feed-4x5", "Feed 4:5", 1080, 1350, 72, 72, 72),
+    ("story-reel-9x16", "Story & Reels 9:16", 1080, 1920, 72, 250, 300),
+    ("landscape-16x9", "Landscape 16:9", 1920, 1080, 88, 88, 88),
 ]
 PAD = 64
 GLYPH = 0.5  # rough advance of Inter Medium, in em, at the website's tight tracking
@@ -26,6 +28,10 @@ GLYPH = 0.5  # rough advance of Inter Medium, in em, at the website's tight trac
 
 def wide(H):
     return H < 700
+
+
+def landscape(W, H):
+    return W > H
 
 
 def tall(W, H):
@@ -98,7 +104,7 @@ def header(W, top, label, index, fg=TEXT, muted=MUTED):
     )
 
 
-def footer(W, H, bottom, fg=TEXT, muted=MUTED, right=None):
+def footer(W, H, bottom, fg=TEXT, muted=MUTED, right="Swipe →"):
     lw = 150
     return (
         '<g id="Footer">'
@@ -110,8 +116,7 @@ def footer(W, H, bottom, fg=TEXT, muted=MUTED, right=None):
 
 def body_box(H, top, bottom):
     """Space between the section label and the footer."""
-    gap = 44 if wide(H) else 70
-    return top + gap, H - bottom - gap
+    return top + 64, H - bottom - 64
 
 
 # ---------------------------------------------------------------- slides
@@ -120,15 +125,24 @@ def body_box(H, top, bottom):
 def cover(W, H, top, bottom):
     b = header(W, top, "Behind the shoot", 1)
     y0, y1 = body_box(H, top, bottom)
-    size = fit("Night drive", W - 2 * PAD, 96 if wide(H) else 230)
+    tag_rows = [("A brand film shot", MUTED), ("on the streets of Prague.", MUTED)]
+    if landscape(W, H):
+        # Title and tagline in the left column, the photo fills the right.
+        col = (W - 2 * PAD) * 0.42
+        size = fit("Night", col, 260)
+        b += para(PAD - size * 0.04, y1 - 30 * 1.3 - 60 - size * 1.0, [("Night", TEXT), ("drive", TEXT)], size,
+                  lh=1.0, track=-0.07, name="Title")
+        b += para(PAD, y1 - 30 * 1.3, tag_rows, 30, lh=1.3, track=-0.04, name="Tagline")
+        px = PAD + col + 40
+        b += photo(px, y0, W - PAD - px, y1 - y0, 40)
+        return b + footer(W, H, bottom), BG
+    size = fit("Night drive", W - 2 * PAD, 230)
     b += t(PAD - size * 0.04, y0 + size * 0.78, "Night drive", size, TEXT, track=-0.07, name="Title")
-    tag = 24 if wide(H) else 30
-    ty = y0 + size * 0.78 + tag * (1.6 if wide(H) else 1.9)
-    b += para(W - PAD, ty, [("A brand film shot", MUTED), ("on the streets of Prague.", MUTED)], tag, lh=1.3,
-              track=-0.04, anchor="end", name="Tagline")
-    py = ty + tag * 1.6
-    b += photo(PAD, py, W - 2 * PAD, y1 - py, 28 if wide(H) else 40)
-    b += footer(W, H, bottom, right="Swipe →")
+    ty = y0 + size * 0.78 + 30 * 2.8
+    b += para(PAD, ty, tag_rows, 30, lh=1.3, track=-0.04, name="Tagline")
+    py = ty + 30 * 1.3 + 48
+    b += photo(PAD, py, W - 2 * PAD, y1 - py, 40)
+    b += footer(W, H, bottom)
     return b, BG
 
 
@@ -156,6 +170,13 @@ def contents(W, H, top, bottom):
         for i, (lab, title) in enumerate(items[:3]):
             b += tile(x0 + i * (cw + gap), y0, cw, y1 - y0, lab, i + 1, title, dark=i == 0, size=38)
         return b + footer(W, H, bottom), BG
+    if landscape(W, H):
+        bw = (w - gap) * 0.4
+        b += tile(x0, y0, bw, y1 - y0, items[0][0], 1, items[0][1], dark=True, size=96)
+        cw, ch = (w - bw - 2 * gap) / 2, (y1 - y0 - gap) / 2
+        for i, (lab, title) in enumerate(items[1:]):
+            b += tile(x0 + bw + gap + (i % 2) * (cw + gap), y0 + (i // 2) * (ch + gap), cw, ch, lab, i + 2, title, size=52)
+        return b + footer(W, H, bottom), BG
     big = (y1 - y0 - gap) * (0.42 if not tall(W, H) else 0.36)
     b += tile(x0, y0, w, big, *items[0][:1], 1, items[0][1], dark=True, size=96 if not wide(H) else 60)
     cw, ch = (w - gap) / 2, (y1 - y0 - big - 2 * gap) / 2
@@ -175,7 +196,9 @@ def chapter(W, H, top, bottom):
         ("We dug into the brand, the audience", INK_MUTED),
         [("and what really needed ", INK_MUTED), ("to be said.", INK_TEXT)],
     ]
-    ly = y1 - (len(rows) - 1) * lead * 1.3
+    # Title and lead as one block, centred in the slide.
+    block = size * 0.75 + 24 + lead * 1.3 + (len(rows) - 1) * lead * 1.3
+    ly = (y0 + y1) / 2 + block / 2 - (len(rows) - 1) * lead * 1.3
     b += para(PAD, ly, rows, lead, lh=1.3, track=-0.04, name="Lead")
     b += t(PAD - size * 0.04, ly - lead * 1.3 - 24, "The idea.", size, INK_TEXT, track=-0.07, name="Title")
     b += footer(W, H, bottom, INK_TEXT, INK_MUTED)
@@ -265,9 +288,11 @@ def two_tone(W, H, top, bottom):
         ("neon streets and", MUTED),
         ("everything in between.", MUTED),
     ]
-    btn = 26 if not wide(H) else 20
-    by = y1 - btn * 2.4
-    ty = by - (50 if not wide(H) else 30) - (len(rows) - 1) * size * 1.1
+    btn = 26
+    # Centre the statement and its button in the free space.
+    block = size * 0.75 + (len(rows) - 1) * size * 1.1 + 56 + btn * 2.4
+    ty = (y0 + y1) / 2 - block / 2 + size * 0.75
+    by = ty + (len(rows) - 1) * size * 1.1 + 56
     b += para(PAD, ty, rows, size, lh=1.1, track=-0.05, name="Statement")
     b += pill(PAD, by, "Watch the film  +", dark=False, size=btn)
     return b + footer(W, H, bottom), BG
@@ -280,10 +305,13 @@ def services(W, H, top, bottom):
     items = ["Concept", "Shoot", "Edit", "Colour grade"]
     items = items[:3] if wide(H) else items
     inset = 48 if not wide(H) else 32
-    room = y1 - y0 - 2 * inset - (60 if not wide(H) else 44)
-    size = min(room / len(items) / 1.35, 88)
+    kicker = y0 + inset + 22
+    room = y1 - inset - kicker - 40
+    size = min(room / len(items) / 1.35, 96)
     step = size * 1.35
-    start = y1 - inset - step * (len(items) - 1)
+    # Centre the list in the box under the kicker.
+    block = step * (len(items) - 1) + size * 0.75
+    start = kicker + 40 + (room - block) / 2 + size * 0.75
     for i, item in enumerate(items):
         base = start + i * step
         b += t(PAD + inset, base, item, size, INK_TEXT, weight=600, track=-0.05, name=f"Service {i + 1}")
@@ -292,7 +320,7 @@ def services(W, H, top, bottom):
             f'<g id="Toggle {i + 1}" opacity="0.45"><rect x="{cx - arm:.0f}" y="{cy - 1.5:.0f}" width="{2 * arm}" height="3" fill="{INK_TEXT}"/>'
             f'<rect x="{cx - 1.5:.0f}" y="{cy - arm:.0f}" width="3" height="{2 * arm}" fill="{INK_TEXT}"/></g>'
         )
-    b += t(PAD + inset, y0 + inset + 22, "Production by m.STUDIO", 26 if not wide(H) else 22, INK_MUTED, track=-0.03, name="Kicker")
+    b += t(PAD + inset, kicker, "Production by m.STUDIO", 26 if not wide(H) else 22, INK_MUTED, track=-0.03, name="Kicker")
     return b + footer(W, H, bottom), BG
 
 
@@ -357,7 +385,7 @@ SLIDES = [
     ("10-end", "End", end),
 ]
 
-for slug, fname, W, H, top, bottom in FORMATS:
+for slug, fname, W, H, PAD, top, bottom in FORMATS:
     folder = os.path.join(OUT, slug)
     os.makedirs(folder, exist_ok=True)
     for sslug, sname, fn in SLIDES:
