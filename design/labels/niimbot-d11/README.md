@@ -10,8 +10,9 @@ D11 tiskne pás široký 12 mm, štítek má 14 mm → grafika je jen v prostře
 | `04-monogram-claim` | „m.“ │ We feel your story. |
 | `05-logo-inverse` | černý pruh s vykrojeným logem (na průhledném štítku vypadá nejlíp) |
 
-- `png/203dpi/` – pro **D11** (240 × 112 px = přesně 30 × 14 mm)
-- `png/300dpi/` – pro **D11-H** (354 × 165 px)
+- `png/hires/` – **tyhle použijte v aplikaci** – 2400 × 1120 px, čisté hrany, aplikace je sama převede pro tiskárnu
+- `png/203dpi/` – přesně body tiskárny **D11** (240 × 112 px), záloha když by aplikace obrázek rozmazávala
+- `png/300dpi/` – přesně body tiskárny **D11-H** (354 × 165 px)
 - `svg/` – vektor 30 × 14 mm pro další úpravy
 
 ## Tisk v aplikaci NIIMBOT
@@ -21,4 +22,4 @@ D11 tiskne pás široký 12 mm, štítek má 14 mm → grafika je jen v prostře
 4. Vypnout ditheringe / „gradace“ pokud je v nastavení obrázku; hustotu tisku (density) dát na 3–4.
 5. Vytisknout nejdřív 1 kus a zkontrolovat, že nic není oříznuté.
 
-Úprava všech návrhů: `python3 generate.py ../../instagram/logo-path.txt svg`, pak `node rasterize.js svg png` (Playwright) a převod na 1-bit.
+Úprava všech návrhů: `python3 generate.py ../../instagram/logo-path.txt svg`, pak `node rasterize.js svg png/hires` (Playwright); 203/300 dpi verze se z nich zmenšují průměrováním a prahují na čistou černou.
